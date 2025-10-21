@@ -9,13 +9,21 @@ const ship = new Ship({
 function App() {
   const [deploymentUrl, setDeploymentUrl] = useState('');
   const [isDragging, setIsDragging] = useState(false);
+  const [isDeploying, setIsDeploying] = useState(false);
+  const [source, setSource] = useState('');
   const drop = useDrop();
 
   const handleDeploy = async () => {
-    const validFiles = drop.getValidFiles();
-    const files = validFiles.map(f => f.file);
-    const result = await ship.deployments.create(files);
-    setDeploymentUrl(result.url);
+    setIsDeploying(true);
+    try {
+      const validFiles = drop.getValidFiles();
+      const files = validFiles.map(f => f.file);
+      const result = await ship.deployments.create(files);
+      setDeploymentUrl(result.url);
+    } catch (error) {
+      console.error('Deployment failed:', error);
+      setIsDeploying(false);
+    }
   };
 
   const handleDrop = async (e: React.DragEvent) => {
@@ -29,8 +37,7 @@ function App() {
       if (item.kind === 'file') {
         const entry = item.webkitGetAsEntry?.();
         if (entry) {
-          // For directories, start the path with the directory name
-          // For files, start with empty path (just the filename)
+          if (items.length === 1) setSource(entry.name);
           const initialPath = entry.isDirectory ? entry.name : '';
           await traverseFileTree(entry, files, initialPath);
         }
@@ -100,7 +107,11 @@ function App() {
           type="file"
           {...({ webkitdirectory: '' } as any)}
           multiple
-          onChange={(e) => drop.processFiles(Array.from(e.target.files || []))}
+          onChange={(e) => {
+            const files = Array.from(e.target.files || []);
+            if (files[0]?.webkitRelativePath) setSource(files[0].webkitRelativePath.split('/')[0]);
+            drop.processFiles(files);
+          }}
           style={{ display: 'none' }}
           id="file-input"
         />
@@ -109,14 +120,18 @@ function App() {
         </div>
       </div>
 
+      {source && <p><strong>{source}</strong></p>}
       {drop.statusText && <p>{drop.statusText}</p>}
       {drop.validationError && <p style={{ color: 'red' }}>{drop.validationError.details}</p>}
 
       {drop.files.length > 0 && (
         <>
-          <p>{drop.files.length} files processed, {drop.getValidFiles().length} ready</p>
-          <button onClick={handleDeploy} disabled={drop.getValidFiles().length === 0}>
-            Deploy
+          <p>{drop.getValidFiles().length} files ready</p>
+          <button
+            onClick={handleDeploy}
+            disabled={drop.getValidFiles().length === 0 || isDeploying || !!deploymentUrl}
+          >
+            {isDeploying ? 'Deploying...' : deploymentUrl ? 'Deployed' : 'Deploy'}
           </button>
         </>
       )}
