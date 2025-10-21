@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { renderHook, act, waitFor } from '@testing-library/react';
-import { useDropzoneManager } from '@/hooks/useDropzoneManager';
+import { useDrop } from '@/hooks/useDrop';
 import { FILE_STATUSES } from '@/types';
 import { createMockFile, createMockFileWithPath } from '../test-utils';
 
@@ -19,7 +19,7 @@ vi.mock('spark-md5', () => ({
 // Mock JSZip
 vi.mock('jszip');
 
-describe('useDropzoneManager', () => {
+describe('useDrop', () => {
   beforeEach(() => {
     vi.spyOn(console, 'log').mockImplementation(() => {});
     vi.spyOn(console, 'error').mockImplementation(() => {});
@@ -31,7 +31,7 @@ describe('useDropzoneManager', () => {
 
   describe('Initial state', () => {
     it('should initialize with empty state', () => {
-      const { result } = renderHook(() => useDropzoneManager());
+      const { result } = renderHook(() => useDrop());
 
       expect(result.current.files).toEqual([]);
       expect(result.current.statusText).toBe('');
@@ -48,7 +48,7 @@ describe('useDropzoneManager', () => {
       };
 
       const { result } = renderHook(() =>
-        useDropzoneManager({ validation: customConfig })
+        useDrop({ validation: customConfig })
       );
 
       expect(result.current.files).toEqual([]);
@@ -59,7 +59,7 @@ describe('useDropzoneManager', () => {
       const onFilesReady = vi.fn();
 
       const { result } = renderHook(() =>
-        useDropzoneManager({ onValidationError, onFilesReady })
+        useDrop({ onValidationError, onFilesReady })
       );
 
       expect(result.current.files).toEqual([]);
@@ -68,7 +68,7 @@ describe('useDropzoneManager', () => {
 
   describe('processFiles - basic functionality', () => {
     it('should process single file successfully', async () => {
-      const { result } = renderHook(() => useDropzoneManager());
+      const { result } = renderHook(() => useDrop());
 
       const file = createMockFile('test.txt', 'hello world');
 
@@ -88,7 +88,7 @@ describe('useDropzoneManager', () => {
     });
 
     it('should process multiple files successfully', async () => {
-      const { result } = renderHook(() => useDropzoneManager());
+      const { result } = renderHook(() => useDrop());
 
       const files = [
         createMockFile('file1.txt', 'content1'),
@@ -112,7 +112,7 @@ describe('useDropzoneManager', () => {
     });
 
     it('should handle empty files array', async () => {
-      const { result } = renderHook(() => useDropzoneManager());
+      const { result } = renderHook(() => useDrop());
 
       await act(async () => {
         await result.current.processFiles([]);
@@ -125,7 +125,7 @@ describe('useDropzoneManager', () => {
     it('should call onFilesReady callback when files are valid', async () => {
       const onFilesReady = vi.fn();
       const { result } = renderHook(() =>
-        useDropzoneManager({ onFilesReady })
+        useDrop({ onFilesReady })
       );
 
       const file = createMockFile('test.txt', 'content');
@@ -150,7 +150,7 @@ describe('useDropzoneManager', () => {
     it('should reject files exceeding count limit', async () => {
       const onValidationError = vi.fn();
       const { result } = renderHook(() =>
-        useDropzoneManager({
+        useDrop({
           config: { maxFilesCount: 2 },
           onValidationError,
         })
@@ -182,7 +182,7 @@ describe('useDropzoneManager', () => {
     it('should reject files exceeding individual file size limit', async () => {
       const onValidationError = vi.fn();
       const { result } = renderHook(() =>
-        useDropzoneManager({
+        useDrop({
           config: { maxFileSize: 10 },
           onValidationError,
         })
@@ -206,7 +206,7 @@ describe('useDropzoneManager', () => {
     it('should reject files when total size exceeds limit', async () => {
       const onValidationError = vi.fn();
       const { result } = renderHook(() =>
-        useDropzoneManager({
+        useDrop({
           config: { maxTotalSize: 20 },
           onValidationError,
         })
@@ -231,7 +231,7 @@ describe('useDropzoneManager', () => {
     });
 
     it('should reject empty files (0 bytes)', async () => {
-      const { result } = renderHook(() => useDropzoneManager());
+      const { result } = renderHook(() => useDrop());
 
       const file = createMockFile('empty.txt', '');
 
@@ -250,7 +250,7 @@ describe('useDropzoneManager', () => {
 
   describe('File management', () => {
     it('should remove file by ID', async () => {
-      const { result } = renderHook(() => useDropzoneManager());
+      const { result } = renderHook(() => useDrop());
 
       const files = [
         createMockFile('file1.txt'),
@@ -276,7 +276,7 @@ describe('useDropzoneManager', () => {
     });
 
     it('should clear all files', async () => {
-      const { result } = renderHook(() => useDropzoneManager());
+      const { result } = renderHook(() => useDrop());
 
       const files = [
         createMockFile('file1.txt'),
@@ -303,7 +303,7 @@ describe('useDropzoneManager', () => {
 
     it('should get only valid files', async () => {
       const { result } = renderHook(() =>
-        useDropzoneManager({
+        useDrop({
           config: { maxFileSize: 10 },
         })
       );
@@ -330,7 +330,7 @@ describe('useDropzoneManager', () => {
 
   describe('updateFileStatus', () => {
     it('should update file upload status', async () => {
-      const { result } = renderHook(() => useDropzoneManager());
+      const { result } = renderHook(() => useDrop());
 
       const file = createMockFile('test.txt');
 
@@ -361,7 +361,7 @@ describe('useDropzoneManager', () => {
 
   describe('hasChecksums', () => {
     it('should return true when all valid files have MD5', async () => {
-      const { result } = renderHook(() => useDropzoneManager());
+      const { result } = renderHook(() => useDrop());
 
       const file = createMockFile('test.txt');
 
@@ -377,7 +377,7 @@ describe('useDropzoneManager', () => {
     });
 
     it('should return false when no valid files exist', async () => {
-      const { result } = renderHook(() => useDropzoneManager());
+      const { result } = renderHook(() => useDrop());
 
       expect(result.current.hasChecksums).toBe(false);
     });
@@ -385,7 +385,7 @@ describe('useDropzoneManager', () => {
 
   describe('stripPrefix option', () => {
     it('should strip common prefix when stripPrefix=true (default)', async () => {
-      const { result } = renderHook(() => useDropzoneManager());
+      const { result } = renderHook(() => useDrop());
 
       // Use createMockFileWithPath to properly simulate folder drag-and-drop
       // In real scenarios, webkitRelativePath is set by the browser
@@ -407,7 +407,7 @@ describe('useDropzoneManager', () => {
     });
 
     it('should not strip prefix when stripPrefix=false', async () => {
-      const { result } = renderHook(() => useDropzoneManager({ stripPrefix: false }));
+      const { result } = renderHook(() => useDrop({ stripPrefix: false }));
 
       // Use createMockFileWithPath to properly simulate folder drag-and-drop
       const files = [
@@ -430,7 +430,7 @@ describe('useDropzoneManager', () => {
 
   describe('ZIP file handling', () => {
     it('should extract ZIP when single ZIP file is dropped', async () => {
-      const { result } = renderHook(() => useDropzoneManager());
+      const { result } = renderHook(() => useDrop());
 
       // Create a spy to track if extractZipToFiles was called
       const extractSpy = vi.spyOn(await import('@/utils/zipExtractor'), 'extractZipToFiles');
@@ -453,7 +453,7 @@ describe('useDropzoneManager', () => {
     });
 
     it('should NOT extract ZIP when multiple files including ZIP are dropped', async () => {
-      const { result } = renderHook(() => useDropzoneManager());
+      const { result } = renderHook(() => useDrop());
 
       // Create a spy to track if extractZipToFiles was NOT called
       const extractSpy = vi.spyOn(await import('@/utils/zipExtractor'), 'extractZipToFiles');
@@ -484,7 +484,7 @@ describe('useDropzoneManager', () => {
     });
 
     it('should NOT extract ZIP when multiple ZIPs are dropped', async () => {
-      const { result } = renderHook(() => useDropzoneManager());
+      const { result } = renderHook(() => useDrop());
 
       // Create a spy to track if extractZipToFiles was NOT called
       const extractSpy = vi.spyOn(await import('@/utils/zipExtractor'), 'extractZipToFiles');
@@ -517,7 +517,7 @@ describe('useDropzoneManager', () => {
     it('should handle case when no valid files after processing', async () => {
       const onValidationError = vi.fn();
       const { result } = renderHook(() =>
-        useDropzoneManager({
+        useDrop({
           config: { maxFileSize: 1 }, // Very small limit
           onValidationError,
         })
@@ -539,7 +539,7 @@ describe('useDropzoneManager', () => {
     });
 
     it('should reset state when processFiles is called again', async () => {
-      const { result } = renderHook(() => useDropzoneManager());
+      const { result } = renderHook(() => useDrop());
 
       // First batch
       await act(async () => {
@@ -565,7 +565,7 @@ describe('useDropzoneManager', () => {
 
   describe('Concurrency protection', () => {
     it('should ignore concurrent processFiles calls', async () => {
-      const { result } = renderHook(() => useDropzoneManager());
+      const { result } = renderHook(() => useDrop());
       const consoleWarnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
 
       const file1 = createMockFile('file1.txt');
@@ -601,7 +601,7 @@ describe('useDropzoneManager', () => {
     });
 
     it('should allow processFiles after previous call completes', async () => {
-      const { result } = renderHook(() => useDropzoneManager());
+      const { result } = renderHook(() => useDrop());
 
       // First call
       await act(async () => {
@@ -629,7 +629,7 @@ describe('useDropzoneManager', () => {
     });
 
     it('should clear processing flag on error', async () => {
-      const { result } = renderHook(() => useDropzoneManager());
+      const { result } = renderHook(() => useDrop());
 
       // Create a mock file that will cause an error during processing
       const badFile = createMockFile('bad.txt');

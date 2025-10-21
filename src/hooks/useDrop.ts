@@ -1,5 +1,5 @@
 /**
- * Simplified headless dropzone manager hook
+ * Simplified headless drop hook
  * Handles file processing, ZIP extraction, and validation
  * Upload logic is the responsibility of the consumer
  */
@@ -15,7 +15,7 @@ import {
   stripCommonPrefix,
 } from '../utils/fileProcessing';
 
-export interface DropzoneManagerOptions {
+export interface DropOptions {
   /** Validation configuration (from ship.getConfig()) */
   config?: Partial<ValidationConfig>;
   /** Callback when validation fails */
@@ -26,7 +26,7 @@ export interface DropzoneManagerOptions {
   stripPrefix?: boolean;
 }
 
-export interface DropzoneManagerReturn {
+export interface DropReturn {
   /** All processed files with their status */
   files: ProcessedFile[];
   /** Current status text */
@@ -38,7 +38,7 @@ export interface DropzoneManagerReturn {
   /** Whether all valid files have MD5 checksums calculated */
   hasChecksums: boolean;
 
-  /** Process files from dropzone (resets and replaces existing files) */
+  /** Process files from drop (resets and replaces existing files) */
   processFiles: (files: File[]) => Promise<void>;
   /** Remove a specific file */
   removeFile: (fileId: string) => void;
@@ -51,11 +51,11 @@ export interface DropzoneManagerReturn {
 }
 
 /**
- * Headless dropzone manager hook
+ * Headless drop hook
  * Handles file processing, ZIP extraction, and validation
  * Does NOT handle uploading - that's the consumer's responsibility
  */
-export function useDropzoneManager(options: DropzoneManagerOptions = {}): DropzoneManagerReturn {
+export function useDrop(options: DropOptions = {}): DropReturn {
   const {
     config: customConfig,
     onValidationError,

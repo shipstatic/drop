@@ -1,12 +1,12 @@
-# @shipstatic/dropzone Demo
+# @shipstatic/drop Demo
 
-A demonstration app showcasing the **headless** architecture of `@shipstatic/dropzone` with custom UI components.
+A demonstration app showcasing the **headless** architecture of `@shipstatic/drop` with custom UI components.
 
 ## 🎯 What This Demo Shows
 
-This demo demonstrates how to build a complete file upload experience using the `@shipstatic/dropzone` headless hook:
+This demo demonstrates how to build a complete file upload experience using the `@shipstatic/drop` headless hook:
 
-- ✅ **Custom Dropzone** - Built from scratch with folder structure preservation
+- ✅ **Custom Drop Zone** - Built from scratch with folder structure preservation
 - ✅ **Modern Browser APIs** - File System Access API + webkit fallback
 - ✅ **Folder Drag & Drop** - Preserves complete folder structure via `webkitRelativePath`
 - ✅ **ZIP Extraction** - Automatic extraction and processing
@@ -20,12 +20,12 @@ This demo demonstrates how to build a complete file upload experience using the 
 
 ## 🏗️ Architecture
 
-This demo shows the **recommended pattern** for using `@shipstatic/dropzone`:
+This demo shows the **recommended pattern** for using `@shipstatic/drop`:
 
 ```
 ┌─────────────────────────────────────┐
-│  @shipstatic/dropzone (headless)    │
-│  • useDropzoneManager hook          │
+│  @shipstatic/drop (headless)        │
+│  • useDrop hook                     │
 │  • File processing logic            │
 │  • ZIP extraction                   │
 │  • MD5 calculation                  │
@@ -46,7 +46,7 @@ This demo shows the **recommended pattern** for using `@shipstatic/dropzone`:
 
 The package is **headless by design** because:
 
-1. **Folder structure matters** - Generic dropzone libraries (like `react-dropzone`) don't preserve `webkitRelativePath`
+1. **Folder structure matters** - Generic drop zone libraries (like `react-dropzone`) don't preserve `webkitRelativePath`
 2. **Modern APIs required** - Proper folder drag-and-drop needs File System Access API + webkit fallbacks
 3. **You control the UI** - Every project has different design requirements
 4. **Smaller bundle** - No unnecessary UI dependencies
@@ -117,13 +117,13 @@ Visual file list with:
 
 ```typescript
 // App.tsx - The integration point
-import { useDropzoneManager } from '@shipstatic/dropzone';
+import { useDrop } from '@shipstatic/drop';
 import { CustomDropzone } from './components/CustomDropzone';
 import { FileListDisplay } from './components/FileListDisplay';
 
 function App() {
   // 1. Use the headless hook
-  const dropzone = useDropzoneManager({
+  const drop = useDrop({
     validation: {
       MAX_FILE_SIZE: 10 * 1024 * 1024,    // 10MB
       MAX_TOTAL_SIZE: 50 * 1024 * 1024,   // 50MB
@@ -135,19 +135,19 @@ function App() {
     <>
       {/* 2. Pass methods to your custom UI */}
       <CustomDropzone
-        onFilesSelected={dropzone.processFiles}
-        disabled={dropzone.isProcessing}
+        onFilesSelected={drop.processFiles}
+        disabled={drop.isProcessing}
       />
 
       {/* 3. Display processed files */}
       <FileListDisplay
-        files={dropzone.files}
-        onRemove={dropzone.removeFile}
+        files={drop.files}
+        onRemove={drop.removeFile}
       />
 
       {/* 4. Ready for Ship SDK */}
       <button onClick={() => {
-        const staticFiles = dropzone.getValidFiles().map(f => ({
+        const staticFiles = drop.getValidFiles().map(f => ({
           content: f.file,
           path: f.path,    // Normalized path with folder structure
           md5: f.md5,      // Pre-calculated checksum
@@ -203,7 +203,7 @@ Real-time feedback:
 The demo shows how to prepare files for Ship SDK deployment:
 
 ```typescript
-const validFiles = dropzone.getValidFiles();
+const validFiles = drop.getValidFiles();
 const staticFiles = validFiles.map(f => ({
   content: f.file,    // Original File object
   path: f.path,       // Normalized path (IMPORTANT!)
@@ -232,7 +232,7 @@ If you just need basic file processing without folder support:
 
 ```typescript
 function MinimalDemo() {
-  const dropzone = useDropzoneManager();
+  const drop = useDrop();
 
   return (
     <>
@@ -241,21 +241,21 @@ function MinimalDemo() {
         multiple
         onChange={(e) => {
           const files = Array.from(e.target.files || []);
-          dropzone.processFiles(files);
+          drop.processFiles(files);
         }}
       />
 
       <div>
-        {dropzone.files.map(f => (
+        {drop.files.map(f => (
           <div key={f.id}>{f.name} - {f.status}</div>
         ))}
       </div>
 
       <button
-        onClick={() => console.log(dropzone.getValidFiles())}
-        disabled={!dropzone.hasChecksums}
+        onClick={() => console.log(drop.getValidFiles())}
+        disabled={!drop.hasChecksums}
       >
-        Upload {dropzone.getValidFiles().length} files
+        Upload {drop.getValidFiles().length} files
       </button>
     </>
   );
@@ -267,7 +267,7 @@ function MinimalDemo() {
 The demo uses these validation limits:
 
 ```typescript
-const dropzone = useDropzoneManager({
+const drop = useDrop({
   validation: {
     MAX_FILE_SIZE: 10 * 1024 * 1024,    // 10MB per file
     MAX_TOTAL_SIZE: 50 * 1024 * 1024,   // 50MB total
@@ -296,7 +296,7 @@ Try these to see the demo in action:
 
 ## 📚 Learn More
 
-- [@shipstatic/dropzone package](../dropzone/README.md)
+- [@shipstatic/drop package](../README.md)
 - [Ship SDK documentation](../../ship/README.md)
 - [File System Access API](https://developer.mozilla.org/en-US/docs/Web/API/File_System_Access_API)
 - [webkitGetAsEntry (webkit fallback)](https://developer.mozilla.org/en-US/docs/Web/API/DataTransferItem/webkitGetAsEntry)
@@ -311,4 +311,4 @@ Try these to see the demo in action:
 
 ---
 
-**Note:** This is a demo application. No files are actually uploaded anywhere. It only demonstrates the file preparation capabilities of `@shipstatic/dropzone`.
+**Note:** This is a demo application. No files are actually uploaded anywhere. It only demonstrates the file preparation capabilities of `@shipstatic/drop`.
