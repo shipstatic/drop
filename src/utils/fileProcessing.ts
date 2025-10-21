@@ -3,7 +3,7 @@
  * Converts Files directly to ProcessedFiles with validation
  */
 import SparkMD5 from 'spark-md5';
-import mime from 'mime-types';
+import { getMimeType } from './mimeType';
 import { FILE_STATUSES, type ProcessedFile, type ValidationConfig, type ClientError, type FileStatus } from '../types';
 
 /**
@@ -50,7 +50,7 @@ export async function createProcessedFile(
   const shouldCalculateMD5 = options?.calculateMD5 !== false;
 
   // Determine MIME type
-  const type = file.type || mime.lookup(path) || 'application/octet-stream';
+  const type = file.type || getMimeType(path);
 
   // Calculate MD5 if requested
   let md5: string | undefined;

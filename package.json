@@ -1,7 +1,7 @@
 {
-  "name": "@shipstatic/assets",
+  "name": "@shipstatic/drop",
   "version": "0.1.0",
-  "description": "Headless React hook for file processing, ZIP extraction, MD5 calculation, and validation - purpose-built for Ship SDK deployments",
+  "description": "Headless React hook for file dropping, processing, ZIP extraction, MD5 calculation, and validation - purpose-built for Ship Drop",
   "type": "module",
   "main": "./dist/index.cjs",
   "module": "./dist/index.js",
@@ -31,12 +31,14 @@
   "keywords": [
     "react",
     "react-hook",
+    "dropzone",
+    "file-drop",
     "file-processing",
     "headless",
     "zip-extraction",
     "md5-checksum",
     "file-validation",
-    "ship-sdk",
+    "ship-drop",
     "deployment"
   ],
   "author": "ShipStatic",
@@ -49,7 +51,6 @@
     "@shipstatic/types": "^0.3.0",
     "jszip": "^3.10.1",
     "mime-db": "^1.54.0",
-    "mime-types": "^3.0.1",
     "spark-md5": "^3.0.2"
   },
   "devDependencies": {
@@ -57,7 +58,6 @@
     "@testing-library/react": "^16.3.0",
     "@testing-library/user-event": "^14.6.1",
     "@types/mime-db": "^1.43.6",
-    "@types/mime-types": "^3.0.1",
     "@types/react": "^19.2.2",
     "@types/react-dom": "^19.2.2",
     "@types/spark-md5": "^3.0.5",
@@ -65,6 +65,7 @@
     "happy-dom": "^20.0.7",
     "husky": "^9.1.7",
     "jsdom": "^27.0.1",
+    "path-browserify": "^1.0.1",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
     "tsup": "^8.5.0",
