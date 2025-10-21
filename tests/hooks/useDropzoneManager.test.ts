@@ -428,6 +428,91 @@ describe('useDropzoneManager', () => {
     });
   });
 
+  describe('ZIP file handling', () => {
+    it('should extract ZIP when single ZIP file is dropped', async () => {
+      const { result } = renderHook(() => useDropzoneManager());
+
+      // Create a spy to track if extractZipToFiles was called
+      const extractSpy = vi.spyOn(await import('@/utils/zipExtractor'), 'extractZipToFiles');
+
+      // Mock a ZIP file
+      const zipFile = createMockFile('archive.zip', 'zip content', 'application/zip');
+
+      await act(async () => {
+        await result.current.processFiles([zipFile]);
+      });
+
+      await waitFor(() => {
+        expect(result.current.isProcessing).toBe(false);
+      });
+
+      // Verify that extractZipToFiles was called for single ZIP
+      expect(extractSpy).toHaveBeenCalledWith(zipFile);
+
+      extractSpy.mockRestore();
+    });
+
+    it('should NOT extract ZIP when multiple files including ZIP are dropped', async () => {
+      const { result } = renderHook(() => useDropzoneManager());
+
+      // Create a spy to track if extractZipToFiles was NOT called
+      const extractSpy = vi.spyOn(await import('@/utils/zipExtractor'), 'extractZipToFiles');
+
+      // Multiple files including one ZIP
+      const files = [
+        createMockFile('document.pdf', 'pdf content', 'application/pdf'),
+        createMockFile('archive.zip', 'zip content', 'application/zip'),
+        createMockFile('image.png', 'png content', 'image/png'),
+      ];
+
+      await act(async () => {
+        await result.current.processFiles(files);
+      });
+
+      await waitFor(() => {
+        expect(result.current.isProcessing).toBe(false);
+      });
+
+      // Should have 3 files (ZIP not extracted)
+      expect(result.current.files).toHaveLength(3);
+      expect(result.current.files.map(f => f.name)).toEqual(['document.pdf', 'archive.zip', 'image.png']);
+
+      // Verify that extractZipToFiles was NOT called
+      expect(extractSpy).not.toHaveBeenCalled();
+
+      extractSpy.mockRestore();
+    });
+
+    it('should NOT extract ZIP when multiple ZIPs are dropped', async () => {
+      const { result } = renderHook(() => useDropzoneManager());
+
+      // Create a spy to track if extractZipToFiles was NOT called
+      const extractSpy = vi.spyOn(await import('@/utils/zipExtractor'), 'extractZipToFiles');
+
+      const files = [
+        createMockFile('archive1.zip', 'zip content 1', 'application/zip'),
+        createMockFile('archive2.zip', 'zip content 2', 'application/zip'),
+      ];
+
+      await act(async () => {
+        await result.current.processFiles(files);
+      });
+
+      await waitFor(() => {
+        expect(result.current.isProcessing).toBe(false);
+      });
+
+      // Should have 2 files (ZIPs not extracted)
+      expect(result.current.files).toHaveLength(2);
+      expect(result.current.files.map(f => f.name)).toEqual(['archive1.zip', 'archive2.zip']);
+
+      // Verify that extractZipToFiles was NOT called
+      expect(extractSpy).not.toHaveBeenCalled();
+
+      extractSpy.mockRestore();
+    });
+  });
+
   describe('Edge cases and error handling', () => {
     it('should handle case when no valid files after processing', async () => {
       const onValidationError = vi.fn();

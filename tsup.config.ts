@@ -7,7 +7,10 @@ export default defineConfig({
   splitting: false,
   sourcemap: true,
   clean: true,
+  platform: 'browser',
+  target: 'es2020',
   external: ['react', 'react-dom'],
+  noExternal: ['mime-db', 'spark-md5', 'jszip'],
   treeshake: true,
   minify: false,
 });

@@ -3,7 +3,7 @@
  * Extracts ZIP files and returns regular File objects
  */
 import JSZip from 'jszip';
-import mime from 'mime-types';
+import { getMimeType } from './mimeType';
 
 export interface ZipExtractionResult {
   /** Extracted files as regular File objects */
@@ -42,7 +42,7 @@ export async function extractZipToFiles(zipFile: File): Promise<ZipExtractionRes
 
       try {
         const content = await entry.async('blob');
-        const mimeType = mime.lookup(sanitizedPath) || 'application/octet-stream';
+        const mimeType = getMimeType(sanitizedPath);
 
         // Create a regular File object with the sanitized path as the name
         const file = new File([content], sanitizedPath, {

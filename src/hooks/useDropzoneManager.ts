@@ -96,21 +96,24 @@ export function useDropzoneManager(options: DropzoneManagerOptions = {}): Dropzo
     setStatusText('Processing files...');
 
     try {
-      // Step 1: Extract any ZIP files
+      // Step 1: Extract ZIP only if single file is dropped and it's a ZIP
+      // For multiple files, treat ZIPs as regular files (don't extract)
       const allFiles: File[] = [];
-      for (const file of newFiles) {
-        if (isZipFile(file)) {
-          setStatusText(`Extracting ${file.name}...`);
-          const { files: extractedFiles, errors } = await extractZipToFiles(file);
+      const shouldExtractZip = newFiles.length === 1 && isZipFile(newFiles[0]);
 
-          if (errors.length > 0) {
-            console.warn('ZIP extraction errors:', errors);
-          }
+      if (shouldExtractZip) {
+        const zipFile = newFiles[0];
+        setStatusText(`Extracting ${zipFile.name}...`);
+        const { files: extractedFiles, errors } = await extractZipToFiles(zipFile);
 
-          allFiles.push(...extractedFiles);
-        } else {
-          allFiles.push(file);
+        if (errors.length > 0) {
+          console.warn('ZIP extraction errors:', errors);
         }
+
+        allFiles.push(...extractedFiles);
+      } else {
+        // Multiple files or non-ZIP: don't extract anything
+        allFiles.push(...newFiles);
       }
 
       // Step 2: Convert all Files to ProcessedFiles with MD5
