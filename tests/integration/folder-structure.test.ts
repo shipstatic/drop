@@ -7,7 +7,7 @@
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { renderHook, act, waitFor } from '@testing-library/react';
-import { useDropzoneManager } from '@/hooks/useDropzoneManager';
+import { useDrop } from '@/hooks/useDrop';
 import { FILE_STATUSES } from '@/types';
 import { createMockFile, createMockFileWithPath } from '../test-utils';
 
@@ -35,7 +35,7 @@ describe('Folder Structure Preservation', () => {
 
   describe('webkitRelativePath support', () => {
     it('should preserve webkitRelativePath during processing', async () => {
-      const { result } = renderHook(() => useDropzoneManager({ stripPrefix: false }));
+      const { result } = renderHook(() => useDrop({ stripPrefix: false }));
 
       const file = createMockFileWithPath(
         'app.js',
@@ -59,7 +59,7 @@ describe('Folder Structure Preservation', () => {
     });
 
     it('should use file.name when webkitRelativePath is empty', async () => {
-      const { result } = renderHook(() => useDropzoneManager());
+      const { result } = renderHook(() => useDrop());
 
       const file = createMockFile('standalone.js', 'content');
       // webkitRelativePath exists but is empty string (standard browser behavior)
@@ -83,7 +83,7 @@ describe('Folder Structure Preservation', () => {
     });
 
     it('should maintain folder structure for multiple files', async () => {
-      const { result } = renderHook(() => useDropzoneManager({ stripPrefix: false }));
+      const { result } = renderHook(() => useDrop({ stripPrefix: false }));
 
       const files = [
         createMockFileWithPath('index.html', 'mysite/index.html', '<!DOCTYPE html>'),
@@ -113,7 +113,7 @@ describe('Folder Structure Preservation', () => {
     });
 
     it('should strip common prefix when stripPrefix=true (default)', async () => {
-      const { result } = renderHook(() => useDropzoneManager());
+      const { result } = renderHook(() => useDrop());
 
       const files = [
         createMockFileWithPath('index.html', 'mysite/index.html', '<!DOCTYPE html>'),
@@ -139,7 +139,7 @@ describe('Folder Structure Preservation', () => {
     });
 
     it('should handle nested folder structures', async () => {
-      const { result } = renderHook(() => useDropzoneManager({ stripPrefix: false }));
+      const { result } = renderHook(() => useDrop({ stripPrefix: false }));
 
       const files = [
         createMockFileWithPath('index.js', 'project/src/components/Button/index.js'),
@@ -164,7 +164,7 @@ describe('Folder Structure Preservation', () => {
 
   describe('Mixed file sources', () => {
     it('should handle mix of files with and without webkitRelativePath', async () => {
-      const { result } = renderHook(() => useDropzoneManager({ stripPrefix: false }));
+      const { result } = renderHook(() => useDrop({ stripPrefix: false }));
 
       const files = [
         // File from folder drag (has webkitRelativePath)
@@ -189,7 +189,7 @@ describe('Folder Structure Preservation', () => {
 
   describe('Ship SDK compatibility', () => {
     it('should return files in Ship SDK compatible format', async () => {
-      const { result } = renderHook(() => useDropzoneManager());
+      const { result } = renderHook(() => useDrop());
 
       const files = [
         createMockFileWithPath('index.html', 'dist/index.html', '<!DOCTYPE html>'),
@@ -221,7 +221,7 @@ describe('Folder Structure Preservation', () => {
     });
 
     it('should preserve path information for Ship SDK deploy() call', async () => {
-      const { result } = renderHook(() => useDropzoneManager({ stripPrefix: false }));
+      const { result } = renderHook(() => useDrop({ stripPrefix: false }));
 
       const files = [
         createMockFileWithPath('index.html', 'public/index.html'),

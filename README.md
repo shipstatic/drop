@@ -1,4 +1,4 @@
-# @shipstatic/assets
+# @shipstatic/drop
 
 **Headless file processing toolkit for Ship SDK deployments**
 
@@ -29,15 +29,15 @@ The package focuses on what's hard (ZIP extraction, MD5 calculation, validation)
 ## Installation
 
 ```bash
-npm install @shipstatic/assets
+npm install @shipstatic/drop
 # or
-pnpm add @shipstatic/assets
+pnpm add @shipstatic/drop
 ```
 
 ## Quick Start
 
 ```tsx
-import { useDropzoneManager } from '@shipstatic/assets';
+import { useDrop } from '@shipstatic/drop';
 import Ship from '@shipstatic/ship';
 
 function MyUploader() {
@@ -46,12 +46,12 @@ function MyUploader() {
   // Get validation config from Ship SDK
   const config = await ship.getConfig();
 
-  const dropzone = useDropzoneManager({
+  const drop = useDrop({
     config  // Pass SDK config directly
   });
 
   const handleUpload = async () => {
-    const validFiles = dropzone.getValidFiles();
+    const validFiles = drop.getValidFiles();
 
     // ProcessedFile extends StaticFile - no conversion needed!
     await ship.deployments.create({ files: validFiles });
@@ -64,13 +64,13 @@ function MyUploader() {
         multiple
         onChange={(e) => {
           const files = Array.from(e.target.files || []);
-          dropzone.processFiles(files);
+          drop.processFiles(files);
         }}
       />
 
-      <p>{dropzone.statusText}</p>
+      <p>{drop.statusText}</p>
 
-      {dropzone.files.map(file => (
+      {drop.files.map(file => (
         <div key={file.id}>
           {file.name} - {file.status}
         </div>
@@ -78,25 +78,25 @@ function MyUploader() {
 
       <button
         onClick={handleUpload}
-        disabled={dropzone.getValidFiles().length === 0}
+        disabled={drop.getValidFiles().length === 0}
       >
-        Upload {dropzone.getValidFiles().length} files
+        Upload {drop.getValidFiles().length} files
       </button>
     </div>
   );
 }
 ```
 
-## Building Your Dropzone with Folder Support
+## Building Your Drop Zone with Folder Support
 
 For production use, you'll want to support folder drag-and-drop using modern browser APIs. Here's a complete example:
 
 ```tsx
 import { useState } from 'react';
-import { useDropzoneManager } from '@shipstatic/assets';
+import { useDrop } from '@shipstatic/drop';
 
 function MyDeployUI() {
-  const dropzone = useDropzoneManager();
+  const drop = useDrop();
   const [isDragActive, setIsDragActive] = useState(false);
 
   const handleDrop = async (e: React.DragEvent) => {
@@ -105,7 +105,7 @@ function MyDeployUI() {
 
     // Extract files with folder structure preserved
     const files = await extractFilesWithStructure(e.dataTransfer);
-    dropzone.processFiles(files);
+    drop.processFiles(files);
   };
 
   const extractFilesWithStructure = async (
@@ -212,14 +212,14 @@ function MyDeployUI() {
       onDrop={handleDrop}
       className={isDragActive ? 'border-blue-500 bg-blue-50' : 'border-gray-300'}
     >
-      {dropzone.isProcessing ? (
-        <p>Processing {dropzone.files.length} files...</p>
+      {drop.isProcessing ? (
+        <p>Processing {drop.files.length} files...</p>
       ) : (
         <p>Drag & drop files or folders here</p>
       )}
 
-      {dropzone.validationError && (
-        <div className="text-red-600">{dropzone.validationError.details}</div>
+      {drop.validationError && (
+        <div className="text-red-600">{drop.validationError.details}</div>
       )}
     </div>
   );
@@ -235,14 +235,14 @@ function MyDeployUI() {
 
 ## API
 
-### `useDropzoneManager(options?)`
+### `useDrop(options?)`
 
-Main hook for managing dropzone state.
+Main hook for managing drop state.
 
 **Options:**
 
 ```typescript
-interface DropzoneManagerOptions {
+interface DropOptions {
   /** Validation configuration (from ship.getConfig()) */
   config?: Partial<ValidationConfig>;
   /** Callback when validation fails */
@@ -257,7 +257,7 @@ interface DropzoneManagerOptions {
 **Returns:**
 
 ```typescript
-interface DropzoneManagerReturn {
+interface DropReturn {
   /** All processed files with their status */
   files: ProcessedFile[];
   /** Current status text */
@@ -269,7 +269,7 @@ interface DropzoneManagerReturn {
   /** Whether all valid files have MD5 checksums calculated */
   hasChecksums: boolean;
 
-  /** Process files from dropzone (resets and replaces existing files) */
+  /** Process files from drop (resets and replaces existing files) */
   processFiles: (files: File[]) => Promise<void>;
   /** Remove a specific file */
   removeFile: (fileId: string) => void;
@@ -343,7 +343,7 @@ type FileStatus =
 **ProcessedFile extends StaticFile** - no conversion needed! Since `ProcessedFile` extends `StaticFile` from `@shipstatic/types`, you can pass the files directly to the Ship SDK:
 
 ```typescript
-const validFiles = dropzone.getValidFiles();
+const validFiles = drop.getValidFiles();
 
 // ProcessedFile[] IS StaticFile[] - pass directly!
 await ship.deployments.create({ files: validFiles });
@@ -369,7 +369,7 @@ interface ProcessedFile extends StaticFile {
 }
 ```
 
-**Important**: The dropzone preserves folder structure via `webkitRelativePath` and processes paths with `stripCommonPrefix` automatically. The `path` property is always deployment-ready.
+**Important**: The drop hook preserves folder structure via `webkitRelativePath` and processes paths with `stripCommonPrefix` automatically. The `path` property is always deployment-ready.
 
 ## Architecture Decisions
 
@@ -391,7 +391,7 @@ Following industry standards (Firebase hooks, Supabase utilities), we chose:
 - ✅ **Flexible**: Host app controls WHEN to deploy
 
 Instead of:
-- ❌ Passing Ship SDK instance to useDropzoneManager
+- ❌ Passing Ship SDK instance to useDrop
 - ❌ React Context provider pattern
 - ❌ Global configuration singleton
 
@@ -407,8 +407,8 @@ No conversion needed. ProcessedFile adds UI-specific properties (id, name, statu
 
 **4. No UI Components**
 
-We deliberately don't provide dropzone UI components because:
-- Generic dropzone libraries (like `react-dropzone`) don't support folder structure preservation
+We deliberately don't provide drop zone UI components because:
+- Generic drop zone libraries (like `react-dropzone`) don't support folder structure preservation
 - Proper folder drag-and-drop requires modern browser APIs that need custom implementation
 - Your deployment UI is unique to your application
 - Providing a component that "works but loses paths" would be misleading

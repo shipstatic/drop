@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useDropzoneManager } from '@shipstatic/drop';
+import { useDrop } from '@shipstatic/drop';
 import Ship from '@shipstatic/ship';
 
 const ship = new Ship({
@@ -9,10 +9,10 @@ const ship = new Ship({
 function App() {
   const [deploymentUrl, setDeploymentUrl] = useState('');
   const [isDragging, setIsDragging] = useState(false);
-  const dropzone = useDropzoneManager();
+  const drop = useDrop();
 
   const handleDeploy = async () => {
-    const validFiles = dropzone.getValidFiles();
+    const validFiles = drop.getValidFiles();
     const files = validFiles.map(f => f.file);
     const result = await ship.deployments.create(files);
     setDeploymentUrl(result.url);
@@ -38,7 +38,7 @@ function App() {
     }
 
     if (files.length > 0) {
-      dropzone.processFiles(files);
+      drop.processFiles(files);
     }
   };
 
@@ -100,7 +100,7 @@ function App() {
           type="file"
           {...({ webkitdirectory: '' } as any)}
           multiple
-          onChange={(e) => dropzone.processFiles(Array.from(e.target.files || []))}
+          onChange={(e) => drop.processFiles(Array.from(e.target.files || []))}
           style={{ display: 'none' }}
           id="file-input"
         />
@@ -109,13 +109,13 @@ function App() {
         </div>
       </div>
 
-      {dropzone.statusText && <p>{dropzone.statusText}</p>}
-      {dropzone.validationError && <p style={{ color: 'red' }}>{dropzone.validationError.details}</p>}
+      {drop.statusText && <p>{drop.statusText}</p>}
+      {drop.validationError && <p style={{ color: 'red' }}>{drop.validationError.details}</p>}
 
-      {dropzone.files.length > 0 && (
+      {drop.files.length > 0 && (
         <>
-          <p>{dropzone.files.length} files processed, {dropzone.getValidFiles().length} ready</p>
-          <button onClick={handleDeploy} disabled={dropzone.getValidFiles().length === 0}>
+          <p>{drop.files.length} files processed, {drop.getValidFiles().length} ready</p>
+          <button onClick={handleDeploy} disabled={drop.getValidFiles().length === 0}>
             Deploy
           </button>
         </>
