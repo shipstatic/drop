@@ -1,0 +1,73 @@
+/**
+ * Core types for @shipstatic/dropzone
+ * Imports types from @shipstatic/types (single source of truth)
+ * and defines dropzone-specific types
+ */
+
+// Import SDK types as single source of truth
+import type { StaticFile, ConfigResponse } from '@shipstatic/types';
+
+// File statuses during processing
+export const FILE_STATUSES = {
+  PENDING: "pending",
+  PROCESSING: "processing",
+  VALIDATION_FAILED: "validation_failed",
+  PROCESSING_ERROR: "processing_error",
+  EMPTY_FILE: "empty_file",
+  READY: "ready",
+  UPLOADING: "uploading",
+  COMPLETE: "complete",
+  ERROR: "error",
+} as const;
+
+export type FileStatus = (typeof FILE_STATUSES)[keyof typeof FILE_STATUSES];
+
+/**
+ * Client-side error structure
+ */
+export interface ClientError {
+  error: string;
+  details: string;
+  isClientError: true;
+}
+
+/**
+ * Processed file entry ready for upload
+ * Extends StaticFile from SDK, adding UI-specific properties
+ * This means ProcessedFile IS a StaticFile - can be passed directly to ship.deployments.create()
+ */
+export interface ProcessedFile extends StaticFile {
+  /** Unique identifier for React keys and tracking */
+  id: string;
+  /** Original File object (alias for 'content' from StaticFile for better DX) */
+  file: File;
+  /** Filename without path */
+  name: string;
+  /** MIME type for UI icons/previews */
+  type: string;
+  /** Last modified timestamp */
+  lastModified: number;
+  /** Current processing/upload status */
+  status: FileStatus;
+  /** Human-readable status message for UI */
+  statusMessage?: string;
+  /** Upload progress (0-100) - only set during upload */
+  progress?: number;
+}
+
+/**
+ * Validation configuration - direct alias to SDK's ConfigResponse
+ * This allows passing the config directly from ship.getConfig() to the dropzone
+ *
+ * Single source of truth: @shipstatic/types
+ */
+export type ValidationConfig = ConfigResponse;
+
+/**
+ * Default validation limits
+ */
+export const DEFAULT_VALIDATION: ConfigResponse = {
+  maxFileSize: 5 * 1024 * 1024, // 5MB
+  maxTotalSize: 25 * 1024 * 1024, // 25MB
+  maxFilesCount: 100,
+};

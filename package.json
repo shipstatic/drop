@@ -1,0 +1,72 @@
+{
+  "name": "@shipstatic/assets",
+  "version": "0.1.0",
+  "description": "Headless React hook for file processing, ZIP extraction, MD5 calculation, and validation - purpose-built for Ship SDK deployments",
+  "type": "module",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": {
+        "types": "./dist/index.d.ts",
+        "default": "./dist/index.js"
+      },
+      "require": {
+        "types": "./dist/index.d.cts",
+        "default": "./dist/index.cjs"
+      }
+    }
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "test": "vitest"
+  },
+  "keywords": [
+    "react",
+    "react-hook",
+    "file-processing",
+    "headless",
+    "zip-extraction",
+    "md5-checksum",
+    "file-validation",
+    "ship-sdk",
+    "deployment"
+  ],
+  "author": "ShipStatic",
+  "license": "MIT",
+  "peerDependencies": {
+    "react": "^18.0.0 || ^19.0.0",
+    "react-dom": "^18.0.0 || ^19.0.0"
+  },
+  "dependencies": {
+    "@shipstatic/types": "^0.3.0",
+    "jszip": "^3.10.1",
+    "mime-db": "^1.54.0",
+    "mime-types": "^3.0.1",
+    "spark-md5": "^3.0.2"
+  },
+  "devDependencies": {
+    "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/react": "^16.3.0",
+    "@testing-library/user-event": "^14.6.1",
+    "@types/mime-db": "^1.43.6",
+    "@types/mime-types": "^3.0.1",
+    "@types/react": "^19.2.2",
+    "@types/react-dom": "^19.2.2",
+    "@types/spark-md5": "^3.0.5",
+    "buffer": "^6.0.3",
+    "happy-dom": "^20.0.7",
+    "jsdom": "^27.0.1",
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0",
+    "tsup": "^8.5.0",
+    "typescript": "^5.9.3",
+    "vitest": "^3.2.4"
+  }
+}
