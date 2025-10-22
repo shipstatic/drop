@@ -3,6 +3,17 @@ import { renderHook, act, waitFor } from '@testing-library/react';
 import { useDrop } from '@/hooks/useDrop';
 import { FILE_STATUSES } from '@/types';
 import { createMockFile, createMockFileWithPath } from '../test-utils';
+import type { Ship } from '@shipstatic/ship';
+
+// Mock @shipstatic/ship
+const mockGetConfig = vi.fn();
+const mockValidateFiles = vi.fn();
+
+vi.mock('@shipstatic/ship', () => ({
+  validateFiles: (...args: any[]) => mockValidateFiles(...args),
+  formatFileSize: (bytes: number) => `${bytes} bytes`,
+  getValidFiles: (files: any[]) => files.filter(f => f.status === 'ready'),
+}));
 
 // Mock SparkMD5
 vi.mock('spark-md5', () => ({
@@ -19,47 +30,56 @@ vi.mock('spark-md5', () => ({
 // Mock JSZip
 vi.mock('jszip');
 
+// Helper to create mock Ship instance
+const createMockShip = (): Ship => ({
+  getConfig: mockGetConfig,
+} as any);
+
 describe('useDrop', () => {
   beforeEach(() => {
     vi.spyOn(console, 'log').mockImplementation(() => {});
     vi.spyOn(console, 'error').mockImplementation(() => {});
+    vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+    // Default mock config
+    mockGetConfig.mockResolvedValue({
+      maxFileSize: 10 * 1024 * 1024, // 10MB
+      maxTotalSize: 100 * 1024 * 1024, // 100MB
+      maxFilesCount: 1000,
+      allowedMimeTypes: ['text/', 'application/', 'image/'],
+    });
+
+    // Default mock validation (all files valid)
+    mockValidateFiles.mockImplementation((files) => ({
+      files: files.map((f: any) => ({ ...f, status: FILE_STATUSES.READY, statusMessage: 'Ready for upload' })),
+      validFiles: files.map((f: any) => ({ ...f, status: FILE_STATUSES.READY, statusMessage: 'Ready for upload' })),
+      error: null,
+    }));
   });
 
   afterEach(() => {
     vi.restoreAllMocks();
+    vi.clearAllMocks();
   });
 
   describe('Initial state', () => {
     it('should initialize with empty state', () => {
-      const { result } = renderHook(() => useDrop());
+      const ship = createMockShip();
+      const { result } = renderHook(() => useDrop({ ship }));
 
       expect(result.current.files).toEqual([]);
       expect(result.current.statusText).toBe('');
       expect(result.current.isProcessing).toBe(false);
       expect(result.current.validationError).toBeNull();
-      expect(result.current.hasChecksums).toBe(false);
-    });
-
-    it('should accept custom validation config', () => {
-      const customConfig = {
-        maxFileSize: 1024,
-        maxTotalSize: 2048,
-        maxFilesCount: 5,
-      };
-
-      const { result } = renderHook(() =>
-        useDrop({ validation: customConfig })
-      );
-
-      expect(result.current.files).toEqual([]);
     });
 
     it('should accept callback options', () => {
+      const ship = createMockShip();
       const onValidationError = vi.fn();
       const onFilesReady = vi.fn();
 
       const { result } = renderHook(() =>
-        useDrop({ onValidationError, onFilesReady })
+        useDrop({ ship, onValidationError, onFilesReady })
       );
 
       expect(result.current.files).toEqual([]);
@@ -68,7 +88,8 @@ describe('useDrop', () => {
 
   describe('processFiles - basic functionality', () => {
     it('should process single file successfully', async () => {
-      const { result } = renderHook(() => useDrop());
+      const ship = createMockShip();
+      const { result } = renderHook(() => useDrop({ ship }));
 
       const file = createMockFile('test.txt', 'hello world');
 
@@ -83,12 +104,14 @@ describe('useDrop', () => {
       expect(result.current.files).toHaveLength(1);
       expect(result.current.files[0].name).toBe('test.txt');
       expect(result.current.files[0].status).toBe(FILE_STATUSES.READY);
-      expect(result.current.files[0].md5).toBe('mocked-md5-hash');
       expect(result.current.validationError).toBeNull();
+      expect(mockGetConfig).toHaveBeenCalled();
+      expect(mockValidateFiles).toHaveBeenCalled();
     });
 
     it('should process multiple files successfully', async () => {
-      const { result } = renderHook(() => useDrop());
+      const ship = createMockShip();
+      const { result } = renderHook(() => useDrop({ ship }));
 
       const files = [
         createMockFile('file1.txt', 'content1'),
@@ -112,7 +135,8 @@ describe('useDrop', () => {
     });
 
     it('should handle empty files array', async () => {
-      const { result } = renderHook(() => useDrop());
+      const ship = createMockShip();
+      const { result } = renderHook(() => useDrop({ ship }));
 
       await act(async () => {
         await result.current.processFiles([]);
@@ -123,9 +147,10 @@ describe('useDrop', () => {
     });
 
     it('should call onFilesReady callback when files are valid', async () => {
+      const ship = createMockShip();
       const onFilesReady = vi.fn();
       const { result } = renderHook(() =>
-        useDrop({ onFilesReady })
+        useDrop({ ship, onFilesReady })
       );
 
       const file = createMockFile('test.txt', 'content');
@@ -148,12 +173,27 @@ describe('useDrop', () => {
 
   describe('Validation', () => {
     it('should reject files exceeding count limit', async () => {
+      const ship = createMockShip();
       const onValidationError = vi.fn();
+
+      // Mock validation to fail with count error
+      mockValidateFiles.mockReturnValueOnce({
+        files: [
+          { name: 'file1.txt', status: FILE_STATUSES.VALIDATION_FAILED, statusMessage: 'File count exceeded' },
+          { name: 'file2.txt', status: FILE_STATUSES.VALIDATION_FAILED, statusMessage: 'File count exceeded' },
+          { name: 'file3.txt', status: FILE_STATUSES.VALIDATION_FAILED, statusMessage: 'File count exceeded' },
+        ],
+        validFiles: [],
+        error: {
+          error: 'File Count Exceeded',
+          details: 'Number of files (3) exceeds the limit of 2.',
+          errors: ['File count exceeded'],
+          isClientError: true,
+        },
+      });
+
       const { result } = renderHook(() =>
-        useDrop({
-          config: { maxFilesCount: 2 },
-          onValidationError,
-        })
+        useDrop({ ship, onValidationError })
       );
 
       const files = [
@@ -180,12 +220,25 @@ describe('useDrop', () => {
     });
 
     it('should reject files exceeding individual file size limit', async () => {
+      const ship = createMockShip();
       const onValidationError = vi.fn();
+
+      // Mock validation to fail with file size error
+      mockValidateFiles.mockReturnValueOnce({
+        files: [
+          { name: 'huge.txt', status: FILE_STATUSES.VALIDATION_FAILED, statusMessage: 'File size exceeds limit' },
+        ],
+        validFiles: [],
+        error: {
+          error: 'File Too Large',
+          details: 'File size exceeds limit',
+          errors: ['File size exceeds limit'],
+          isClientError: true,
+        },
+      });
+
       const { result } = renderHook(() =>
-        useDrop({
-          config: { maxFileSize: 10 },
-          onValidationError,
-        })
+        useDrop({ ship, onValidationError })
       );
 
       const file = createMockFile('huge.txt', 'x'.repeat(100));
@@ -204,17 +257,31 @@ describe('useDrop', () => {
     });
 
     it('should reject files when total size exceeds limit', async () => {
+      const ship = createMockShip();
       const onValidationError = vi.fn();
+
+      // Mock validation to fail with total size error
+      mockValidateFiles.mockReturnValueOnce({
+        files: [
+          { name: 'file1.txt', status: FILE_STATUSES.VALIDATION_FAILED, statusMessage: 'Total size exceeded' },
+          { name: 'file2.txt', status: FILE_STATUSES.VALIDATION_FAILED, statusMessage: 'Total size exceeded' },
+        ],
+        validFiles: [],
+        error: {
+          error: 'Total Size Exceeded',
+          details: 'Total size exceeds limit',
+          errors: ['Total size exceeds limit'],
+          isClientError: true,
+        },
+      });
+
       const { result } = renderHook(() =>
-        useDrop({
-          config: { maxTotalSize: 20 },
-          onValidationError,
-        })
+        useDrop({ ship, onValidationError })
       );
 
       const files = [
         createMockFile('file1.txt', 'x'.repeat(10)),
-        createMockFile('file2.txt', 'x'.repeat(15)), // Total: 25 > 20
+        createMockFile('file2.txt', 'x'.repeat(15)),
       ];
 
       await act(async () => {
@@ -231,7 +298,23 @@ describe('useDrop', () => {
     });
 
     it('should reject empty files (0 bytes)', async () => {
-      const { result } = renderHook(() => useDrop());
+      const ship = createMockShip();
+
+      // Mock validation to fail with empty file error
+      mockValidateFiles.mockReturnValueOnce({
+        files: [
+          { name: 'empty.txt', status: FILE_STATUSES.EMPTY_FILE, statusMessage: 'File is empty (0 bytes)' },
+        ],
+        validFiles: [],
+        error: {
+          error: 'Empty File',
+          details: 'File is empty (0 bytes)',
+          errors: ['File is empty (0 bytes)'],
+          isClientError: true,
+        },
+      });
+
+      const { result } = renderHook(() => useDrop({ ship }));
 
       const file = createMockFile('empty.txt', '');
 
@@ -249,34 +332,9 @@ describe('useDrop', () => {
   });
 
   describe('File management', () => {
-    it('should remove file by ID', async () => {
-      const { result } = renderHook(() => useDrop());
-
-      const files = [
-        createMockFile('file1.txt'),
-        createMockFile('file2.txt'),
-      ];
-
-      await act(async () => {
-        await result.current.processFiles(files);
-      });
-
-      await waitFor(() => {
-        expect(result.current.files).toHaveLength(2);
-      });
-
-      const fileIdToRemove = result.current.files[0].id;
-
-      act(() => {
-        result.current.removeFile(fileIdToRemove);
-      });
-
-      expect(result.current.files).toHaveLength(1);
-      expect(result.current.files[0].name).toBe('file2.txt');
-    });
-
     it('should clear all files', async () => {
-      const { result } = renderHook(() => useDrop());
+      const ship = createMockShip();
+      const { result } = renderHook(() => useDrop({ ship }));
 
       const files = [
         createMockFile('file1.txt'),
@@ -302,10 +360,27 @@ describe('useDrop', () => {
     });
 
     it('should get only valid files', async () => {
+      const ship = createMockShip();
+
+      // Mock validation to have one valid and one invalid file
+      mockValidateFiles.mockReturnValueOnce({
+        files: [
+          { name: 'small.txt', status: FILE_STATUSES.READY, statusMessage: 'Ready for upload' },
+          { name: 'huge.txt', status: FILE_STATUSES.VALIDATION_FAILED, statusMessage: 'File size exceeds limit' },
+        ],
+        validFiles: [
+          { name: 'small.txt', status: FILE_STATUSES.READY, statusMessage: 'Ready for upload' },
+        ],
+        error: {
+          error: 'File Too Large',
+          details: 'File size exceeds limit',
+          errors: ['huge.txt: File size exceeds limit'],
+          isClientError: true,
+        },
+      });
+
       const { result } = renderHook(() =>
-        useDrop({
-          config: { maxFileSize: 10 },
-        })
+        useDrop({ ship })
       );
 
       const files = [
@@ -330,7 +405,8 @@ describe('useDrop', () => {
 
   describe('updateFileStatus', () => {
     it('should update file upload status', async () => {
-      const { result } = renderHook(() => useDrop());
+      const ship = createMockShip();
+      const { result } = renderHook(() => useDrop({ ship }));
 
       const file = createMockFile('test.txt');
 
@@ -359,33 +435,10 @@ describe('useDrop', () => {
     });
   });
 
-  describe('hasChecksums', () => {
-    it('should return true when all valid files have MD5', async () => {
-      const { result } = renderHook(() => useDrop());
-
-      const file = createMockFile('test.txt');
-
-      await act(async () => {
-        await result.current.processFiles([file]);
-      });
-
-      await waitFor(() => {
-        expect(result.current.isProcessing).toBe(false);
-      });
-
-      expect(result.current.hasChecksums).toBe(true);
-    });
-
-    it('should return false when no valid files exist', async () => {
-      const { result } = renderHook(() => useDrop());
-
-      expect(result.current.hasChecksums).toBe(false);
-    });
-  });
-
   describe('stripPrefix option', () => {
     it('should strip common prefix when stripPrefix=true (default)', async () => {
-      const { result } = renderHook(() => useDrop());
+      const ship = createMockShip();
+      const { result } = renderHook(() => useDrop({ ship }));
 
       // Use createMockFileWithPath to properly simulate folder drag-and-drop
       // In real scenarios, webkitRelativePath is set by the browser
@@ -407,7 +460,8 @@ describe('useDrop', () => {
     });
 
     it('should not strip prefix when stripPrefix=false', async () => {
-      const { result } = renderHook(() => useDrop({ stripPrefix: false }));
+      const ship = createMockShip();
+      const { result } = renderHook(() => useDrop({ ship, stripPrefix: false }));
 
       // Use createMockFileWithPath to properly simulate folder drag-and-drop
       const files = [
@@ -430,7 +484,8 @@ describe('useDrop', () => {
 
   describe('ZIP file handling', () => {
     it('should extract ZIP when single ZIP file is dropped', async () => {
-      const { result } = renderHook(() => useDrop());
+      const ship = createMockShip();
+      const { result } = renderHook(() => useDrop({ ship }));
 
       // Create a spy to track if extractZipToFiles was called
       const extractSpy = vi.spyOn(await import('@/utils/zipExtractor'), 'extractZipToFiles');
@@ -453,7 +508,8 @@ describe('useDrop', () => {
     });
 
     it('should NOT extract ZIP when multiple files including ZIP are dropped', async () => {
-      const { result } = renderHook(() => useDrop());
+      const ship = createMockShip();
+      const { result } = renderHook(() => useDrop({ ship }));
 
       // Create a spy to track if extractZipToFiles was NOT called
       const extractSpy = vi.spyOn(await import('@/utils/zipExtractor'), 'extractZipToFiles');
@@ -484,7 +540,8 @@ describe('useDrop', () => {
     });
 
     it('should NOT extract ZIP when multiple ZIPs are dropped', async () => {
-      const { result } = renderHook(() => useDrop());
+      const ship = createMockShip();
+      const { result } = renderHook(() => useDrop({ ship }));
 
       // Create a spy to track if extractZipToFiles was NOT called
       const extractSpy = vi.spyOn(await import('@/utils/zipExtractor'), 'extractZipToFiles');
@@ -515,12 +572,25 @@ describe('useDrop', () => {
 
   describe('Edge cases and error handling', () => {
     it('should handle case when no valid files after processing', async () => {
+      const ship = createMockShip();
       const onValidationError = vi.fn();
+
+      // Mock validation to fail all files
+      mockValidateFiles.mockReturnValueOnce({
+        files: [
+          { name: 'huge.txt', status: FILE_STATUSES.VALIDATION_FAILED, statusMessage: 'File size exceeds limit' },
+        ],
+        validFiles: [],
+        error: {
+          error: 'File Too Large',
+          details: 'File size exceeds limit',
+          errors: ['File size exceeds limit'],
+          isClientError: true,
+        },
+      });
+
       const { result } = renderHook(() =>
-        useDrop({
-          config: { maxFileSize: 1 }, // Very small limit
-          onValidationError,
-        })
+        useDrop({ ship, onValidationError })
       );
 
       const file = createMockFile('huge.txt', 'x'.repeat(1000));
@@ -539,7 +609,8 @@ describe('useDrop', () => {
     });
 
     it('should reset state when processFiles is called again', async () => {
-      const { result } = renderHook(() => useDrop());
+      const ship = createMockShip();
+      const { result } = renderHook(() => useDrop({ ship }));
 
       // First batch
       await act(async () => {
@@ -565,7 +636,8 @@ describe('useDrop', () => {
 
   describe('Concurrency protection', () => {
     it('should ignore concurrent processFiles calls', async () => {
-      const { result } = renderHook(() => useDrop());
+      const ship = createMockShip();
+      const { result } = renderHook(() => useDrop({ ship }));
       const consoleWarnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
 
       const file1 = createMockFile('file1.txt');
@@ -601,7 +673,8 @@ describe('useDrop', () => {
     });
 
     it('should allow processFiles after previous call completes', async () => {
-      const { result } = renderHook(() => useDrop());
+      const ship = createMockShip();
+      const { result } = renderHook(() => useDrop({ ship }));
 
       // First call
       await act(async () => {
@@ -629,15 +702,16 @@ describe('useDrop', () => {
     });
 
     it('should clear processing flag on error', async () => {
-      const { result } = renderHook(() => useDrop());
+      const ship = createMockShip();
+      const { result } = renderHook(() => useDrop({ ship }));
 
-      // Create a mock file that will cause an error during processing
-      const badFile = createMockFile('bad.txt');
-      // Make arrayBuffer fail
-      (badFile as any).arrayBuffer = () => Promise.reject(new Error('Read error'));
+      // Make getConfig fail to simulate processing error
+      mockGetConfig.mockRejectedValueOnce(new Error('Config fetch failed'));
+
+      const file = createMockFile('test.txt');
 
       await act(async () => {
-        await result.current.processFiles([badFile]);
+        await result.current.processFiles([file]);
       });
 
       await waitFor(() => {
@@ -646,8 +720,17 @@ describe('useDrop', () => {
 
       // Should have error
       expect(result.current.validationError).not.toBeNull();
+      expect(result.current.validationError?.error).toBe('Processing Failed');
 
       // Should be able to process new files after error
+      // Reset mock to working state
+      mockGetConfig.mockResolvedValue({
+        maxFileSize: 10 * 1024 * 1024,
+        maxTotalSize: 100 * 1024 * 1024,
+        maxFilesCount: 1000,
+        allowedMimeTypes: ['text/', 'application/', 'image/'],
+      });
+
       await act(async () => {
         await result.current.processFiles([createMockFile('good.txt')]);
       });

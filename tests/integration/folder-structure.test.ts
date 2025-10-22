@@ -10,32 +10,54 @@ import { renderHook, act, waitFor } from '@testing-library/react';
 import { useDrop } from '@/hooks/useDrop';
 import { FILE_STATUSES } from '@/types';
 import { createMockFile, createMockFileWithPath } from '../test-utils';
+import type { Ship } from '@shipstatic/ship';
 
-// Mock SparkMD5
-vi.mock('spark-md5', () => ({
-  default: {
-    ArrayBuffer: class {
-      append() {}
-      end() {
-        return 'mocked-md5-hash';
-      }
-    },
-  },
+// Mock @shipstatic/ship
+const mockGetConfig = vi.fn();
+const mockValidateFiles = vi.fn();
+
+vi.mock('@shipstatic/ship', () => ({
+  validateFiles: (...args: any[]) => mockValidateFiles(...args),
+  formatFileSize: (bytes: number) => `${bytes} bytes`,
+  getValidFiles: (files: any[]) => files.filter(f => f.status === 'ready'),
 }));
+
+// Helper to create mock Ship instance
+const createMockShip = (): Ship => ({
+  getConfig: mockGetConfig,
+} as any);
 
 describe('Folder Structure Preservation', () => {
   beforeEach(() => {
     vi.spyOn(console, 'log').mockImplementation(() => {});
     vi.spyOn(console, 'error').mockImplementation(() => {});
+    vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+    // Default mock config
+    mockGetConfig.mockResolvedValue({
+      maxFileSize: 10 * 1024 * 1024,
+      maxTotalSize: 100 * 1024 * 1024,
+      maxFilesCount: 1000,
+      allowedMimeTypes: ['text/', 'application/', 'image/'],
+    });
+
+    // Default mock validation (all files valid)
+    mockValidateFiles.mockImplementation((files) => ({
+      files: files.map((f: any) => ({ ...f, status: FILE_STATUSES.READY, statusMessage: 'Ready for upload' })),
+      validFiles: files.map((f: any) => ({ ...f, status: FILE_STATUSES.READY, statusMessage: 'Ready for upload' })),
+      error: null,
+    }));
   });
 
   afterEach(() => {
     vi.restoreAllMocks();
+    vi.clearAllMocks();
   });
 
   describe('webkitRelativePath support', () => {
     it('should preserve webkitRelativePath during processing', async () => {
-      const { result } = renderHook(() => useDrop({ stripPrefix: false }));
+      const ship = createMockShip();
+      const { result } = renderHook(() => useDrop({ ship, stripPrefix: false }));
 
       const file = createMockFileWithPath(
         'app.js',
@@ -55,11 +77,11 @@ describe('Folder Structure Preservation', () => {
       expect(result.current.files[0].path).toBe('mysite/src/app.js');
       expect(result.current.files[0].name).toBe('app.js');
       expect(result.current.files[0].status).toBe(FILE_STATUSES.READY);
-      expect(result.current.files[0].md5).toBe('mocked-md5-hash');
     });
 
     it('should use file.name when webkitRelativePath is empty', async () => {
-      const { result } = renderHook(() => useDrop());
+      const ship = createMockShip();
+      const { result } = renderHook(() => useDrop({ ship }));
 
       const file = createMockFile('standalone.js', 'content');
       // webkitRelativePath exists but is empty string (standard browser behavior)
@@ -83,7 +105,8 @@ describe('Folder Structure Preservation', () => {
     });
 
     it('should maintain folder structure for multiple files', async () => {
-      const { result } = renderHook(() => useDrop({ stripPrefix: false }));
+      const ship = createMockShip();
+      const { result } = renderHook(() => useDrop({ ship, stripPrefix: false }));
 
       const files = [
         createMockFileWithPath('index.html', 'mysite/index.html', '<!DOCTYPE html>'),
@@ -113,7 +136,8 @@ describe('Folder Structure Preservation', () => {
     });
 
     it('should strip common prefix when stripPrefix=true (default)', async () => {
-      const { result } = renderHook(() => useDrop());
+      const ship = createMockShip();
+      const { result } = renderHook(() => useDrop({ ship }));
 
       const files = [
         createMockFileWithPath('index.html', 'mysite/index.html', '<!DOCTYPE html>'),
@@ -139,7 +163,8 @@ describe('Folder Structure Preservation', () => {
     });
 
     it('should handle nested folder structures', async () => {
-      const { result } = renderHook(() => useDrop({ stripPrefix: false }));
+      const ship = createMockShip();
+      const { result } = renderHook(() => useDrop({ ship, stripPrefix: false }));
 
       const files = [
         createMockFileWithPath('index.js', 'project/src/components/Button/index.js'),
@@ -164,7 +189,8 @@ describe('Folder Structure Preservation', () => {
 
   describe('Mixed file sources', () => {
     it('should handle mix of files with and without webkitRelativePath', async () => {
-      const { result } = renderHook(() => useDrop({ stripPrefix: false }));
+      const ship = createMockShip();
+      const { result } = renderHook(() => useDrop({ ship, stripPrefix: false }));
 
       const files = [
         // File from folder drag (has webkitRelativePath)
@@ -189,7 +215,8 @@ describe('Folder Structure Preservation', () => {
 
   describe('Ship SDK compatibility', () => {
     it('should return files in Ship SDK compatible format', async () => {
-      const { result } = renderHook(() => useDrop());
+      const ship = createMockShip();
+      const { result } = renderHook(() => useDrop({ ship }));
 
       const files = [
         createMockFileWithPath('index.html', 'dist/index.html', '<!DOCTYPE html>'),
@@ -210,7 +237,6 @@ describe('Folder Structure Preservation', () => {
       validFiles.forEach(f => {
         expect(f).toHaveProperty('file'); // Original File object
         expect(f).toHaveProperty('path'); // Normalized path
-        expect(f).toHaveProperty('md5'); // Pre-calculated checksum
         expect(f).toHaveProperty('size');
         expect(f.status).toBe(FILE_STATUSES.READY);
       });
@@ -221,7 +247,8 @@ describe('Folder Structure Preservation', () => {
     });
 
     it('should preserve path information for Ship SDK deploy() call', async () => {
-      const { result } = renderHook(() => useDrop({ stripPrefix: false }));
+      const ship = createMockShip();
+      const { result } = renderHook(() => useDrop({ ship, stripPrefix: false }));
 
       const files = [
         createMockFileWithPath('index.html', 'public/index.html'),
@@ -243,7 +270,6 @@ describe('Folder Structure Preservation', () => {
       const staticFiles = validFiles.map(f => ({
         content: f.file,
         path: f.path, // This is what Ship SDK needs!
-        md5: f.md5,
         size: f.size,
       }));
 
