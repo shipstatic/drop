@@ -12,8 +12,8 @@ importers:
         specifier: ^0.1.2
         version: 0.1.2(react-dom@19.2.0(react@19.2.0))(react@19.2.0)
       '@shipstatic/ship':
-        specifier: ^0.3.3
-        version: 0.3.3(typescript@5.9.3)
+        specifier: ^0.3.4
+        version: 0.3.4(typescript@5.9.3)
       react:
         specifier: ^19.2.0
         version: 19.2.0
@@ -416,8 +416,8 @@ packages:
       react: ^18.0.0 || ^19.0.0
       react-dom: ^18.0.0 || ^19.0.0
 
-  '@shipstatic/ship@0.3.3':
-    resolution: {integrity: sha512-m2bNhQ1RoMWAIrSN2w6oxuaG8qSoPMi81WdcLWnDPorlX2MzHZMPfE1gpgF+fmwWMaAgaB7Pfuqj/vjqwxda+A==}
+  '@shipstatic/ship@0.3.4':
+    resolution: {integrity: sha512-RNR/OJWI9KXz58EIak5yPm5GkdGcVFtZLmHv/HCvxevw5np8EMOHGnnTvcNGZwzA+refOodjQQWgBT+ZMCoSrg==}
     engines: {node: '>=20.0.0'}
     hasBin: true
 
@@ -465,8 +465,8 @@ packages:
     resolution: {integrity: sha512-zoKGUdu6vb2jd3YOq0nnhEDQVbPcHhco3UImJrv5dSkvxTc2pl2WjOPsjZXDwPDSl5eghIMuY3R6J9NDKF3KcQ==}
     hasBin: true
 
-  browserslist@4.26.3:
-    resolution: {integrity: sha512-lAUU+02RFBuCKQPj/P6NgjlbCnLBMp4UtgTx7vNHd3XSIJF87s9a5rA3aH2yw3GS9DqZAUbOtZdCCiZeVRqt0w==}
+  browserslist@4.27.0:
+    resolution: {integrity: sha512-AXVQwdhot1eqLihwasPElhX2tAZiBjWdJ9i/Zcj2S6QYIjkx62OKSfnobkriB81C3l4w0rVy3Nt4jaTBltYEpw==}
     engines: {node: ^6 || ^7 || ^8 || ^9 || ^10 || ^11 || ^12 || >=13.7}
     hasBin: true
 
@@ -519,8 +519,8 @@ packages:
   defaults@1.0.4:
     resolution: {integrity: sha512-eFuaLoy/Rxalv2kr+lqMlUnrDWV+3j4pljOIJgLIhI058IQfWJ7vXhyEIHu+HtC738klGALYxOKDO0bQP3tg8A==}
 
-  electron-to-chromium@1.5.238:
-    resolution: {integrity: sha512-khBdc+w/Gv+cS8e/Pbnaw/FXcBUeKrRVik9IxfXtgREOWyJhR4tj43n3amkVogJ/yeQUqzkrZcFhtIxIdqmmcQ==}
+  electron-to-chromium@1.5.239:
+    resolution: {integrity: sha512-1y5w0Zsq39MSPmEjHjbizvhYoTaulVtivpxkp5q5kaPmQtsK6/2nvAzGRxNMS9DoYySp9PkW0MAQDwU1m764mg==}
 
   env-paths@2.2.1:
     resolution: {integrity: sha512-+h1lkLKhZMTYjog1VEpJNG7NZJWcuc2DDk/qsqSTRRCOXiLjeQ1d1/udrUGhqMxUgAlwKNZ0cf2uqan5GLuS2A==}
@@ -717,8 +717,8 @@ packages:
     engines: {node: '>=14.17'}
     hasBin: true
 
-  update-browserslist-db@1.1.3:
-    resolution: {integrity: sha512-UxhIZQ+QInVdunkDAaiazvvT/+fXL5Osr0JZlJulepYu6Jd7qJtDZjlur0emRlT71EN3ScPoE7gvsuIKKNavKw==}
+  update-browserslist-db@1.1.4:
+    resolution: {integrity: sha512-q0SPT4xyU84saUX+tomz1WLkxUbuaJnR1xWt17M7fJtEJigJeWUNGUqrauFXsHnqev9y9JTRGwk13tFBuKby4A==}
     hasBin: true
     peerDependencies:
       browserslist: '>= 4.21.0'
@@ -825,7 +825,7 @@ snapshots:
     dependencies:
       '@babel/compat-data': 7.28.4
       '@babel/helper-validator-option': 7.27.1
-      browserslist: 4.26.3
+      browserslist: 4.27.0
       lru-cache: 5.1.1
       semver: 6.3.1
 
@@ -1071,7 +1071,7 @@ snapshots:
       react-dom: 19.2.0(react@19.2.0)
       spark-md5: 3.0.2
 
-  '@shipstatic/ship@0.3.3(typescript@5.9.3)':
+  '@shipstatic/ship@0.3.4(typescript@5.9.3)':
     dependencies:
       '@shipstatic/types': 0.3.2
       columnify: 1.6.0
@@ -1139,13 +1139,13 @@ snapshots:
 
   baseline-browser-mapping@2.8.19: {}
 
-  browserslist@4.26.3:
+  browserslist@4.27.0:
     dependencies:
       baseline-browser-mapping: 2.8.19
       caniuse-lite: 1.0.30001751
-      electron-to-chromium: 1.5.238
+      electron-to-chromium: 1.5.239
       node-releases: 2.0.26
-      update-browserslist-db: 1.1.3(browserslist@4.26.3)
+      update-browserslist-db: 1.1.4(browserslist@4.27.0)
 
   callsites@3.1.0: {}
 
@@ -1183,7 +1183,7 @@ snapshots:
     dependencies:
       clone: 1.0.4
 
-  electron-to-chromium@1.5.238: {}
+  electron-to-chromium@1.5.239: {}
 
   env-paths@2.2.1: {}
 
@@ -1388,9 +1388,9 @@ snapshots:
 
   typescript@5.9.3: {}
 
-  update-browserslist-db@1.1.3(browserslist@4.26.3):
+  update-browserslist-db@1.1.4(browserslist@4.27.0):
     dependencies:
-      browserslist: 4.26.3
+      browserslist: 4.27.0
       escalade: 3.2.0
       picocolors: 1.1.1
 
