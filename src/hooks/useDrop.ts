@@ -1,27 +1,27 @@
 /**
- * Simplified headless drop hook
- * Handles file processing, ZIP extraction, and validation
- * Upload logic is the responsibility of the consumer
+ * Headless drop hook - Pure file processor
+ * Handles file processing, ZIP extraction, and path normalization
+ * Does NOT validate - validation happens in Ship SDK
+ * Does NOT upload - consumer handles deployment
  */
 import { useState, useCallback, useRef } from 'react';
-import type { ProcessedFile, ClientError, ValidationConfig, FileStatus } from '../types';
-import { DEFAULT_VALIDATION } from '../types';
+import type { ProcessedFile, ClientError, FileStatus } from '../types';
 import { extractZipToFiles, isZipFile } from '../utils/zipExtractor';
 import {
   createProcessedFile,
-  validateFiles,
   getValidFiles,
-  allValidFilesHaveChecksums,
   stripCommonPrefix,
 } from '../utils/fileProcessing';
+import type { Ship } from '@shipstatic/ship';
+import { validateFiles } from '@shipstatic/ship';
 
 export interface DropOptions {
-  /** Validation configuration (from ship.getConfig()) */
-  config?: Partial<ValidationConfig>;
+  /** Ship SDK instance (required for validation) */
+  ship: Ship;
+  /** Callback when files are processed and ready */
+  onFilesReady?: (files: ProcessedFile[]) => void;
   /** Callback when validation fails */
   onValidationError?: (error: ClientError) => void;
-  /** Callback when files are ready for upload */
-  onFilesReady?: (files: ProcessedFile[]) => void;
   /** Whether to strip common directory prefix from paths (default: true) */
   stripPrefix?: boolean;
 }
@@ -35,13 +35,9 @@ export interface DropReturn {
   isProcessing: boolean;
   /** Last validation error if any */
   validationError: ClientError | null;
-  /** Whether all valid files have MD5 checksums calculated */
-  hasChecksums: boolean;
 
   /** Process files from drop (resets and replaces existing files) */
   processFiles: (files: File[]) => Promise<void>;
-  /** Remove a specific file */
-  removeFile: (fileId: string) => void;
   /** Clear all files and reset state */
   clearAll: () => void;
   /** Get only valid files ready for upload */
@@ -55,15 +51,13 @@ export interface DropReturn {
  * Handles file processing, ZIP extraction, and validation
  * Does NOT handle uploading - that's the consumer's responsibility
  */
-export function useDrop(options: DropOptions = {}): DropReturn {
+export function useDrop(options: DropOptions): DropReturn {
   const {
-    config: customConfig,
+    ship,
     onValidationError,
     onFilesReady,
     stripPrefix = true,
   } = options;
-
-  const validationConfig = { ...DEFAULT_VALIDATION, ...customConfig };
 
   // Simple state - no reducer needed
   const [files, setFiles] = useState<ProcessedFile[]>([]);
@@ -116,8 +110,8 @@ export function useDrop(options: DropOptions = {}): DropReturn {
         allFiles.push(...newFiles);
       }
 
-      // Step 2: Convert all Files to ProcessedFiles with MD5
-      setStatusText('Calculating checksums...');
+      // Step 2: Convert all Files to ProcessedFiles
+      setStatusText('Processing files...');
       const processedFiles = await Promise.all(
         allFiles.map(file => createProcessedFile(file))
       );
@@ -125,15 +119,16 @@ export function useDrop(options: DropOptions = {}): DropReturn {
       // Step 3: Strip common prefix if requested
       const finalFiles = stripPrefix ? stripCommonPrefix(processedFiles) : processedFiles;
 
-      // Step 4: Validate all files
-      const validation = validateFiles(finalFiles, validationConfig);
+      // Step 4: Validate all files using Ship SDK's config
+      const config = await ship.getConfig();
+      const validation = validateFiles(finalFiles, config);
 
       setFiles(validation.files);
-      setValidationError(validation.error);
+      setValidationError(validation.error as ClientError | null);
 
       if (validation.error) {
         setStatusText(validation.error.details);
-        onValidationError?.(validation.error);
+        onValidationError?.(validation.error as ClientError);
       } else if (validation.validFiles.length > 0) {
         setStatusText(`${validation.validFiles.length} file(s) ready.`);
         onFilesReady?.(validation.validFiles);
@@ -161,11 +156,7 @@ export function useDrop(options: DropOptions = {}): DropReturn {
       isProcessingRef.current = false;
       setIsProcessing(false);
     }
-  }, [validationConfig, onValidationError, onFilesReady, stripPrefix]);
-
-  const removeFile = useCallback((fileId: string) => {
-    setFiles(prev => prev.filter(file => file.id !== fileId));
-  }, []);
+  }, [ship, onValidationError, onFilesReady, stripPrefix]);
 
   const clearAll = useCallback(() => {
     setFiles([]);
@@ -190,17 +181,12 @@ export function useDrop(options: DropOptions = {}): DropReturn {
     ));
   }, []);
 
-  // Calculate hasChecksums
-  const hasChecksums = allValidFilesHaveChecksums(files);
-
   return {
     files,
     statusText,
     isProcessing,
     validationError,
-    hasChecksums,
     processFiles,
-    removeFile,
     clearAll,
     getValidFiles: getValidFilesCallback,
     updateFileStatus,

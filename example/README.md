@@ -11,12 +11,39 @@ This demo demonstrates how to build a complete file upload experience using the 
 - ✅ **Folder Drag & Drop** - Preserves complete folder structure via `webkitRelativePath`
 - ✅ **ZIP Extraction** - Automatic extraction and processing
 - ✅ **File Validation** - Size, count, and total size limits
-- ✅ **MD5 Checksums** - Pre-calculated for Ship SDK
 - ✅ **Path Normalization** - Sanitization and common prefix stripping
 - ✅ **Junk Filtering** - Automatic removal of .DS_Store, Thumbs.db, etc.
 - ✅ **Real-time Status** - Processing indicators and validation errors
+- ✅ **Granular Error Reporting** - Per-file error messages with demo button
 
 **Important:** This demo does NOT upload files anywhere. It only processes and prepares files for upload.
+
+### 🔍 Interactive Error Reporting Demo
+
+Click the **"Demo: Show Granular Error Reporting"** button to see how the system provides precise per-file error feedback:
+
+**Global Error Summary:**
+```
+❌ Invalid File Name
+4 file(s) failed validation
+
+All errors:
+• ../../../etc/passwd: File name contains path traversal pattern
+• file?.txt: File name contains unsafe characters
+• image.jpg: File extension does not match MIME type
+• app.wasm: File type "application/wasm" is not allowed
+```
+
+**Per-File Display:**
+- ✓ `index.html` - Ready for upload (green background)
+- ✗ `../../../etc/passwd` - ⚠️ File name contains path traversal pattern (red background)
+- ✓ `style.css` - Ready for upload
+- ✗ `file?.txt` - ⚠️ File name contains unsafe characters
+- ✗ `image.jpg` - ⚠️ File extension does not match MIME type
+- ✓ `app.js` - Ready for upload
+- ✗ `app.wasm` - ⚠️ File type "application/wasm" is not allowed
+
+This demonstrates that **users get precise feedback about which files failed and why**, not just a generic error message.
 
 ## 🏗️ Architecture
 
@@ -28,7 +55,6 @@ This demo shows the **recommended pattern** for using `@shipstatic/drop`:
 │  • useDrop hook                     │
 │  • File processing logic            │
 │  • ZIP extraction                   │
-│  • MD5 calculation                  │
 │  • Validation                       │
 └─────────────────────────────────────┘
               │
@@ -108,9 +134,8 @@ const processEntry = async (entry, files, basePath)
 Visual file list with:
 - Status indicators (ready, processing, error, etc.)
 - File size formatting
-- MD5 checksum display
-- Remove buttons
-- Progress bars (when uploading)
+- Per-file error messages
+- Clear all button
 - Status-specific styling
 
 ### Integration Pattern
@@ -142,18 +167,13 @@ function App() {
       {/* 3. Display processed files */}
       <FileListDisplay
         files={drop.files}
-        onRemove={drop.removeFile}
       />
 
       {/* 4. Ready for Ship SDK */}
       <button onClick={() => {
-        const staticFiles = drop.getValidFiles().map(f => ({
-          content: f.file,
-          path: f.path,    // Normalized path with folder structure
-          md5: f.md5,      // Pre-calculated checksum
-          size: f.size
-        }));
-        // await ship.deploy(staticFiles);
+        const files = drop.getValidFiles().map(f => f.file);
+        // Ship SDK will calculate MD5 during deployment
+        // await ship.deployments.create(files);
       }}>
         Upload
       </button>
@@ -204,18 +224,13 @@ The demo shows how to prepare files for Ship SDK deployment:
 
 ```typescript
 const validFiles = drop.getValidFiles();
-const staticFiles = validFiles.map(f => ({
-  content: f.file,    // Original File object
-  path: f.path,       // Normalized path (IMPORTANT!)
-  md5: f.md5,         // Pre-calculated checksum
-  size: f.size
-}));
+const files = validFiles.map(f => f.file);
 
-// Ready for Ship SDK
-await ship.deploy(staticFiles);
+// Ship SDK will calculate MD5 during deployment
+await ship.deployments.create(files);
 ```
 
-**Critical:** Always use `f.path`, never `f.file.name`. The path includes folder structure, while file.name is just the filename.
+**Note:** Drop provides validated File objects with `webkitRelativePath` preserved. Ship SDK will calculate MD5 checksums during deployment.
 
 ## 📝 Using This in Your Project
 
@@ -252,8 +267,11 @@ function MinimalDemo() {
       </div>
 
       <button
-        onClick={() => console.log(drop.getValidFiles())}
-        disabled={!drop.hasChecksums}
+        onClick={() => {
+          const files = drop.getValidFiles().map(f => f.file);
+          console.log('Ready to upload:', files);
+        }}
+        disabled={drop.isProcessing}
       >
         Upload {drop.getValidFiles().length} files
       </button>
@@ -293,6 +311,7 @@ Try these to see the demo in action:
 4. **Drop too many files** - See validation error (51+ files)
 5. **Drop a large file** - See file size validation (11+ MB)
 6. **Drop mixed content** - Folders, files, and ZIPs together
+7. **Click "🔍 Demo: Show Granular Error Reporting"** - See per-file validation errors (detailed at top of README)
 
 ## 📚 Learn More
 
@@ -306,8 +325,8 @@ Try these to see the demo in action:
 1. **Headless = Flexibility** - You control every aspect of the UI
 2. **Folder Structure Matters** - Custom implementation required for proper folder drag-and-drop
 3. **Modern APIs** - File System Access API + webkit fallback covers all browsers
-4. **Path Preservation** - Always use `f.path`, never `f.file.name`
-5. **Ship SDK Ready** - Files are pre-processed in the exact format Ship SDK expects
+4. **Path Preservation** - `webkitRelativePath` is preserved on File objects for folder structure
+5. **Ship SDK Ready** - Files are validated and prepared for deployment
 
 ---
 

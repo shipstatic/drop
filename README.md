@@ -2,7 +2,9 @@
 
 **Headless file processing toolkit for Ship SDK deployments**
 
-A focused React hook for preparing files for deployment with [@shipstatic/ship](https://github.com/shipstatic/ship). Handles ZIP extraction, MD5 calculation, path normalization, and validation - everything needed before calling `ship.deploy()`.
+A focused React hook for preparing files for deployment with [@shipstatic/ship](https://github.com/shipstatic/ship). Handles ZIP extraction, path normalization, and validation - everything needed before calling `ship.deploy()`.
+
+**Note:** MD5 calculation is handled by Ship SDK during deployment. Drop focuses on file processing and UI state management.
 
 ## Why Headless?
 
@@ -13,18 +15,17 @@ This package provides **zero UI components**. You build the dropzone that fits y
 3. **Smaller bundle** - No React components, no extra dependencies (~14KB saved vs generic libraries)
 4. **Ship SDK integration** - Purpose-built for Ship deployments, not a generic file upload library
 
-The package focuses on what's hard (ZIP extraction, MD5 calculation, validation) and leaves what's easy (UI) to you.
+The package focuses on what's hard (ZIP extraction, folder structure preservation) and leaves what's easy (UI) to you.
 
 ## Features
 
 - 🎯 **Headless Architecture** - Just the hook, no UI opinions
 - 📦 **ZIP Support** - Automatic ZIP file extraction and processing
-- ✅ **Validation** - Client-side file size, count, and total size validation
-- 🗑️ **Junk Filtering** - Automatically filters `.DS_Store`, `Thumbs.db`, etc.
-- 🔍 **MD5 Hashing** - Calculates MD5 checksums for all files
+- ✅ **Validation** - Client-side file size, count, and total size validation (powered by Ship SDK)
+- 🗑️ **Junk Filtering** - Automatically filters `.DS_Store`, `Thumbs.db`, etc. (powered by Ship SDK)
 - 🔒 **Path Sanitization** - Defense-in-depth protection against directory traversal attacks
 - 📁 **Folder Structure Preservation** - Respects `webkitRelativePath` for proper deployment paths
-- 🚀 **SDK Agnostic** - Works with any upload SDK (Ship, AWS S3, etc.)
+- 🚀 **Focused Scope** - File processing and UI state only. MD5 calculation and deployment handled by Ship SDK
 
 ## Installation
 
@@ -40,21 +41,18 @@ pnpm add @shipstatic/drop
 import { useDrop } from '@shipstatic/drop';
 import Ship from '@shipstatic/ship';
 
+const ship = new Ship({ deployToken: 'token-xxxx' });
+
 function MyUploader() {
-  const ship = new Ship({ apiUrl: '...' });
-
-  // Get validation config from Ship SDK
-  const config = await ship.getConfig();
-
   const drop = useDrop({
-    config  // Pass SDK config directly
+    ship  // Pass Ship instance - Drop uses ship.getConfig() for validation
   });
 
   const handleUpload = async () => {
     const validFiles = drop.getValidFiles();
 
     // ProcessedFile extends StaticFile - no conversion needed!
-    await ship.deployments.create({ files: validFiles });
+    await ship.deployments.create(validFiles.map(f => f.file));
   };
 
   return (
@@ -86,6 +84,31 @@ function MyUploader() {
   );
 }
 ```
+
+### ⚠️ Configuration Architecture
+
+**Drop uses Ship's validation config automatically:**
+
+Drop accepts a `Ship` instance and uses `ship.getConfig()` internally. This ensures:
+- ✅ **Single source of truth** - Validation config comes from Ship SDK
+- ✅ **Always in sync** - Client validation matches server limits
+- ✅ **No manual config fetching** - Drop handles it internally
+- ✅ **Simpler API** - Just pass `ship` instance
+
+```tsx
+// Drop fetches config from Ship SDK automatically
+const drop = useDrop({ ship });
+
+// Behind the scenes:
+// 1. Ship SDK fetches /config on initialization
+// 2. Drop calls ship.getConfig() when validating
+// 3. Validation always uses current server limits
+```
+
+**Why this architecture:**
+- Drop has NO validation rules of its own - it's a pure proxy
+- Ship SDK is the single source of truth for validation
+- Drop only provides what Ship doesn't have (ZIP, React state, folder structure)
 
 ## Building Your Drop Zone with Folder Support
 
@@ -243,8 +266,8 @@ Main hook for managing drop state.
 
 ```typescript
 interface DropOptions {
-  /** Validation configuration (from ship.getConfig()) */
-  config?: Partial<ValidationConfig>;
+  /** Ship SDK instance (required for validation) */
+  ship: Ship;
   /** Callback when validation fails */
   onValidationError?: (error: ClientError) => void;
   /** Callback when files are ready for upload */
@@ -266,13 +289,9 @@ interface DropReturn {
   isProcessing: boolean;
   /** Last validation error if any */
   validationError: ClientError | null;
-  /** Whether all valid files have MD5 checksums calculated */
-  hasChecksums: boolean;
 
   /** Process files from drop (resets and replaces existing files) */
   processFiles: (files: File[]) => Promise<void>;
-  /** Remove a specific file */
-  removeFile: (fileId: string) => void;
   /** Clear all files and reset state */
   clearAll: () => void;
   /** Get only valid files ready for upload */
@@ -286,19 +305,121 @@ interface DropReturn {
 }
 ```
 
+## Error Handling
+
+### Per-File Error Display
+
+Each file in the `files` array contains its own `status` and `statusMessage`, allowing you to display granular errors for individual files:
+
+```tsx
+function FileList({ drop }) {
+  return (
+    <div>
+      {drop.files.map(file => (
+        <div key={file.id}>
+          <span>{file.path}</span>
+
+          {/* Show status indicator */}
+          {file.status === 'ready' ? '✓' : '✗'}
+
+          {/* Show per-file error message */}
+          {file.status !== 'ready' && file.statusMessage && (
+            <span style={{ color: 'red' }}>
+              {file.statusMessage}
+            </span>
+          )}
+        </div>
+      ))}
+
+      {/* If validation fails, allow user to clear all and try again */}
+      {drop.validationError && (
+        <button onClick={drop.clearAll}>
+          Clear All & Try Again
+        </button>
+      )}
+    </div>
+  );
+}
+```
+
+**Common error statuses:**
+- `validation_failed` - File failed validation (size, type, name, etc.)
+- `processing_error` - MD5 calculation or processing failed
+- `empty_file` - File is 0 bytes
+- `ready` - File passed all validation and is ready for upload
+
+### Validation Error Summary
+
+The `validationError` provides a summary when any files fail validation:
+
+```tsx
+{drop.validationError && (
+  <div>
+    <p>{drop.validationError.error}</p>
+    <p>{drop.validationError.details}</p>
+  </div>
+)}
+```
+
+**Atomic Validation**: If ANY file fails validation, ALL files are marked as `validation_failed`. This ensures deployments are all-or-nothing for data integrity. The Ship SDK follows this same pattern server-side.
+
+### No Individual File Removal
+
+The Drop package **intentionally does not support removing individual files**. Here's why:
+
+**Reason:** Ship SDK uses **atomic validation** - if ANY file fails validation, ALL files are marked as `validation_failed`. This ensures deployments are all-or-nothing for data integrity.
+
+**The Problem with Individual Removal:**
+```tsx
+// User drops 5 files, 1 is too large
+// Atomic validation: ALL 5 files marked as validation_failed
+
+// If we allowed removing the large file:
+drop.removeFile(largeFileId); // ❌ We don't support this!
+
+// Would need to re-validate remaining 4 files
+// Creates complexity and race conditions
+```
+
+**The Simple Solution:**
+Use `clearAll()` to reset and try again:
+
+```tsx
+// If validation fails, show user which files failed
+{drop.validationError && (
+  <div>
+    <p>Validation failed. Please fix the issues and try again:</p>
+    {drop.files.map(file => (
+      <div key={file.id}>
+        {file.path}: {file.statusMessage}
+      </div>
+    ))}
+    <button onClick={drop.clearAll}>Clear All & Try Again</button>
+  </div>
+)}
+```
+
+**Benefits:**
+- ✅ No race conditions or stale validation state
+- ✅ Simpler mental model (atomic = all-or-nothing)
+- ✅ Aligns with Ship SDK's validation philosophy
+- ✅ Clear UX: fix the problem, then re-drop
+
 ## Types
 
 ```typescript
 /**
  * ProcessedFile extends StaticFile from @shipstatic/types
  * This means it can be passed directly to ship.deployments.create()
+ *
+ * Note: md5 is intentionally undefined - Ship SDK calculates it during deployment
  */
 interface ProcessedFile extends StaticFile {
   // StaticFile properties (SDK compatibility)
   content: File;        // File object (required by SDK)
   path: string;         // Normalized path (webkitRelativePath or file.name)
   size: number;         // File size in bytes
-  md5?: string;         // Pre-calculated MD5 checksum
+  md5?: string;         // Undefined - Ship SDK calculates during deployment
 
   // ProcessedFile-specific properties (UI functionality)
   id: string;           // Unique identifier for React keys
@@ -307,18 +428,8 @@ interface ProcessedFile extends StaticFile {
   type: string;         // MIME type
   lastModified: number;
   status: FileStatus;
-  statusMessage?: string;
-  progress?: number;    // Upload progress (0-100)
-}
-
-/**
- * ValidationConfig is an alias to ConfigResponse from @shipstatic/types
- * Use ship.getConfig() to get the exact validation limits from the server
- */
-interface ValidationConfig {
-  maxFileSize: number;      // Default: 5MB
-  maxTotalSize: number;     // Default: 25MB
-  maxFilesCount: number;    // Default: 100
+  statusMessage?: string;  // Per-file error message
+  progress?: number;       // Upload progress (0-100)
 }
 
 interface ClientError {
@@ -373,15 +484,39 @@ interface ProcessedFile extends StaticFile {
 
 ## Architecture Decisions
 
+### Why Drop Doesn't Calculate MD5
+
+**Design Philosophy:** Drop should only provide what Ship SDK doesn't have.
+
+**What Drop provides:**
+- ✅ ZIP extraction (Ship SDK doesn't have this)
+- ✅ React state management (Ship SDK doesn't have this)
+- ✅ Folder structure preservation (UI-specific concern)
+- ✅ Path normalization (UI-specific concern)
+
+**What Ship SDK provides:**
+- ✅ MD5 calculation (already implemented)
+- ✅ Validation (already implemented)
+- ✅ Deployment (core functionality)
+
+**Why this matters:**
+- Avoids duplicate MD5 calculation (performance)
+- Single source of truth for deployment logic
+- Drop stays focused on UI concerns
+- Ship SDK handles all deployment concerns
+
+**StaticFile.md5 is optional** - Ship SDK calculates it during deployment if not provided.
+
 ### Why Not Abstract?
 
 This package was extracted from the `web/drop` application and is purpose-built for Ship SDK. Key decisions:
 
-**1. Tightly Coupled to Ship SDK Requirements**
-- MD5 calculation is **mandatory** (Ship SDK requires it for integrity checks)
-- Common prefix stripping is **mandatory** (ensures clean deployment paths)
-- Folder structure preservation is **mandatory** (via `webkitRelativePath`)
-- These aren't optional features - they're essential for Ship deployments
+**1. Focused on UI Concerns**
+- ZIP extraction for user convenience
+- File list state management for React UIs
+- Folder structure preservation from drag-and-drop
+- Path normalization for clean URLs
+- These are UI/UX concerns, not deployment logic
 
 **2. Loosely Coupled Integration Pattern**
 Following industry standards (Firebase hooks, Supabase utilities), we chose:
@@ -413,13 +548,17 @@ We deliberately don't provide drop zone UI components because:
 - Your deployment UI is unique to your application
 - Providing a component that "works but loses paths" would be misleading
 
-### Error Handling
+### Error Handling Philosophy
 
-MD5 calculation failures are properly handled:
-- Files with failed MD5 calculation are marked with `status: PROCESSING_ERROR`
-- The `statusMessage` contains the specific error details
-- These files are excluded from `getValidFiles()` and cannot be deployed
+All errors are surfaced at the per-file level:
+- Each file has its own `status` and `statusMessage` property
+- Processing errors (e.g., ZIP extraction failures) are marked with `status: 'processing_error'`
+- Validation failures are marked with `status: 'validation_failed'`
+- The `statusMessage` always contains specific error details
+- Failed files are excluded from `getValidFiles()` and cannot be deployed
 - No silent failures - all errors are visible to users
+
+See the [Error Handling](#error-handling) section for examples of displaying per-file errors in your UI.
 
 ### Security
 

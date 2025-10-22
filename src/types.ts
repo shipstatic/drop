@@ -24,10 +24,12 @@ export type FileStatus = (typeof FILE_STATUSES)[keyof typeof FILE_STATUSES];
 
 /**
  * Client-side error structure
+ * Matches ValidationError from @shipstatic/ship for consistency
  */
 export interface ClientError {
   error: string;
   details: string;
+  errors?: string[];
   isClientError: true;
 }
 
@@ -55,19 +57,3 @@ export interface ProcessedFile extends StaticFile {
   progress?: number;
 }
 
-/**
- * Validation configuration - direct alias to SDK's ConfigResponse
- * This allows passing the config directly from ship.getConfig() to the dropzone
- *
- * Single source of truth: @shipstatic/types
- */
-export type ValidationConfig = ConfigResponse;
-
-/**
- * Default validation limits
- */
-export const DEFAULT_VALIDATION: ConfigResponse = {
-  maxFileSize: 5 * 1024 * 1024, // 5MB
-  maxTotalSize: 25 * 1024 * 1024, // 25MB
-  maxFilesCount: 100,
-};

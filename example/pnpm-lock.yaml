@@ -9,11 +9,11 @@ importers:
   .:
     dependencies:
       '@shipstatic/drop':
-        specifier: ^0.1.0
-        version: 0.1.1(react-dom@19.2.0(react@19.2.0))(react@19.2.0)
+        specifier: ^0.1.2
+        version: 0.1.2(react-dom@19.2.0(react@19.2.0))(react@19.2.0)
       '@shipstatic/ship':
-        specifier: ^0.3.1
-        version: 0.3.1(typescript@5.9.3)
+        specifier: ^0.3.3
+        version: 0.3.3(typescript@5.9.3)
       react:
         specifier: ^19.2.0
         version: 19.2.0
@@ -22,8 +22,8 @@ importers:
         version: 19.2.0(react@19.2.0)
     devDependencies:
       '@shipstatic/types':
-        specifier: ^0.3.0
-        version: 0.3.0
+        specifier: ^0.3.2
+        version: 0.3.2
       '@types/react':
         specifier: ^19.2.2
         version: 19.2.2
@@ -37,7 +37,7 @@ importers:
         specifier: ^5.9.3
         version: 5.9.3
       vite:
-        specifier: ^6.4.0
+        specifier: ^6.4.1
         version: 6.4.1
 
 packages:
@@ -410,19 +410,19 @@ packages:
     cpu: [x64]
     os: [win32]
 
-  '@shipstatic/drop@0.1.1':
-    resolution: {integrity: sha512-jkNK1qLBU5GJJ5fyAunspNgxm8wxIhyNh0HwRKHvtsLuetczEHlZhxSY7utxj2PIH4GWS7x8uvEeUFlfUb4T4Q==}
+  '@shipstatic/drop@0.1.2':
+    resolution: {integrity: sha512-MOuHQDpTL3saip26N9gsdSET+tI+qRnxownYN/Yj6yr+Gm5+lSlFdZlxf7pHF2LhLtYGt2PSmH0ojR6cHBsKFg==}
     peerDependencies:
       react: ^18.0.0 || ^19.0.0
       react-dom: ^18.0.0 || ^19.0.0
 
-  '@shipstatic/ship@0.3.1':
-    resolution: {integrity: sha512-MZAYC4HoPx4qzQ0QnA22mN6lm2V059JsQEa/QRTswbwC1bAxQv4/mNnSS58CUKlG+YqB5rAWjup/5LNMFrCDDA==}
+  '@shipstatic/ship@0.3.3':
+    resolution: {integrity: sha512-m2bNhQ1RoMWAIrSN2w6oxuaG8qSoPMi81WdcLWnDPorlX2MzHZMPfE1gpgF+fmwWMaAgaB7Pfuqj/vjqwxda+A==}
     engines: {node: '>=20.0.0'}
     hasBin: true
 
-  '@shipstatic/types@0.3.0':
-    resolution: {integrity: sha512-pRFhbkorJAwB3/Xb6IyzNUjYDfFyb6b6IT1lgA5cAW8FFTrbyI2bU636MUr8GVtGuVKrmT4TeGA/lQRVu/Dz7g==}
+  '@shipstatic/types@0.3.2':
+    resolution: {integrity: sha512-K/WzGsK7LDSNxo7R2cJPDdv8br1+SZlmZxobhLhqWPRZ0wegqYIlH0WsyHdvj4efIjgdMVTARbvNU2fAJKdDuA==}
     engines: {node: '>=20.0.0'}
 
   '@types/babel__core@7.20.5':
@@ -519,8 +519,8 @@ packages:
   defaults@1.0.4:
     resolution: {integrity: sha512-eFuaLoy/Rxalv2kr+lqMlUnrDWV+3j4pljOIJgLIhI058IQfWJ7vXhyEIHu+HtC738klGALYxOKDO0bQP3tg8A==}
 
-  electron-to-chromium@1.5.237:
-    resolution: {integrity: sha512-icUt1NvfhGLar5lSWH3tHNzablaA5js3HVHacQimfP8ViEBOQv+L7DKEuHdbTZ0SKCO1ogTJTIL1Gwk9S6Qvcg==}
+  electron-to-chromium@1.5.238:
+    resolution: {integrity: sha512-khBdc+w/Gv+cS8e/Pbnaw/FXcBUeKrRVik9IxfXtgREOWyJhR4tj43n3amkVogJ/yeQUqzkrZcFhtIxIdqmmcQ==}
 
   env-paths@2.2.1:
     resolution: {integrity: sha512-+h1lkLKhZMTYjog1VEpJNG7NZJWcuc2DDk/qsqSTRRCOXiLjeQ1d1/udrUGhqMxUgAlwKNZ0cf2uqan5GLuS2A==}
@@ -618,10 +618,6 @@ packages:
 
   mime-db@1.54.0:
     resolution: {integrity: sha512-aU5EJuIN2WDemCcAp2vFBfp/m4EAhWJnUNSSw0ixs7/kXbd6Pg64EmwJkNdFhB8aWt1sH2CTXrLxo/iAGV3oPQ==}
-    engines: {node: '>= 0.6'}
-
-  mime-types@3.0.1:
-    resolution: {integrity: sha512-xRc4oEhT6eaBpU1XF7AjpOFD+xQmXNB5OVKwp4tqCuBpHLS/ZbBDrc07mYTDqVMg6PfxUjjNp85O6Cd2Z/5HWA==}
     engines: {node: '>= 0.6'}
 
   ms@2.1.3:
@@ -1066,25 +1062,25 @@ snapshots:
   '@rollup/rollup-win32-x64-msvc@4.52.5':
     optional: true
 
-  '@shipstatic/drop@0.1.1(react-dom@19.2.0(react@19.2.0))(react@19.2.0)':
+  '@shipstatic/drop@0.1.2(react-dom@19.2.0(react@19.2.0))(react@19.2.0)':
     dependencies:
-      '@shipstatic/types': 0.3.0
+      '@shipstatic/types': 0.3.2
       jszip: 3.10.1
       mime-db: 1.54.0
       react: 19.2.0
       react-dom: 19.2.0(react@19.2.0)
       spark-md5: 3.0.2
 
-  '@shipstatic/ship@0.3.1(typescript@5.9.3)':
+  '@shipstatic/ship@0.3.3(typescript@5.9.3)':
     dependencies:
-      '@shipstatic/types': 0.3.0
+      '@shipstatic/types': 0.3.2
       columnify: 1.6.0
       commander: 12.1.0
       cosmiconfig: 9.0.0(typescript@5.9.3)
       form-data-encoder: 4.1.0
       formdata-node: 6.0.3
       junk: 4.0.1
-      mime-types: 3.0.1
+      mime-db: 1.54.0
       spark-md5: 3.0.2
       yocto-spinner: 1.0.0
       yoctocolors: 2.1.2
@@ -1092,7 +1088,7 @@ snapshots:
     transitivePeerDependencies:
       - typescript
 
-  '@shipstatic/types@0.3.0': {}
+  '@shipstatic/types@0.3.2': {}
 
   '@types/babel__core@7.20.5':
     dependencies:
@@ -1147,7 +1143,7 @@ snapshots:
     dependencies:
       baseline-browser-mapping: 2.8.19
       caniuse-lite: 1.0.30001751
-      electron-to-chromium: 1.5.237
+      electron-to-chromium: 1.5.238
       node-releases: 2.0.26
       update-browserslist-db: 1.1.3(browserslist@4.26.3)
 
@@ -1187,7 +1183,7 @@ snapshots:
     dependencies:
       clone: 1.0.4
 
-  electron-to-chromium@1.5.237: {}
+  electron-to-chromium@1.5.238: {}
 
   env-paths@2.2.1: {}
 
@@ -1284,10 +1280,6 @@ snapshots:
       yallist: 3.1.1
 
   mime-db@1.54.0: {}
-
-  mime-types@3.0.1:
-    dependencies:
-      mime-db: 1.54.0
 
   ms@2.1.3: {}
 
