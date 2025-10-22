@@ -206,7 +206,7 @@ function App() {
             }}>
               <strong>All errors:</strong>
               <ul style={{ margin: '0.5rem 0', paddingLeft: '1.5rem' }}>
-                {drop.validationError.errors.map((err, i) => (
+                {drop.validationError.errors.map((err: string, i: number) => (
                   <li key={i} style={{ marginBottom: '0.25rem' }}>{err}</li>
                 ))}
               </ul>
