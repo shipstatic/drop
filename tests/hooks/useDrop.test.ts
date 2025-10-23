@@ -825,4 +825,132 @@ describe('useDrop', () => {
       expect(result.current.sourceName).toBe('');
     });
   });
+
+  describe('Junk file filtering', () => {
+    it('should filter out .DS_Store files', async () => {
+      const ship = createMockShip();
+      const { result } = renderHook(() => useDrop({ ship }));
+
+      const files = [
+        createMockFile('index.html', 'content'),
+        createMockFile('.DS_Store', 'junk'),
+        createMockFile('app.js', 'code'),
+      ];
+
+      await act(async () => {
+        await result.current.processFiles(files);
+      });
+
+      await waitFor(() => {
+        expect(result.current.isProcessing).toBe(false);
+      });
+
+      // Should only have 2 files (junk filtered out)
+      expect(result.current.files).toHaveLength(2);
+      const fileNames = result.current.files.map(f => f.name);
+      expect(fileNames).toEqual(['index.html', 'app.js']);
+      expect(fileNames).not.toContain('.DS_Store');
+    });
+
+    it('should filter out Thumbs.db and desktop.ini', async () => {
+      const ship = createMockShip();
+      const { result } = renderHook(() => useDrop({ ship }));
+
+      const files = [
+        createMockFile('document.pdf', 'content'),
+        createMockFile('Thumbs.db', 'windows junk'),
+        createMockFile('desktop.ini', 'windows junk'),
+        createMockFile('image.png', 'image'),
+      ];
+
+      await act(async () => {
+        await result.current.processFiles(files);
+      });
+
+      await waitFor(() => {
+        expect(result.current.isProcessing).toBe(false);
+      });
+
+      expect(result.current.files).toHaveLength(2);
+      const fileNames = result.current.files.map(f => f.name);
+      expect(fileNames).toEqual(['document.pdf', 'image.png']);
+    });
+
+    it('should filter out files in __MACOSX directory', async () => {
+      const ship = createMockShip();
+      const { result } = renderHook(() => useDrop({ ship }));
+
+      const files = [
+        createMockFileWithPath('index.html', 'project/index.html', 'content'),
+        createMockFileWithPath('._index.html', '__MACOSX/project/._index.html', 'resource fork'),
+        createMockFileWithPath('app.js', 'project/app.js', 'code'),
+        createMockFileWithPath('.DS_Store', '__MACOSX/.DS_Store', 'junk'),
+      ];
+
+      await act(async () => {
+        await result.current.processFiles(files);
+      });
+
+      await waitFor(() => {
+        expect(result.current.isProcessing).toBe(false);
+      });
+
+      // Should only have the 2 valid files (not the __MACOSX ones)
+      expect(result.current.files).toHaveLength(2);
+      const paths = result.current.files.map(f => f.path);
+      expect(paths).toEqual(['index.html', 'app.js']); // Prefix stripped
+    });
+
+    it('should handle all junk files being filtered out', async () => {
+      const ship = createMockShip();
+      const onValidationError = vi.fn();
+      const { result } = renderHook(() => useDrop({ ship, onValidationError }));
+
+      const files = [
+        createMockFile('.DS_Store', 'junk'),
+        createMockFile('Thumbs.db', 'junk'),
+        createMockFile('desktop.ini', 'junk'),
+      ];
+
+      await act(async () => {
+        await result.current.processFiles(files);
+      });
+
+      await waitFor(() => {
+        expect(result.current.isProcessing).toBe(false);
+      });
+
+      // All files filtered out - should have validation error
+      expect(result.current.files).toHaveLength(0);
+      expect(result.current.validationError).not.toBeNull();
+      expect(onValidationError).toHaveBeenCalled();
+    });
+
+    it('should work correctly with mixed valid and junk files from folder drop', async () => {
+      const ship = createMockShip();
+      const { result } = renderHook(() => useDrop({ ship }));
+
+      const files = [
+        createMockFileWithPath('index.html', 'mysite/index.html', 'html'),
+        createMockFileWithPath('.DS_Store', 'mysite/.DS_Store', 'junk'),
+        createMockFileWithPath('app.js', 'mysite/src/app.js', 'code'),
+        createMockFileWithPath('.DS_Store', 'mysite/src/.DS_Store', 'junk'),
+        createMockFileWithPath('styles.css', 'mysite/css/styles.css', 'css'),
+        createMockFileWithPath('Thumbs.db', 'mysite/css/Thumbs.db', 'junk'),
+      ];
+
+      await act(async () => {
+        await result.current.processFiles(files);
+      });
+
+      await waitFor(() => {
+        expect(result.current.isProcessing).toBe(false);
+      });
+
+      // Should have 3 valid files (junk filtered)
+      expect(result.current.files).toHaveLength(3);
+      const paths = result.current.files.map(f => f.path).sort();
+      expect(paths).toEqual(['css/styles.css', 'index.html', 'src/app.js']);
+    });
+  });
 });
