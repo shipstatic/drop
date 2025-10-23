@@ -16,11 +16,16 @@ import type { Ship } from '@shipstatic/ship';
 const mockGetConfig = vi.fn();
 const mockValidateFiles = vi.fn();
 
-vi.mock('@shipstatic/ship', () => ({
-  validateFiles: (...args: any[]) => mockValidateFiles(...args),
-  formatFileSize: (bytes: number) => `${bytes} bytes`,
-  getValidFiles: (files: any[]) => files.filter(f => f.status === 'ready'),
-}));
+vi.mock('@shipstatic/ship', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@shipstatic/ship')>();
+  return {
+    ...actual,
+    validateFiles: (...args: any[]) => mockValidateFiles(...args),
+    formatFileSize: (bytes: number) => `${bytes} bytes`,
+    getValidFiles: (files: any[]) => files.filter(f => f.status === 'ready'),
+    filterJunk: actual.filterJunk, // Use real implementation
+  };
+});
 
 // Helper to create mock Ship instance
 const createMockShip = (): Ship => ({

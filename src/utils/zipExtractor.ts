@@ -37,9 +37,6 @@ export async function extractZipToFiles(zipFile: File): Promise<ZipExtractionRes
         continue;
       }
 
-      // Skip junk files (check sanitized path)
-      if (isJunkFile(sanitizedPath)) continue;
-
       try {
         const content = await entry.async('blob');
         const mimeType = getMimeType(sanitizedPath);
@@ -101,30 +98,6 @@ export function normalizePath(path: string): string {
   }
 
   return normalized.join('/');
-}
-
-/**
- * Check if a file path is a junk file that should be filtered out
- * Filters common system files like .DS_Store, Thumbs.db, desktop.ini,
- * and macOS resource fork metadata in __MACOSX directories
- *
- * Case-insensitive matching to handle files from different operating systems
- * (Windows file systems are case-insensitive, so Thumbs.db === THUMBS.DB)
- *
- * @example
- * isJunkFile('.DS_Store') → true
- * isJunkFile('.ds_store') → true (case-insensitive)
- * isJunkFile('THUMBS.DB') → true (case-insensitive)
- * isJunkFile('folder/.DS_Store') → true
- * isJunkFile('__MACOSX/file.txt') → true
- * isJunkFile('mydsstore.txt') → false
- */
-export function isJunkFile(path: string): boolean {
-  const basename = (path.split('/').pop() || '').toLowerCase();
-  const junkFiles = ['.ds_store', 'thumbs.db', 'desktop.ini', '._.ds_store'];
-
-  // Filter out __MACOSX and junk files (case-insensitive)
-  return path.toLowerCase().startsWith('__macosx/') || junkFiles.includes(basename);
 }
 
 /**
