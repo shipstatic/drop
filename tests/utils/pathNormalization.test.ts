@@ -154,7 +154,7 @@ describe('normalizePath', () => {
       const path = './folder/.DS_Store';
       const normalized = normalizePath(path);
       expect(normalized).toBe('folder/.DS_Store');
-      // This would then be caught by isJunkFile()
+      // This would then be caught by filterJunk() from ship SDK
     });
 
     it('should normalize typical ZIP paths', () => {

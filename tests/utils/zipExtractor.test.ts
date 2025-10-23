@@ -60,7 +60,8 @@ describe('zipExtractor', () => {
       expect(result.files[0].name).toBe('file.txt');
     });
 
-    it('should filter out junk files', async () => {
+    it('should extract all files (junk filtering happens at higher level)', async () => {
+      // Note: Junk file filtering is now handled in useDrop.ts, not during extraction
       const mockZip = {
         files: {
           '.DS_Store': createMockZipEntry('.DS_Store', ''),
@@ -76,8 +77,16 @@ describe('zipExtractor', () => {
       const zipFile = new File(['dummy'], 'test.zip', { type: 'application/zip' });
       const result = await extractZipToFiles(zipFile);
 
-      expect(result.files).toHaveLength(1);
-      expect(result.files[0].name).toBe('valid.txt');
+      // Should extract ALL files (5 total) - filtering happens later in the pipeline
+      expect(result.files).toHaveLength(5);
+      const fileNames = result.files.map(f => f.name).sort();
+      expect(fileNames).toEqual([
+        '.DS_Store',
+        'Thumbs.db',
+        '__MACOSX/file.txt',
+        'desktop.ini',
+        'valid.txt',
+      ]);
     });
 
     it('should handle ZIP loading errors', async () => {

@@ -13,7 +13,7 @@ import {
   stripCommonPrefix,
 } from '../utils/fileProcessing';
 import type { Ship } from '@shipstatic/ship';
-import { validateFiles } from '@shipstatic/ship';
+import { validateFiles, filterJunk } from '@shipstatic/ship';
 
 export interface DropOptions {
   /** Ship SDK instance (required for validation) */
@@ -134,16 +134,28 @@ export function useDrop(options: DropOptions): DropReturn {
         allFiles.push(...newFiles);
       }
 
-      // Step 3: Convert all Files to ProcessedFiles
+      // Step 3: Filter junk files (single point for both ZIP and direct drops)
+      // Extract paths: for ZIP files, name contains the full path; for direct drops, use webkitRelativePath or name
+      const getFilePath = (f: File) => {
+        const webkitPath = (f as any).webkitRelativePath;
+        // Handle both undefined and empty string as falsy
+        return (webkitPath && webkitPath.trim()) ? webkitPath : f.name;
+      };
+
+      const filePaths = allFiles.map(getFilePath);
+      const validPaths = new Set(filterJunk(filePaths));
+      const cleanFiles = allFiles.filter(f => validPaths.has(getFilePath(f)));
+
+      // Step 4: Convert all Files to ProcessedFiles
       setStatusText('Processing files...');
       const processedFiles = await Promise.all(
-        allFiles.map(file => createProcessedFile(file))
+        cleanFiles.map(file => createProcessedFile(file))
       );
 
-      // Step 4: Strip common prefix if requested
+      // Step 5: Strip common prefix if requested
       const finalFiles = stripPrefix ? stripCommonPrefix(processedFiles) : processedFiles;
 
-      // Step 5: Validate all files using Ship SDK's config
+      // Step 6: Validate all files using Ship SDK's config
       const config = await ship.getConfig();
       const validation = validateFiles(finalFiles, config);
 
