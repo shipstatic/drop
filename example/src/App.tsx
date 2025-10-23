@@ -85,14 +85,6 @@ function App() {
     }
   };
 
-  const getSourceName = () => {
-    if (drop.files.length === 0) return null;
-    const firstPath = drop.files[0].path;
-    const parts = firstPath.split('/');
-    return parts.length > 1 ? parts[0] : firstPath;
-  };
-
-  const sourceName = getSourceName();
   const validCount = drop.getValidFiles().length;
 
   return (
@@ -131,9 +123,9 @@ function App() {
       </div>
 
       {/* Source name */}
-      {sourceName && (
+      {drop.sourceName && (
         <p style={{ fontSize: '1.1rem', fontWeight: 500, margin: '0 0 0.5rem 0' }}>
-          {sourceName}
+          {drop.sourceName}
         </p>
       )}
 

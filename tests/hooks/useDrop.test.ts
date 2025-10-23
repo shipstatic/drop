@@ -743,4 +743,81 @@ describe('useDrop', () => {
       expect(result.current.files[0].name).toBe('good.txt');
     });
   });
+
+  describe('Source name detection', () => {
+    it('should detect source name from single file', async () => {
+      const ship = createMockShip();
+      const { result } = renderHook(() => useDrop({ ship }));
+
+      const file = createMockFile('document.pdf', 'content');
+
+      await act(async () => {
+        await result.current.processFiles([file]);
+      });
+
+      await waitFor(() => {
+        expect(result.current.isProcessing).toBe(false);
+      });
+
+      expect(result.current.sourceName).toBe('document.pdf');
+    });
+
+    it('should detect source name from folder (webkitRelativePath)', async () => {
+      const ship = createMockShip();
+      const { result } = renderHook(() => useDrop({ ship }));
+
+      const files = [
+        createMockFileWithPath('index.html', 'my-project/index.html'),
+        createMockFileWithPath('app.js', 'my-project/src/app.js'),
+      ];
+
+      await act(async () => {
+        await result.current.processFiles(files);
+      });
+
+      await waitFor(() => {
+        expect(result.current.isProcessing).toBe(false);
+      });
+
+      expect(result.current.sourceName).toBe('my-project');
+    });
+
+    it('should detect source name from ZIP file (without extension)', async () => {
+      const ship = createMockShip();
+      const { result } = renderHook(() => useDrop({ ship }));
+
+      const zipFile = createMockFile('website.zip', 'zip content', 'application/zip');
+
+      await act(async () => {
+        await result.current.processFiles([zipFile]);
+      });
+
+      await waitFor(() => {
+        expect(result.current.isProcessing).toBe(false);
+      });
+
+      expect(result.current.sourceName).toBe('website');
+    });
+
+    it('should clear source name when clearAll is called', async () => {
+      const ship = createMockShip();
+      const { result } = renderHook(() => useDrop({ ship }));
+
+      const file = createMockFile('test.txt');
+
+      await act(async () => {
+        await result.current.processFiles([file]);
+      });
+
+      await waitFor(() => {
+        expect(result.current.sourceName).toBe('test.txt');
+      });
+
+      act(() => {
+        result.current.clearAll();
+      });
+
+      expect(result.current.sourceName).toBe('');
+    });
+  });
 });
