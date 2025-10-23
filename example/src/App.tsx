@@ -12,7 +12,7 @@ function App() {
   const [isDragging, setIsDragging] = useState(false);
   const [isDeploying, setIsDeploying] = useState(false);
 
-  const drop = useDrop({});
+  const drop = useDrop({ ship });
 
   const handleDrop = async (e: React.DragEvent) => {
     e.preventDefault();
