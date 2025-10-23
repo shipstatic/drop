@@ -29,6 +29,8 @@ export interface DropOptions {
 export interface DropReturn {
   /** All processed files with their status */
   files: ProcessedFile[];
+  /** Name of the source (file/folder/ZIP) that was dropped/selected */
+  sourceName: string;
   /** Current status text */
   statusText: string;
   /** Whether currently processing files (ZIP extraction, etc.) */
@@ -61,6 +63,7 @@ export function useDrop(options: DropOptions): DropReturn {
 
   // Simple state - no reducer needed
   const [files, setFiles] = useState<ProcessedFile[]>([]);
+  const [sourceName, setSourceName] = useState('');
   const [statusText, setStatusText] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
   const [validationError, setValidationError] = useState<ClientError | null>(null);
@@ -90,7 +93,28 @@ export function useDrop(options: DropOptions): DropReturn {
     setStatusText('Processing files...');
 
     try {
-      // Step 1: Extract ZIP only if single file is dropped and it's a ZIP
+      // Step 1: Detect source name from input
+      // Priority: ZIP name > folder name (from webkitRelativePath) > first file name
+      let detectedSourceName = '';
+
+      if (newFiles.length === 1 && isZipFile(newFiles[0])) {
+        // Single ZIP: use ZIP filename without extension
+        detectedSourceName = newFiles[0].name.replace(/\.zip$/i, '');
+      } else if (newFiles.length > 0) {
+        // Check if files have webkitRelativePath (folder drop/selection)
+        const firstPath = (newFiles[0] as any).webkitRelativePath || '';
+        if (firstPath && firstPath.includes('/')) {
+          // Folder drop: extract folder name from path
+          detectedSourceName = firstPath.split('/')[0];
+        } else {
+          // Individual file(s): use first file name
+          detectedSourceName = newFiles[0].name;
+        }
+      }
+
+      setSourceName(detectedSourceName);
+
+      // Step 2: Extract ZIP only if single file is dropped and it's a ZIP
       // For multiple files, treat ZIPs as regular files (don't extract)
       const allFiles: File[] = [];
       const shouldExtractZip = newFiles.length === 1 && isZipFile(newFiles[0]);
@@ -110,16 +134,16 @@ export function useDrop(options: DropOptions): DropReturn {
         allFiles.push(...newFiles);
       }
 
-      // Step 2: Convert all Files to ProcessedFiles
+      // Step 3: Convert all Files to ProcessedFiles
       setStatusText('Processing files...');
       const processedFiles = await Promise.all(
         allFiles.map(file => createProcessedFile(file))
       );
 
-      // Step 3: Strip common prefix if requested
+      // Step 4: Strip common prefix if requested
       const finalFiles = stripPrefix ? stripCommonPrefix(processedFiles) : processedFiles;
 
-      // Step 4: Validate all files using Ship SDK's config
+      // Step 5: Validate all files using Ship SDK's config
       const config = await ship.getConfig();
       const validation = validateFiles(finalFiles, config);
 
@@ -160,6 +184,7 @@ export function useDrop(options: DropOptions): DropReturn {
 
   const clearAll = useCallback(() => {
     setFiles([]);
+    setSourceName('');
     setStatusText('');
     setValidationError(null);
     isProcessingRef.current = false;
@@ -183,6 +208,7 @@ export function useDrop(options: DropOptions): DropReturn {
 
   return {
     files,
+    sourceName,
     statusText,
     isProcessing,
     validationError,
