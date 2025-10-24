@@ -1,8 +1,21 @@
 /**
- * Headless drop hook - Pure file processor
- * Handles file processing, ZIP extraction, and path normalization
- * Does NOT validate - validation happens in Ship SDK
- * Does NOT upload - consumer handles deployment
+ * Headless drop hook for file upload workflows
+ *
+ * Handles the complex parts:
+ * - Drag & drop with folder support
+ * - ZIP extraction
+ * - Path normalization
+ * - File validation
+ *
+ * Simple usage:
+ * ```tsx
+ * const drop = useDrop({ ship });
+ *
+ * <div {...drop.getDropzoneProps()}>
+ *   <input {...drop.getInputProps()} />
+ *   {drop.isDragging ? "Drop here" : "Click to upload"}
+ * </div>
+ * ```
  */
 import { useState, useCallback, useRef } from 'react';
 import type { ProcessedFile, ClientError, FileStatus } from '../types';
@@ -14,6 +27,56 @@ import {
 } from '../utils/fileProcessing';
 import type { Ship } from '@shipstatic/ship';
 import { validateFiles, filterJunk } from '@shipstatic/ship';
+
+/**
+ * Recursively traverse FileSystemEntry from drag & drop to collect all files
+ * Properly sets webkitRelativePath to preserve folder structure
+ */
+async function traverseFileTree(
+  entry: FileSystemEntry,
+  files: File[],
+  currentPath = ''
+): Promise<void> {
+  if (entry.isFile) {
+    const file = await new Promise<File>((resolve, reject) => {
+      (entry as FileSystemFileEntry).file(resolve, reject);
+    });
+    const relativePath = currentPath
+      ? `${currentPath}/${file.name}`
+      : file.name;
+    Object.defineProperty(file, 'webkitRelativePath', {
+      value: relativePath,
+      writable: false,
+    });
+    files.push(file);
+  } else if (entry.isDirectory) {
+    const dirReader = (entry as FileSystemDirectoryEntry).createReader();
+    let allEntries: FileSystemEntry[] = [];
+
+    // Read all entries (may require multiple calls due to browser limits)
+    const readEntriesBatch = async (): Promise<void> => {
+      const batch = await new Promise<FileSystemEntry[]>(
+        (resolve, reject) => {
+          dirReader.readEntries(resolve, reject);
+        }
+      );
+      if (batch.length > 0) {
+        allEntries = allEntries.concat(batch);
+        await readEntriesBatch();
+      }
+    };
+    await readEntriesBatch();
+
+    for (const childEntry of allEntries) {
+      // For directories: include directory name in path (we're entering it)
+      // For files: don't include filename (it will be appended when processing the file)
+      const entryPath = childEntry.isDirectory
+        ? (currentPath ? `${currentPath}/${childEntry.name}` : childEntry.name)
+        : currentPath;
+      await traverseFileTree(childEntry, files, entryPath);
+    }
+  }
+}
 
 export interface DropOptions {
   /** Ship SDK instance (required for validation) */
@@ -27,6 +90,7 @@ export interface DropOptions {
 }
 
 export interface DropReturn {
+  // State
   /** All processed files with their status */
   files: ProcessedFile[];
   /** Name of the source (file/folder/ZIP) that was dropped/selected */
@@ -35,13 +99,38 @@ export interface DropReturn {
   statusText: string;
   /** Whether currently processing files (ZIP extraction, etc.) */
   isProcessing: boolean;
+  /** Whether user is currently dragging over the dropzone */
+  isDragging: boolean;
   /** Last validation error if any */
   validationError: ClientError | null;
 
-  /** Process files from drop (resets and replaces existing files) */
+  // Primary API: Prop getters for easy integration
+  /** Get props to spread on dropzone element (handles drag & drop) */
+  getDropzoneProps: () => {
+    onDragOver: (e: React.DragEvent) => void;
+    onDragLeave: (e: React.DragEvent) => void;
+    onDrop: (e: React.DragEvent) => void;
+    onClick: () => void;
+  };
+  /** Get props to spread on hidden file input element */
+  getInputProps: () => {
+    ref: React.RefObject<HTMLInputElement | null>;
+    type: 'file';
+    style: { display: string };
+    multiple: boolean;
+    webkitdirectory: string;
+    onChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  };
+
+  // Actions
+  /** Programmatically trigger file picker */
+  open: () => void;
+  /** Manually process files (for advanced usage) */
   processFiles: (files: File[]) => Promise<void>;
   /** Clear all files and reset state */
   clearAll: () => void;
+
+  // Helpers
   /** Get only valid files ready for upload */
   getValidFiles: () => ProcessedFile[];
   /** Update upload state for a specific file (status, progress, message) */
@@ -49,9 +138,19 @@ export interface DropReturn {
 }
 
 /**
- * Headless drop hook
- * Handles file processing, ZIP extraction, and validation
- * Does NOT handle uploading - that's the consumer's responsibility
+ * Headless drop hook for file upload workflows
+ *
+ * @example
+ * ```tsx
+ * const drop = useDrop({ ship });
+ *
+ * return (
+ *   <div {...drop.getDropzoneProps()} style={{...}}>
+ *     <input {...drop.getInputProps()} />
+ *     {drop.isDragging ? "📂 Drop" : "📁 Click"}
+ *   </div>
+ * );
+ * ```
  */
 export function useDrop(options: DropOptions): DropReturn {
   const {
@@ -61,15 +160,17 @@ export function useDrop(options: DropOptions): DropReturn {
     stripPrefix = true,
   } = options;
 
-  // Simple state - no reducer needed
+  // State
   const [files, setFiles] = useState<ProcessedFile[]>([]);
   const [sourceName, setSourceName] = useState('');
   const [statusText, setStatusText] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
   const [validationError, setValidationError] = useState<ClientError | null>(null);
 
-  // Concurrency guard to prevent race conditions
+  // Refs
   const isProcessingRef = useRef(false);
+  const inputRef = useRef<HTMLInputElement>(null);
 
   const processFiles = useCallback(async (newFiles: File[]) => {
     // Guard against concurrent calls
@@ -199,6 +300,7 @@ export function useDrop(options: DropOptions): DropReturn {
     setSourceName('');
     setStatusText('');
     setValidationError(null);
+    setIsDragging(false);
     isProcessingRef.current = false;
     setIsProcessing(false);
   }, []);
@@ -218,14 +320,98 @@ export function useDrop(options: DropOptions): DropReturn {
     ));
   }, []);
 
+  // Drag & drop event handlers
+  const handleDragOver = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(true);
+  }, []);
+
+  const handleDragLeave = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+  }, []);
+
+  const handleDrop = useCallback(async (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+
+    const items = Array.from(e.dataTransfer.items);
+    const files: File[] = [];
+
+    // Use FileSystemEntry API for proper folder traversal
+    let hasEntries = false;
+    for (const item of items) {
+      if (item.kind === 'file') {
+        const entry = item.webkitGetAsEntry?.();
+        if (entry) {
+          hasEntries = true;
+          await traverseFileTree(
+            entry,
+            files,
+            entry.isDirectory ? entry.name : ''
+          );
+        }
+      }
+    }
+
+    // Fallback for browsers without webkitGetAsEntry support
+    if (!hasEntries && e.dataTransfer.files.length > 0) {
+      files.push(...Array.from(e.dataTransfer.files));
+    }
+
+    if (files.length > 0) {
+      await processFiles(files);
+    }
+  }, [processFiles]);
+
+  // File input handlers
+  const handleInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []);
+    if (files.length > 0) {
+      processFiles(files);
+    }
+  }, [processFiles]);
+
+  const open = useCallback(() => {
+    inputRef.current?.click();
+  }, []);
+
+  // Prop getters
+  const getDropzoneProps = useCallback(() => ({
+    onDragOver: handleDragOver,
+    onDragLeave: handleDragLeave,
+    onDrop: handleDrop,
+    onClick: open,
+  }), [handleDragOver, handleDragLeave, handleDrop, open]);
+
+  const getInputProps = useCallback(() => ({
+    ref: inputRef,
+    type: 'file' as const,
+    style: { display: 'none' },
+    multiple: true,
+    webkitdirectory: '',
+    onChange: handleInputChange,
+  }), [handleInputChange]);
+
   return {
+    // State
     files,
     sourceName,
     statusText,
     isProcessing,
+    isDragging,
     validationError,
+
+    // Primary API: Prop getters
+    getDropzoneProps,
+    getInputProps,
+
+    // Actions
+    open,
     processFiles,
     clearAll,
+
+    // Helpers
     getValidFiles: getValidFilesCallback,
     updateFileStatus,
   };

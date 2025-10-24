@@ -4,27 +4,36 @@
 
 A focused React hook for preparing files for deployment with [@shipstatic/ship](https://github.com/shipstatic/ship). Handles ZIP extraction, path normalization, and validation - everything needed before calling `ship.deploy()`.
 
+**v0.1.6 Update:** Now includes built-in drag & drop support with prop getters! No need to manually implement drag & drop handlers - just spread `{...drop.getDropzoneProps()}` on your container and `{...drop.getInputProps()}` on the input element. Folder structure preservation is handled automatically.
+
 **Note:** MD5 calculation is handled by Ship SDK during deployment. Drop focuses on file processing and UI state management.
 
 ## Why Headless?
 
-This package provides **zero UI components**. You build the dropzone that fits your needs. Why?
+This package provides **zero UI components** - just a React hook with built-in drag & drop functionality. You bring your own styling.
 
-1. **Folder structure matters** - Proper folder drag-and-drop requires modern browser APIs (`File System Access API`, `webkitGetAsEntry`) that generic dropzone libraries don't support
-2. **Full control** - Your UI, your styling, your UX patterns
-3. **Smaller bundle** - No React components, no extra dependencies (~14KB saved vs generic libraries)
-4. **Ship SDK integration** - Purpose-built for Ship deployments, not a generic file upload library
+**What you get:**
+1. **Built-in drag & drop** - Proper folder support with `webkitGetAsEntry` API, all handled internally
+2. **Prop getters API** - Similar to `react-dropzone`, just spread props on your elements
+3. **Full styling control** - No imposed CSS, design system, or theming
+4. **Smaller bundle** - No UI components means less bloat
+5. **Ship SDK integration** - Purpose-built for Ship deployments, not a generic file upload library
 
-The package focuses on what's hard (ZIP extraction, folder structure preservation) and leaves what's easy (UI) to you.
+**What's different from other libraries:**
+- Generic dropzone libraries don't preserve folder structure properly
+- We handle the complex parts (ZIP extraction, folder traversal, path normalization)
+- You handle the simple parts (styling, layout, animations)
 
 ## Features
 
-- 🎯 **Headless Architecture** - Just the hook, no UI opinions
+- 🎯 **Prop Getters API** - Just spread props on your elements (like `react-dropzone`)
+- 🖱️ **Built-in Drag & Drop** - Automatic folder support with `webkitGetAsEntry` API
 - 📦 **ZIP Support** - Automatic ZIP file extraction and processing
 - ✅ **Validation** - Client-side file size, count, and total size validation (powered by Ship SDK)
 - 🗑️ **Junk Filtering** - Automatically filters `.DS_Store`, `Thumbs.db`, etc. (powered by Ship SDK)
 - 🔒 **Path Sanitization** - Defense-in-depth protection against directory traversal attacks
-- 📁 **Folder Structure Preservation** - Respects `webkitRelativePath` for proper deployment paths
+- 📁 **Folder Structure Preservation** - Proper folder paths via `webkitRelativePath`
+- 🎨 **Headless UI** - No visual components, just logic and state management
 - 🚀 **Focused Scope** - File processing and UI state only. MD5 calculation and deployment handled by Ship SDK
 
 ## Installation
@@ -50,30 +59,38 @@ function MyUploader() {
 
   const handleUpload = async () => {
     const validFiles = drop.getValidFiles();
-
     // ProcessedFile extends StaticFile - no conversion needed!
     await ship.deployments.create(validFiles.map(f => f.file));
   };
 
   return (
     <div>
-      <input
-        type="file"
-        multiple
-        onChange={(e) => {
-          const files = Array.from(e.target.files || []);
-          drop.processFiles(files);
+      {/* Drag & drop zone with built-in folder support */}
+      <div
+        {...drop.getDropzoneProps()}
+        style={{
+          border: '2px dashed',
+          borderColor: drop.isDragging ? 'blue' : 'gray',
+          padding: '40px',
+          textAlign: 'center',
+          cursor: 'pointer',
         }}
-      />
+      >
+        <input {...drop.getInputProps()} />
+        {drop.isDragging ? '📂 Drop here' : '📁 Click or drag files/folders'}
+      </div>
 
+      {/* Status */}
       <p>{drop.statusText}</p>
 
+      {/* File list */}
       {drop.files.map(file => (
         <div key={file.id}>
           {file.name} - {file.status}
         </div>
       ))}
 
+      {/* Upload button */}
       <button
         onClick={handleUpload}
         disabled={drop.getValidFiles().length === 0}
@@ -110,151 +127,56 @@ const drop = useDrop({ ship });
 - Ship SDK is the single source of truth for validation
 - Drop only provides what Ship doesn't have (ZIP, React state, folder structure)
 
-## Building Your Drop Zone with Folder Support
+## Advanced: Programmatic File Picker
 
-For production use, you'll want to support folder drag-and-drop using modern browser APIs. Here's a complete example:
+You can programmatically trigger the file picker using the `open()` method:
 
 ```tsx
-import { useState } from 'react';
-import { useDrop } from '@shipstatic/drop';
-
-function MyDeployUI() {
-  const drop = useDrop();
-  const [isDragActive, setIsDragActive] = useState(false);
-
-  const handleDrop = async (e: React.DragEvent) => {
-    e.preventDefault();
-    setIsDragActive(false);
-
-    // Extract files with folder structure preserved
-    const files = await extractFilesWithStructure(e.dataTransfer);
-    drop.processFiles(files);
-  };
-
-  const extractFilesWithStructure = async (
-    dataTransfer: DataTransfer
-  ): Promise<File[]> => {
-    const files: File[] = [];
-    const items = dataTransfer.items;
-
-    if (!items) return Array.from(dataTransfer.files);
-
-    for (let i = 0; i < items.length; i++) {
-      const item = items[i];
-      if (item.kind === 'file') {
-        await processDataTransferItem(item, files);
-      }
-    }
-
-    return files.length > 0 ? files : Array.from(dataTransfer.files);
-  };
-
-  const processDataTransferItem = async (
-    item: DataTransferItem,
-    files: File[]
-  ): Promise<void> => {
-    // Try modern File System Access API first (Chrome 86+)
-    if (
-      globalThis.isSecureContext &&
-      typeof (item as any).getAsFileSystemHandle === 'function'
-    ) {
-      try {
-        const handle = await (item as any).getAsFileSystemHandle();
-        if (handle) {
-          await processFileSystemHandle(handle, files, '');
-          return;
-        }
-      } catch (err) {
-        // Fall through to webkit API
-      }
-    }
-
-    // Fallback to webkitGetAsEntry (broader browser support)
-    const entry = (item as any).webkitGetAsEntry?.();
-    if (entry) {
-      await processEntry(entry, files, '');
-    }
-  };
-
-  const processFileSystemHandle = async (
-    handle: any,
-    files: File[],
-    basePath: string
-  ): Promise<void> => {
-    if (handle.kind === 'file') {
-      const file = await handle.getFile();
-      // Set webkitRelativePath for Ship SDK compatibility
-      Object.defineProperty(file, 'webkitRelativePath', {
-        value: basePath + file.name,
-        writable: false,
-        enumerable: true,
-        configurable: true,
-      });
-      files.push(file);
-    } else if (handle.kind === 'directory') {
-      const dirPath = basePath + handle.name + '/';
-      for await (const entry of handle.values()) {
-        await processFileSystemHandle(entry, files, dirPath);
-      }
-    }
-  };
-
-  const processEntry = async (
-    entry: any,
-    files: File[],
-    basePath: string
-  ): Promise<void> => {
-    if (entry.isFile) {
-      const file = await new Promise<File>((resolve, reject) => {
-        entry.file(resolve, reject);
-      });
-      // Set webkitRelativePath for Ship SDK compatibility
-      Object.defineProperty(file, 'webkitRelativePath', {
-        value: basePath + entry.name,
-        writable: false,
-        enumerable: true,
-        configurable: true,
-      });
-      files.push(file);
-    } else if (entry.isDirectory) {
-      const dirReader = entry.createReader();
-      const entries = await new Promise<any[]>((resolve, reject) => {
-        dirReader.readEntries(resolve, reject);
-      });
-
-      for (const childEntry of entries) {
-        await processEntry(childEntry, files, basePath + entry.name + '/');
-      }
-    }
-  };
+function MyUploader() {
+  const drop = useDrop({ ship });
 
   return (
-    <div
-      onDragOver={(e) => { e.preventDefault(); setIsDragActive(true); }}
-      onDragLeave={() => setIsDragActive(false)}
-      onDrop={handleDrop}
-      className={isDragActive ? 'border-blue-500 bg-blue-50' : 'border-gray-300'}
-    >
-      {drop.isProcessing ? (
-        <p>Processing {drop.files.length} files...</p>
-      ) : (
-        <p>Drag & drop files or folders here</p>
-      )}
+    <div>
+      {/* Custom trigger button */}
+      <button onClick={drop.open}>
+        Select Files
+      </button>
 
-      {drop.validationError && (
-        <div className="text-red-600">{drop.validationError.details}</div>
-      )}
+      {/* Hidden input managed by the hook */}
+      <input {...drop.getInputProps()} />
+
+      {/* Or use the dropzone */}
+      <div {...drop.getDropzoneProps()}>
+        Drop files here
+      </div>
     </div>
   );
 }
 ```
 
-### Why This Approach?
+## Advanced: Manual File Processing
 
-- ✅ **Preserves folder structure** via `webkitRelativePath`
-- ✅ **Uses modern File System Access API** (no permission prompts in Chrome 86+)
-- ✅ **Fallback to webkit APIs** for broader browser support (Safari, Firefox)
-- ✅ **You control every aspect** of the UI and UX
+For advanced use cases, you can manually process files instead of using prop getters:
+
+```tsx
+function AdvancedUploader() {
+  const drop = useDrop({ ship });
+
+  const handleManualDrop = async (e: React.DragEvent) => {
+    e.preventDefault();
+    const files = Array.from(e.dataTransfer.files);
+    await drop.processFiles(files);
+  };
+
+  return (
+    <div onDrop={handleManualDrop}>
+      {/* Custom implementation */}
+    </div>
+  );
+}
+```
+
+**Note:** When using manual processing, you lose automatic folder structure preservation. The built-in `getDropzoneProps()` handles `webkitGetAsEntry` API internally to preserve folder paths.
 
 ## API
 
@@ -281,19 +203,47 @@ interface DropOptions {
 
 ```typescript
 interface DropReturn {
+  // State
   /** All processed files with their status */
   files: ProcessedFile[];
+  /** Name of the source (file/folder/ZIP) that was dropped/selected */
+  sourceName: string;
   /** Current status text */
   statusText: string;
   /** Whether currently processing files (ZIP extraction, etc.) */
   isProcessing: boolean;
+  /** Whether user is currently dragging over the dropzone */
+  isDragging: boolean;
   /** Last validation error if any */
   validationError: ClientError | null;
 
-  /** Process files from drop (resets and replaces existing files) */
+  // Primary API: Prop getters for easy integration
+  /** Get props to spread on dropzone element (handles drag & drop) */
+  getDropzoneProps: () => {
+    onDragOver: (e: React.DragEvent) => void;
+    onDragLeave: (e: React.DragEvent) => void;
+    onDrop: (e: React.DragEvent) => void;
+    onClick: () => void;
+  };
+  /** Get props to spread on hidden file input element */
+  getInputProps: () => {
+    ref: React.RefObject<HTMLInputElement | null>;
+    type: 'file';
+    style: { display: string };
+    multiple: boolean;
+    webkitdirectory: string;
+    onChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  };
+
+  // Actions
+  /** Programmatically trigger file picker */
+  open: () => void;
+  /** Manually process files (for advanced usage) */
   processFiles: (files: File[]) => Promise<void>;
   /** Clear all files and reset state */
   clearAll: () => void;
+
+  // Helpers
   /** Get only valid files ready for upload */
   getValidFiles: () => ProcessedFile[];
   /** Update upload state for a specific file (status, progress, message) */
@@ -514,23 +464,28 @@ This package was extracted from the `web/drop` application and is purpose-built 
 **1. Focused on UI Concerns**
 - ZIP extraction for user convenience
 - File list state management for React UIs
-- Folder structure preservation from drag-and-drop
+- Drag & drop event handling with folder support
+- Folder structure preservation via `webkitGetAsEntry` API
 - Path normalization for clean URLs
 - These are UI/UX concerns, not deployment logic
 
-**2. Loosely Coupled Integration Pattern**
+**2. Prop Getters Pattern (Like react-dropzone)**
+We provide event handlers, not visual components:
+- ✅ **`getDropzoneProps()`** - Returns drag & drop event handlers
+- ✅ **`getInputProps()`** - Returns file input configuration
+- ✅ **`isDragging`** - State for visual feedback
+- ✅ **You control the DOM** - Your markup, your styling, your design system
+
+This is the same pattern used by popular libraries like `react-dropzone`, `downshift`, and `react-table`.
+
+**3. Loosely Coupled Integration**
 Following industry standards (Firebase hooks, Supabase utilities), we chose:
-- ✅ **Decoupled**: No Ship SDK dependency in this package
-- ✅ **Simple**: Direct `File[]` input/output
-- ✅ **Testable**: No mocking of Ship SDK needed
+- ✅ **Ship instance as dependency**: Validates using `ship.getConfig()`
+- ✅ **Simple output**: ProcessedFile[] can be passed directly to Ship SDK
+- ✅ **Testable**: Easy to mock Ship SDK for testing
 - ✅ **Flexible**: Host app controls WHEN to deploy
 
-Instead of:
-- ❌ Passing Ship SDK instance to useDrop
-- ❌ React Context provider pattern
-- ❌ Global configuration singleton
-
-**3. Type System Integration**
+**4. Type System Integration**
 
 ProcessedFile extends StaticFile from `@shipstatic/types` - the single source of truth for Ship SDK types:
 
@@ -540,13 +495,13 @@ File[] → ProcessedFile[] (which IS StaticFile[]) → ship.deployments.create()
 
 No conversion needed. ProcessedFile adds UI-specific properties (id, name, status, progress) to StaticFile's base properties (content, path, size, md5).
 
-**4. No UI Components**
+**5. No Visual Components**
 
-We deliberately don't provide drop zone UI components because:
-- Generic drop zone libraries (like `react-dropzone`) don't support folder structure preservation
-- Proper folder drag-and-drop requires modern browser APIs that need custom implementation
-- Your deployment UI is unique to your application
-- Providing a component that "works but loses paths" would be misleading
+We deliberately don't provide styled components because:
+- Your design system is unique to your application
+- Styling should match your brand, not our opinions
+- Prop getters give you full control over DOM structure and CSS
+- Similar to how `react-dropzone` works - logic without opinions
 
 ### Error Handling Philosophy
 
