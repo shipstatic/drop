@@ -9,64 +9,9 @@ const ship = new Ship({
 function App() {
   const [deploymentUrl, setDeploymentUrl] = useState('');
   const [error, setError] = useState('');
-  const [isDragging, setIsDragging] = useState(false);
   const [isDeploying, setIsDeploying] = useState(false);
 
   const drop = useDrop({ ship });
-
-  const handleDrop = async (e: React.DragEvent) => {
-    e.preventDefault();
-    setIsDragging(false);
-
-    const items = Array.from(e.dataTransfer.items);
-    const files: File[] = [];
-
-    for (const item of items) {
-      if (item.kind === 'file') {
-        const entry = item.webkitGetAsEntry?.();
-        if (entry) {
-          await traverseFileTree(entry, files, entry.isDirectory ? entry.name : '');
-        }
-      }
-    }
-
-    if (files.length > 0) {
-      drop.processFiles(files);
-    }
-  };
-
-  const traverseFileTree = async (entry: FileSystemEntry, files: File[], currentPath = ''): Promise<void> => {
-    if (entry.isFile) {
-      const file = await new Promise<File>((resolve, reject) => {
-        (entry as FileSystemFileEntry).file(resolve, reject);
-      });
-      const relativePath = currentPath ? `${currentPath}/${file.name}` : file.name;
-      Object.defineProperty(file, 'webkitRelativePath', {
-        value: relativePath,
-        writable: false,
-      });
-      files.push(file);
-    } else if (entry.isDirectory) {
-      const dirReader = (entry as FileSystemDirectoryEntry).createReader();
-      let allEntries: FileSystemEntry[] = [];
-
-      const readEntriesBatch = async (): Promise<void> => {
-        const batch = await new Promise<FileSystemEntry[]>((resolve, reject) => {
-          dirReader.readEntries(resolve, reject);
-        });
-        if (batch.length > 0) {
-          allEntries = allEntries.concat(batch);
-          await readEntriesBatch();
-        }
-      };
-      await readEntriesBatch();
-
-      for (const childEntry of allEntries) {
-        const entryPath = currentPath ? `${currentPath}/${childEntry.name}` : childEntry.name;
-        await traverseFileTree(childEntry, files, entryPath);
-      }
-    }
-  };
 
   const handleDeploy = async () => {
     setError('');
@@ -93,32 +38,19 @@ function App() {
 
       {/* Dropzone */}
       <div
-        onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
-        onDragLeave={() => setIsDragging(false)}
-        onDrop={handleDrop}
-        onClick={() => document.getElementById('file-input')?.click()}
+        {...drop.getDropzoneProps()}
         style={{
-          border: `2px dashed ${isDragging ? '#0066cc' : '#ccc'}`,
+          border: `2px dashed ${drop.isDragging ? '#0066cc' : '#ccc'}`,
           padding: '3rem',
           textAlign: 'center',
           cursor: 'pointer',
           marginBottom: '1.5rem',
-          backgroundColor: isDragging ? '#f0f9ff' : 'white',
+          backgroundColor: drop.isDragging ? '#f0f9ff' : 'white',
         }}
       >
-        <input
-          type="file"
-          {...({ webkitdirectory: '' } as any)}
-          multiple
-          onChange={(e) => {
-            const fileList = Array.from(e.target.files || []);
-            drop.processFiles(fileList);
-          }}
-          style={{ display: 'none' }}
-          id="file-input"
-        />
+        <input {...drop.getInputProps()} />
         <div style={{ pointerEvents: 'none' }}>
-          {isDragging ? '📂 Drop here' : '📁 Drop files/folders or click'}
+          {drop.isDragging ? '📂 Drop here' : '📁 Drop files/folders or click'}
         </div>
       </div>
 
