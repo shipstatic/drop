@@ -56,7 +56,7 @@ describe('useDrop - branch coverage', () => {
 
       expect(mockEvent.preventDefault).toHaveBeenCalled();
       // No files should be added
-      expect(result.current.files).toEqual([]);
+      expect(result.current.state.files).toEqual([]);
     });
   });
 
@@ -116,14 +116,14 @@ describe('useDrop - branch coverage', () => {
       });
 
       // Should use first file name as source
-      expect(result.current.sourceName).toBe('first.txt');
+      expect(result.current.state.sourceName).toBe('first.txt');
     });
 
     it('should handle empty source name gracefully', async () => {
       const { result } = renderHook(() => useDrop({ ship: mockShip }));
 
       // This tests the initialization state
-      expect(result.current.sourceName).toBe('');
+      expect(result.current.state.sourceName).toBe('');
     });
   });
 
@@ -145,8 +145,8 @@ describe('useDrop - branch coverage', () => {
       });
 
       // Should have error state
-      expect(result.current.validationError).not.toBeNull();
-      expect(result.current.validationError?.error).toBe('Processing Failed');
+      expect(result.current.state.value).toBe('error');
+      expect(result.current.state.status?.title).toBe('Processing Failed');
     });
 
     it('should clear processing flag on error', async () => {
@@ -174,8 +174,8 @@ describe('useDrop - branch coverage', () => {
         await result.current.processFiles(null as any);
       });
 
-      expect(result.current.statusText).toBe('No files selected.');
-      expect(result.current.files).toEqual([]);
+      expect(result.current.state.status).toBeNull();
+      expect(result.current.state.files).toEqual([]);
     });
 
     it('should handle undefined files gracefully', async () => {
@@ -185,8 +185,8 @@ describe('useDrop - branch coverage', () => {
         await result.current.processFiles(undefined as any);
       });
 
-      expect(result.current.statusText).toBe('No files selected.');
-      expect(result.current.files).toEqual([]);
+      expect(result.current.state.status).toBeNull();
+      expect(result.current.state.files).toEqual([]);
     });
   });
 
@@ -227,10 +227,10 @@ describe('useDrop - branch coverage', () => {
       });
 
       expect(result.current.isDragging).toBe(false);
-      expect(result.current.files).toEqual([]);
-      expect(result.current.sourceName).toBe('');
-      expect(result.current.statusText).toBe('');
-      expect(result.current.validationError).toBeNull();
+      expect(result.current.state.files).toEqual([]);
+      expect(result.current.state.sourceName).toBe('');
+      expect(result.current.state.status).toBeNull();
+      expect(result.current.state.value).not.toBe('error');
     });
   });
 

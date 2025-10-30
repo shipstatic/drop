@@ -78,10 +78,10 @@ describe('Folder Structure Preservation', () => {
         expect(result.current.isProcessing).toBe(false);
       });
 
-      expect(result.current.files).toHaveLength(1);
-      expect(result.current.files[0].path).toBe('mysite/src/app.js');
-      expect(result.current.files[0].name).toBe('app.js');
-      expect(result.current.files[0].status).toBe(FILE_STATUSES.READY);
+      expect(result.current.state.files).toHaveLength(1);
+      expect(result.current.state.files[0].path).toBe('mysite/src/app.js');
+      expect(result.current.state.files[0].name).toBe('app.js');
+      expect(result.current.state.files[0].status).toBe(FILE_STATUSES.READY);
     });
 
     it('should use file.name when webkitRelativePath is empty', async () => {
@@ -104,9 +104,9 @@ describe('Folder Structure Preservation', () => {
         expect(result.current.isProcessing).toBe(false);
       });
 
-      expect(result.current.files).toHaveLength(1);
-      expect(result.current.files[0].path).toBe('standalone.js');
-      expect(result.current.files[0].name).toBe('standalone.js');
+      expect(result.current.state.files).toHaveLength(1);
+      expect(result.current.state.files[0].path).toBe('standalone.js');
+      expect(result.current.state.files[0].name).toBe('standalone.js');
     });
 
     it('should maintain folder structure for multiple files', async () => {
@@ -127,13 +127,13 @@ describe('Folder Structure Preservation', () => {
         expect(result.current.isProcessing).toBe(false);
       });
 
-      expect(result.current.files).toHaveLength(3);
-      expect(result.current.files.map(f => f.path)).toEqual([
+      expect(result.current.state.files).toHaveLength(3);
+      expect(result.current.state.files.map(f => f.path)).toEqual([
         'mysite/index.html',
         'mysite/src/app.js',
         'mysite/css/style.css',
       ]);
-      expect(result.current.files.map(f => f.name)).toEqual([
+      expect(result.current.state.files.map(f => f.name)).toEqual([
         'index.html',
         'app.js',
         'style.css',
@@ -158,9 +158,9 @@ describe('Folder Structure Preservation', () => {
         expect(result.current.isProcessing).toBe(false);
       });
 
-      expect(result.current.files).toHaveLength(3);
+      expect(result.current.state.files).toHaveLength(3);
       // Common prefix 'mysite/' should be stripped
-      expect(result.current.files.map(f => f.path)).toEqual([
+      expect(result.current.state.files.map(f => f.path)).toEqual([
         'index.html',
         'src/app.js',
         'css/style.css',
@@ -185,10 +185,10 @@ describe('Folder Structure Preservation', () => {
         expect(result.current.isProcessing).toBe(false);
       });
 
-      expect(result.current.files).toHaveLength(3);
-      expect(result.current.files[0].path).toBe('project/src/components/Button/index.js');
-      expect(result.current.files[1].path).toBe('project/src/components/Button/styles.css');
-      expect(result.current.files[2].path).toBe('project/src/components/Button/__tests__/test.js');
+      expect(result.current.state.files).toHaveLength(3);
+      expect(result.current.state.files[0].path).toBe('project/src/components/Button/index.js');
+      expect(result.current.state.files[1].path).toBe('project/src/components/Button/styles.css');
+      expect(result.current.state.files[2].path).toBe('project/src/components/Button/__tests__/test.js');
     });
   });
 
@@ -212,9 +212,9 @@ describe('Folder Structure Preservation', () => {
         expect(result.current.isProcessing).toBe(false);
       });
 
-      expect(result.current.files).toHaveLength(2);
-      expect(result.current.files[0].path).toBe('src/app.js');
-      expect(result.current.files[1].path).toBe('standalone.txt');
+      expect(result.current.state.files).toHaveLength(2);
+      expect(result.current.state.files[0].path).toBe('src/app.js');
+      expect(result.current.state.files[1].path).toBe('standalone.txt');
     });
   });
 

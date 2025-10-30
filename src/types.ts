@@ -57,3 +57,31 @@ export interface ProcessedFile extends StaticFile {
   progress?: number;
 }
 
+/**
+ * State machine values for the drop hook
+ */
+export type DropStateValue =
+  | 'idle'       // The hook is ready for files
+  | 'dragging'   // The user is dragging files over the dropzone
+  | 'processing' // Files are being validated and processed
+  | 'ready'      // Files are valid and ready for deployment
+  | 'error';     // An error occurred during processing
+
+/**
+ * Status information with title and details
+ */
+export interface DropStatus {
+  title: string;
+  details: string;
+}
+
+/**
+ * State machine state for the drop hook
+ */
+export interface DropState {
+  value: DropStateValue;
+  files: ProcessedFile[];
+  sourceName: string;
+  status: DropStatus | null;
+}
+
