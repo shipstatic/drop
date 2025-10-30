@@ -1,30 +1,30 @@
-import { useState } from 'react';
-import { useDrop } from '@shipstatic/drop';
-import Ship from '@shipstatic/ship';
+import { useDrop } from "@shipstatic/drop";
+import Ship from "@shipstatic/ship";
+import { useState } from "react";
 
 const ship = new Ship({
   // deployToken: 'token-here'
 });
 
 function App() {
-  const [deploymentUrl, setDeploymentUrl] = useState('');
-  const [error, setError] = useState('');
+  const [deploymentUrl, setDeploymentUrl] = useState("");
+  const [error, setError] = useState("");
   const [isDeploying, setIsDeploying] = useState(false);
 
   const drop = useDrop({ ship });
 
   const handleDeploy = async () => {
-    setError('');
-    setDeploymentUrl('');
+    setError("");
+    setDeploymentUrl("");
     setIsDeploying(true);
 
     try {
       const validFiles = drop.getValidFiles();
-      const files = validFiles.map(f => f.file);
+      const files = validFiles.map((f) => f.file);
       const result = await ship.deployments.create(files);
       setDeploymentUrl(result.url);
     } catch (err: any) {
-      setError(err.message || 'Deployment failed');
+      setError(err.message || "Deployment failed");
     } finally {
       setIsDeploying(false);
     }
@@ -33,54 +33,73 @@ function App() {
   const validCount = drop.getValidFiles().length;
 
   return (
-    <div style={{ padding: '2rem', maxWidth: '600px', margin: '0 auto', fontFamily: 'system-ui' }}>
+    <div
+      style={{
+        padding: "2rem",
+        maxWidth: "600px",
+        margin: "0 auto",
+        fontFamily: "system-ui",
+      }}
+    >
       <h1>Drop + Ship</h1>
 
       {/* Dropzone */}
       <div
         {...drop.getDropzoneProps()}
         style={{
-          border: `2px dashed ${drop.isDragging ? '#0066cc' : '#ccc'}`,
-          padding: '3rem',
-          textAlign: 'center',
-          cursor: 'pointer',
-          marginBottom: '1.5rem',
-          backgroundColor: drop.isDragging ? '#f0f9ff' : 'white',
+          border: `2px dashed ${drop.isDragging ? "#0066cc" : "#ccc"}`,
+          padding: "3rem",
+          textAlign: "center",
+          cursor: "pointer",
+          marginBottom: "1.5rem",
+          backgroundColor: drop.isDragging ? "#f0f9ff" : "white",
         }}
       >
         <input {...drop.getInputProps()} />
-        <div style={{ pointerEvents: 'none' }}>
-          {drop.isDragging ? '📂 Drop here' : '📁 Drop files/folders or click'}
+        <div style={{ pointerEvents: "none" }}>
+          {drop.isDragging ? "📂 Drop here" : "📁 Drop files/folders or click"}
         </div>
       </div>
 
       {/* Source name */}
       {drop.sourceName && (
-        <p style={{ fontSize: '1.1rem', fontWeight: 500, margin: '0 0 0.5rem 0' }}>
+        <p
+          style={{
+            fontSize: "1.1rem",
+            fontWeight: 500,
+            margin: "0 0 0.5rem 0",
+          }}
+        >
           {drop.sourceName}
         </p>
       )}
 
       {/* Status - only show during processing */}
       {drop.isProcessing && drop.statusText && (
-        <p style={{ margin: '0 0 1rem 0' }}>
-          {drop.statusText}
-        </p>
+        <p style={{ margin: "0 0 1rem 0" }}>{drop.statusText}</p>
       )}
 
       {/* Validation error */}
       {drop.validationError && (
-        <div style={{
-          backgroundColor: '#fef2f2',
-          border: '1px solid #fecaca',
-          padding: '1rem',
-          marginBottom: '1rem',
-          borderRadius: '4px'
-        }}>
-          <div style={{ fontWeight: 600, color: '#991b1b', marginBottom: '0.5rem' }}>
+        <div
+          style={{
+            backgroundColor: "#fef2f2",
+            border: "1px solid #fecaca",
+            padding: "1rem",
+            marginBottom: "1rem",
+            borderRadius: "4px",
+          }}
+        >
+          <div
+            style={{
+              fontWeight: 600,
+              color: "#991b1b",
+              marginBottom: "0.5rem",
+            }}
+          >
             {drop.validationError.error}
           </div>
-          <div style={{ color: '#dc2626', fontSize: '0.9rem' }}>
+          <div style={{ color: "#dc2626", fontSize: "0.9rem" }}>
             {drop.validationError.details}
           </div>
         </div>
@@ -88,44 +107,67 @@ function App() {
 
       {/* Files count - only show when ready (not processing, no validation errors) */}
       {drop.files.length > 0 && !drop.isProcessing && !drop.validationError && (
-        <p style={{ margin: '0 0 1rem 0' }}>
-          {validCount} file{validCount !== 1 ? 's' : ''} ready.
+        <p style={{ margin: "0 0 1rem 0" }}>
+          {validCount} file{validCount !== 1 ? "s" : ""} ready.
         </p>
       )}
 
       {/* Actions */}
       {drop.files.length > 0 && (
-        <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1rem' }}>
+        <div style={{ display: "flex", gap: "0.5rem", marginBottom: "1rem" }}>
           <button
             onClick={handleDeploy}
-            disabled={validCount === 0 || drop.isProcessing || isDeploying || !!deploymentUrl}
+            disabled={
+              validCount === 0 ||
+              drop.isProcessing ||
+              isDeploying ||
+              !!deploymentUrl
+            }
             style={{
-              padding: '0.75rem 1.5rem',
-              fontSize: '1rem',
-              cursor: validCount === 0 || drop.isProcessing || isDeploying || deploymentUrl ? 'not-allowed' : 'pointer',
-              border: 'none',
-              borderRadius: '4px',
-              backgroundColor: validCount === 0 || drop.isProcessing || isDeploying || deploymentUrl ? '#ccc' : '#0066cc',
-              color: 'white',
+              padding: "0.75rem 1.5rem",
+              fontSize: "1rem",
+              cursor:
+                validCount === 0 ||
+                drop.isProcessing ||
+                isDeploying ||
+                deploymentUrl
+                  ? "not-allowed"
+                  : "pointer",
+              border: "none",
+              borderRadius: "4px",
+              backgroundColor:
+                validCount === 0 ||
+                drop.isProcessing ||
+                isDeploying ||
+                deploymentUrl
+                  ? "#ccc"
+                  : "#0066cc",
+              color: "white",
               fontWeight: 500,
             }}
           >
-            {drop.isProcessing ? 'Processing...' : isDeploying ? 'Deploying...' : deploymentUrl ? 'Deployed ✓' : 'Deploy'}
+            {drop.isProcessing
+              ? "Processing..."
+              : isDeploying
+              ? "Deploying..."
+              : deploymentUrl
+              ? "Deployed ✓"
+              : "Deploy"}
           </button>
           <button
             onClick={() => {
               drop.clearAll();
-              setDeploymentUrl('');
-              setError('');
+              setDeploymentUrl("");
+              setError("");
               setIsDeploying(false);
             }}
             style={{
-              padding: '0.75rem 1.5rem',
-              fontSize: '1rem',
-              cursor: 'pointer',
-              border: '1px solid #ccc',
-              borderRadius: '4px',
-              backgroundColor: 'white',
+              padding: "0.75rem 1.5rem",
+              fontSize: "1rem",
+              cursor: "pointer",
+              border: "1px solid #ccc",
+              borderRadius: "4px",
+              backgroundColor: "white",
             }}
           >
             Clear
@@ -135,20 +177,28 @@ function App() {
 
       {/* Deployment success */}
       {deploymentUrl && (
-        <div style={{
-          backgroundColor: '#f0fdf4',
-          border: '1px solid #bbf7d0',
-          padding: '1rem',
-          borderRadius: '4px',
-        }}>
-          <div style={{ fontWeight: 600, color: '#166534', marginBottom: '0.5rem' }}>
+        <div
+          style={{
+            backgroundColor: "#f0fdf4",
+            border: "1px solid #bbf7d0",
+            padding: "1rem",
+            borderRadius: "4px",
+          }}
+        >
+          <div
+            style={{
+              fontWeight: 600,
+              color: "#166534",
+              marginBottom: "0.5rem",
+            }}
+          >
             Deployed successfully
           </div>
           <a
             href={deploymentUrl}
             target="_blank"
             rel="noopener noreferrer"
-            style={{ color: '#0066cc', wordBreak: 'break-all' }}
+            style={{ color: "#0066cc", wordBreak: "break-all" }}
           >
             {deploymentUrl}
           </a>
@@ -157,13 +207,15 @@ function App() {
 
       {/* Deployment error */}
       {error && !drop.validationError && (
-        <div style={{
-          backgroundColor: '#fef2f2',
-          border: '1px solid #fecaca',
-          padding: '1rem',
-          borderRadius: '4px',
-          color: '#991b1b',
-        }}>
+        <div
+          style={{
+            backgroundColor: "#fef2f2",
+            border: "1px solid #fecaca",
+            padding: "1rem",
+            borderRadius: "4px",
+            color: "#991b1b",
+          }}
+        >
           {error}
         </div>
       )}

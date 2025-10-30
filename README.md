@@ -80,11 +80,15 @@ function MyUploader() {
         {drop.isDragging ? '📂 Drop here' : '📁 Click or drag files/folders'}
       </div>
 
-      {/* Status */}
-      <p>{drop.statusText}</p>
+      {/* Status - using state machine */}
+      {drop.state.status && (
+        <p>
+          <strong>{drop.state.status.title}:</strong> {drop.state.status.details}
+        </p>
+      )}
 
       {/* File list */}
-      {drop.files.map(file => (
+      {drop.state.files.map(file => (
         <div key={file.id}>
           {file.name} - {file.status}
         </div>
@@ -93,7 +97,7 @@ function MyUploader() {
       {/* Upload button */}
       <button
         onClick={handleUpload}
-        disabled={drop.getValidFiles().length === 0}
+        disabled={drop.state.value !== 'ready'}
       >
         Upload {drop.getValidFiles().length} files
       </button>
@@ -203,19 +207,15 @@ interface DropOptions {
 
 ```typescript
 interface DropReturn {
-  // State
-  /** All processed files with their status */
-  files: ProcessedFile[];
-  /** Name of the source (file/folder/ZIP) that was dropped/selected */
-  sourceName: string;
-  /** Current status text */
-  statusText: string;
+  // State machine
+  /** Current state of the drop hook */
+  state: DropState;
+
+  // Convenience getters (computed from state)
   /** Whether currently processing files (ZIP extraction, etc.) */
   isProcessing: boolean;
   /** Whether user is currently dragging over the dropzone */
   isDragging: boolean;
-  /** Last validation error if any */
-  validationError: ClientError | null;
 
   // Primary API: Prop getters for easy integration
   /** Get props to spread on dropzone element (handles drag & drop) */
@@ -253,19 +253,111 @@ interface DropReturn {
     progress?: number;
   }) => void;
 }
+
+// State machine types
+type DropStateValue =
+  | 'idle'       // The hook is ready for files
+  | 'dragging'   // The user is dragging files over the dropzone
+  | 'processing' // Files are being validated and processed
+  | 'ready'      // Files are valid and ready for deployment
+  | 'error';     // An error occurred during processing
+
+interface DropState {
+  value: DropStateValue;
+  files: ProcessedFile[];
+  sourceName: string;
+  status: DropStatus | null;
+}
+
+interface DropStatus {
+  title: string;
+  details: string;
+}
 ```
+
+## State Machine
+
+The drop hook uses a state machine for predictable, clear state management. Instead of multiple boolean flags, you have a single `state.value` that represents exactly what's happening.
+
+### State Flow
+
+```
+idle → dragging → idle (drag leave without drop)
+idle → dragging → processing → ready (successful)
+idle → dragging → processing → error (failed)
+ready → dragging → processing → ... (new drop)
+error → dragging → processing → ... (retry)
+```
+
+### Using the State Machine
+
+```tsx
+function StatusIndicator({ drop }) {
+  const { state } = drop;
+
+  switch (state.value) {
+    case 'idle':
+      return <p>Drop files here or click to select</p>;
+
+    case 'dragging':
+      return <p>Drop your files now!</p>;
+
+    case 'processing':
+      return <p>{state.status?.details || 'Processing...'}</p>;
+
+    case 'ready':
+      return (
+        <div>
+          <p>✓ {state.files.length} files ready</p>
+          <button>Upload to Ship</button>
+        </div>
+      );
+
+    case 'error':
+      return (
+        <div>
+          <p>✗ {state.status?.title}</p>
+          <p>{state.status?.details}</p>
+          <button onClick={drop.clearAll}>Try Again</button>
+        </div>
+      );
+  }
+}
+```
+
+### Convenience Getters
+
+For simpler use cases, boolean convenience getters are provided:
+
+```tsx
+// These are computed from state.value (read-only projections)
+drop.isProcessing  // true when state.value === 'processing'
+drop.isDragging    // true when state.value === 'dragging'
+
+// For error information, use the state object
+drop.state.value === 'error'  // Check if in error state
+drop.state.status?.title      // Error title
+drop.state.status?.details    // Error details
+```
+
+### Benefits
+
+- **No impossible states** - Can't be `isProcessing=true` AND `isDragging=true`
+- **Clear transitions** - State flow is explicit and predictable
+- **Better TypeScript** - Discriminated unions provide type safety
+- **Easier debugging** - Single source of truth for what's happening
 
 ## Error Handling
 
 ### Per-File Error Display
 
-Each file in the `files` array contains its own `status` and `statusMessage`, allowing you to display granular errors for individual files:
+Each file in the `state.files` array contains its own `status` and `statusMessage`, allowing you to display granular errors for individual files:
 
 ```tsx
 function FileList({ drop }) {
   return (
     <div>
-      {drop.files.map(file => (
+      {drop.state.files.map(file => (
         <div key={file.id}>
           <span>{file.path}</span>
 
@@ -282,7 +374,7 @@ function FileList({ drop }) {
       ))}
 
       {/* If validation fails, allow user to clear all and try again */}
-      {drop.validationError && (
+      {drop.state.value === 'error' && (
         <button onClick={drop.clearAll}>
           Clear All & Try Again
         </button>
@@ -298,15 +390,15 @@ function FileList({ drop }) {
 - `empty_file` - File is 0 bytes
 - `ready` - File passed all validation and is ready for upload
 
-### Validation Error Summary
+### Error State Summary
 
-The `validationError` provides a summary when any files fail validation:
+When files fail validation or processing, check the error state:
 
 ```tsx
-{drop.validationError && (
+{drop.state.value === 'error' && drop.state.status && (
   <div>
-    <p>{drop.validationError.error}</p>
-    <p>{drop.validationError.details}</p>
+    <p>{drop.state.status.title}</p>
+    <p>{drop.state.status.details}</p>
   </div>
 )}
 ```
@@ -336,10 +428,10 @@ Use `clearAll()` to reset and try again:
 
 ```tsx
 // If validation fails, show user which files failed
-{drop.validationError && (
+{drop.state.value === 'error' && (
   <div>
     <p>Validation failed. Please fix the issues and try again:</p>
-    {drop.files.map(file => (
+    {drop.state.files.map(file => (
       <div key={file.id}>
         {file.path}: {file.statusMessage}
       </div>

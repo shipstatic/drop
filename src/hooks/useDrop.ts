@@ -17,8 +17,8 @@
  * </div>
  * ```
  */
-import { useState, useCallback, useRef } from 'react';
-import type { ProcessedFile, ClientError, FileStatus } from '../types';
+import { useState, useCallback, useRef, useMemo } from 'react';
+import type { ProcessedFile, ClientError, FileStatus, DropState } from '../types';
 import { extractZipToFiles, isZipFile } from '../utils/zipExtractor';
 import {
   createProcessedFile,
@@ -90,19 +90,15 @@ export interface DropOptions {
 }
 
 export interface DropReturn {
-  // State
-  /** All processed files with their status */
-  files: ProcessedFile[];
-  /** Name of the source (file/folder/ZIP) that was dropped/selected */
-  sourceName: string;
-  /** Current status text */
-  statusText: string;
+  // State machine
+  /** Current state of the drop hook */
+  state: DropState;
+
+  // Convenience getters (computed from state)
   /** Whether currently processing files (ZIP extraction, etc.) */
   isProcessing: boolean;
   /** Whether user is currently dragging over the dropzone */
   isDragging: boolean;
-  /** Last validation error if any */
-  validationError: ClientError | null;
 
   // Primary API: Prop getters for easy integration
   /** Get props to spread on dropzone element (handles drag & drop) */
@@ -160,17 +156,24 @@ export function useDrop(options: DropOptions): DropReturn {
     stripPrefix = true,
   } = options;
 
-  // State
-  const [files, setFiles] = useState<ProcessedFile[]>([]);
-  const [sourceName, setSourceName] = useState('');
-  const [statusText, setStatusText] = useState('');
-  const [isProcessing, setIsProcessing] = useState(false);
-  const [isDragging, setIsDragging] = useState(false);
-  const [validationError, setValidationError] = useState<ClientError | null>(null);
+  // Initial state
+  const initialState: DropState = {
+    value: 'idle',
+    files: [],
+    sourceName: '',
+    status: null,
+  };
+
+  // State machine
+  const [state, setState] = useState<DropState>(initialState);
 
   // Refs
   const isProcessingRef = useRef(false);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  // Computed convenience getters
+  const isProcessing = useMemo(() => state.value === 'processing', [state.value]);
+  const isDragging = useMemo(() => state.value === 'dragging', [state.value]);
 
   const processFiles = useCallback(async (newFiles: File[]) => {
     // Guard against concurrent calls
@@ -180,18 +183,17 @@ export function useDrop(options: DropOptions): DropReturn {
     }
 
     if (!newFiles || newFiles.length === 0) {
-      setStatusText('No files selected.');
       return;
     }
 
-    // Set both ref (synchronous guard) and state (UI indicator)
+    // Set ref (synchronous guard) and transition to processing state
     isProcessingRef.current = true;
-    setIsProcessing(true);
-
-    // Reset state
-    setFiles([]);
-    setValidationError(null);
-    setStatusText('Processing files...');
+    setState({
+      value: 'processing',
+      files: [],
+      sourceName: '',
+      status: { title: 'Processing...', details: 'Validating and preparing files.' },
+    });
 
     try {
       // Step 1: Detect source name from input
@@ -213,8 +215,6 @@ export function useDrop(options: DropOptions): DropReturn {
         }
       }
 
-      setSourceName(detectedSourceName);
-
       // Step 2: Extract ZIP only if single file is dropped and it's a ZIP
       // For multiple files, treat ZIPs as regular files (don't extract)
       const allFiles: File[] = [];
@@ -222,7 +222,10 @@ export function useDrop(options: DropOptions): DropReturn {
 
       if (shouldExtractZip) {
         const zipFile = newFiles[0];
-        setStatusText(`Extracting ${zipFile.name}...`);
+        setState(prev => ({
+          ...prev,
+          status: { title: 'Extracting...', details: `Extracting ${zipFile.name}...` },
+        }));
         const { files: extractedFiles, errors } = await extractZipToFiles(zipFile);
 
         if (errors.length > 0) {
@@ -248,7 +251,10 @@ export function useDrop(options: DropOptions): DropReturn {
       const cleanFiles = allFiles.filter(f => validPaths.has(getFilePath(f)));
 
       // Step 4: Convert all Files to ProcessedFiles
-      setStatusText('Processing files...');
+      setState(prev => ({
+        ...prev,
+        status: { title: 'Processing...', details: 'Processing files...' },
+      }));
       const processedFiles = await Promise.all(
         cleanFiles.map(file => createProcessedFile(file))
       );
@@ -260,80 +266,110 @@ export function useDrop(options: DropOptions): DropReturn {
       const config = await ship.getConfig();
       const validation = validateFiles(finalFiles, config);
 
-      setFiles(validation.files);
-      setValidationError(validation.error as ClientError | null);
-
       if (validation.error) {
-        setStatusText(validation.error.details);
+        // Transition to error state
+        setState({
+          value: 'error',
+          files: validation.files,
+          sourceName: detectedSourceName,
+          status: { title: validation.error.error, details: validation.error.details },
+        });
         onValidationError?.(validation.error as ClientError);
       } else if (validation.validFiles.length > 0) {
-        setStatusText(`${validation.validFiles.length} file(s) ready.`);
+        // Transition to ready state
+        setState({
+          value: 'ready',
+          files: validation.files,
+          sourceName: detectedSourceName,
+          status: { title: 'Ready', details: `${validation.validFiles.length} file(s) are ready.` },
+        });
         onFilesReady?.(validation.validFiles);
       } else {
+        // Handle case where no valid files were found
         const noValidError: ClientError = {
           error: 'No Valid Files',
-          details: 'No files are valid for upload after processing.',
+          details: 'None of the provided files could be processed.',
           isClientError: true,
         };
-        setStatusText(noValidError.details);
-        setValidationError(noValidError);
+        setState({
+          value: 'error',
+          files: validation.files,
+          sourceName: detectedSourceName,
+          status: { title: noValidError.error, details: noValidError.details },
+        });
         onValidationError?.(noValidError);
       }
     } catch (error) {
+      // Transition to error state on exception
       const processingError: ClientError = {
         error: 'Processing Failed',
         details: `Failed to process files: ${error instanceof Error ? error.message : String(error)}`,
         isClientError: true,
       };
-      setStatusText(processingError.details);
-      setValidationError(processingError);
+      setState(prev => ({
+        ...prev,
+        value: 'error',
+        status: { title: processingError.error, details: processingError.details },
+      }));
       onValidationError?.(processingError);
     } finally {
-      // Always clear both ref and state, even on error
+      // Always clear processing ref, even on error
       isProcessingRef.current = false;
-      setIsProcessing(false);
     }
   }, [ship, onValidationError, onFilesReady, stripPrefix]);
 
   const clearAll = useCallback(() => {
-    setFiles([]);
-    setSourceName('');
-    setStatusText('');
-    setValidationError(null);
-    setIsDragging(false);
+    setState(initialState);
     isProcessingRef.current = false;
-    setIsProcessing(false);
   }, []);
 
   const getValidFilesCallback = useCallback(() => {
-    return getValidFiles(files);
-  }, [files]);
+    return getValidFiles(state.files);
+  }, [state.files]);
 
   const updateFileStatus = useCallback((
     fileId: string,
-    state: { status: FileStatus; statusMessage?: string; progress?: number }
+    fileState: { status: FileStatus; statusMessage?: string; progress?: number }
   ) => {
-    setFiles(prev => prev.map(file =>
-      file.id === fileId
-        ? { ...file, ...state }
-        : file
-    ));
+    setState(prev => ({
+      ...prev,
+      files: prev.files.map(file =>
+        file.id === fileId
+          ? { ...file, ...fileState }
+          : file
+      ),
+    }));
   }, []);
 
   // Drag & drop event handlers
   const handleDragOver = useCallback((e: React.DragEvent) => {
     e.preventDefault();
-    setIsDragging(true);
+    setState(prev => {
+      // Only allow dragging from idle, ready, or error states
+      if (prev.value === 'idle' || prev.value === 'ready' || prev.value === 'error') {
+        return { ...prev, value: 'dragging' };
+      }
+      return prev;
+    });
   }, []);
 
   const handleDragLeave = useCallback((e: React.DragEvent) => {
     e.preventDefault();
-    setIsDragging(false);
+    setState(prev => {
+      // Only transition out of dragging state
+      if (prev.value !== 'dragging') return prev;
+
+      // Determine which state to return to based on current files/status
+      const nextValue = prev.files.length > 0
+        ? (prev.status?.title === 'Ready' ? 'ready' : 'error')
+        : 'idle';
+
+      return { ...prev, value: nextValue };
+    });
   }, []);
 
   const handleDrop = useCallback(async (e: React.DragEvent) => {
     e.preventDefault();
-    setIsDragging(false);
 
     const items = Array.from(e.dataTransfer.items);
     const files: File[] = [];
@@ -361,8 +397,11 @@ export function useDrop(options: DropOptions): DropReturn {
 
     if (files.length > 0) {
       await processFiles(files);
+    } else if (state.value === 'dragging') {
+      // Return to idle if drop was empty
+      setState(prev => ({ ...prev, value: 'idle' }));
     }
-  }, [processFiles]);
+  }, [processFiles, state.value]);
 
   // File input handlers
   const handleInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
@@ -394,13 +433,12 @@ export function useDrop(options: DropOptions): DropReturn {
   }), [handleInputChange]);
 
   return {
-    // State
-    files,
-    sourceName,
-    statusText,
+    // State machine
+    state,
+
+    // Convenience getters (computed from state)
     isProcessing,
     isDragging,
-    validationError,
 
     // Primary API: Prop getters
     getDropzoneProps,
