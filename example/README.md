@@ -1,85 +1,147 @@
 # Drop + Ship Example
 
-A minimal example showing the simplicity and power of combining `@shipstatic/drop` with `@shipstatic/ship`.
+A complete example demonstrating `@shipstatic/drop`'s **state machine architecture** with `@shipstatic/ship`.
 
 ## What This Shows
 
-This **250-line example** demonstrates a complete file deployment workflow:
+This **260-line example** demonstrates a production-ready file deployment workflow:
 
-✅ **Drag & drop** files or folders
-✅ **Click to browse** with folder selection support
-✅ **Shows source name** (file or folder being dropped)
-✅ **File count** display
-✅ **Deploy** with one click
+✅ **Drag & drop** files or folders with visual feedback
+✅ **State machine UI** - Different visuals for each state
+✅ **Source name display** (ZIP/folder/file detection)
+✅ **File list** with expandable details and per-file status
+✅ **One-click deploy** with disabled state handling
 ✅ **Success state** with deployment URL
 ✅ **Error handling**:
-  - Granular validation errors (per-file feedback)
-  - General deployment errors
-✅ **State management**:
-  - Processing state (`drop.isProcessing`)
-  - Validation state (`drop.validationError`)
-  - Deployment state (success/error)
+  - Validation errors (client-side)
+  - Deployment errors (server-side)
+  - Clear error/success visual separation
+✅ **State machine architecture**:
+  - `idle` → `dragging` → `processing` → `ready` / `error`
+  - Explicit state-based rendering
+  - No impossible states
 
 ## The Code
 
-The entire implementation is in [`src/App.tsx`](./src/App.tsx) - approximately 250 lines including:
+The entire implementation is in [`src/App.tsx`](./src/App.tsx):
 
-- Dropzone with drag & drop + click-to-browse
-- Folder traversal using `webkitGetAsEntry` API
-- File processing via `useDrop()` hook
-- Deployment via `ship.deployments.create()`
-- Complete error handling and state management
+- **State machine UI** - Renders differently for each state value
+- **Prop getters** - `getDropzoneProps()` and `getInputProps()` for zero-config integration
+- **Computed values** - `canDeploy` derived from `drop.state.value`
+- **File processing** - Automatic via `useDrop()` hook
+- **Deployment** - One-line `ship.deployments.create()`
+- **Expandable file list** - Shows per-file status with visual indicators
 
 ## Running
 
 ```bash
-# Install dependencies
-pnpm install
-
-# Start dev server
-pnpm dev
-
-# Build
-pnpm build
+pnpm install  # Install dependencies
+pnpm dev      # Start dev server at http://localhost:5173
+pnpm build    # Build for production
 ```
 
-## The Hook
+## State Machine API
 
 ```typescript
-const drop = useDrop({});
+const drop = useDrop({ ship });
 
-// Everything you need:
-drop.files          // All processed files
-drop.isProcessing   // Processing state
-drop.validationError // Validation errors
-drop.statusText     // Status message
-drop.processFiles() // Process dropped files
-drop.getValidFiles() // Get valid files for deployment
-drop.clearAll()     // Reset state
+// State machine (single source of truth)
+drop.state.value       // 'idle' | 'dragging' | 'processing' | 'ready' | 'error'
+drop.state.files       // ProcessedFile[] with per-file status
+drop.state.sourceName  // Detected source name (ZIP/folder/file)
+drop.state.status      // { title: string, details: string } | null
+
+// Convenience getters (computed from state)
+drop.isProcessing      // true when state.value === 'processing'
+drop.isDragging        // true when state.value === 'dragging'
+
+// Actions
+drop.getValidFiles()   // Get files ready for deployment
+drop.clearAll()        // Reset to initial state
+drop.processFiles()    // Manually process files (advanced)
+
+// Prop getters (zero-config integration)
+drop.getDropzoneProps()  // Spread on dropzone div
+drop.getInputProps()     // Spread on input element
+```
+
+## State-Based UI
+
+The example renders **different UI for each state**, demonstrating the state machine pattern:
+
+### `idle` State
+```tsx
+// Dropzone ready for files
+<div {...drop.getDropzoneProps()}>
+  📁 Click or drop files/folders
+</div>
+```
+
+### `dragging` State
+```tsx
+// Visual feedback with blue background
+<div style={{ backgroundColor: drop.isDragging ? "#f0f9ff" : "white" }}>
+  📂 Drop here
+</div>
+```
+
+### `processing` State
+```tsx
+// Blue status card
+{drop.state.value === "processing" && drop.state.status && (
+  <div className="blue-card">
+    <strong>{drop.state.status.title}</strong>
+    <p>{drop.state.status.details}</p>
+  </div>
+)}
+```
+
+### `ready` State
+```tsx
+// Green success card with file count
+{drop.state.value === "ready" && (
+  <div className="green-card">
+    <strong>{drop.state.sourceName}</strong>
+    <p>{drop.getValidFiles().length} files ready to deploy</p>
+  </div>
+)}
+```
+
+### `error` State
+```tsx
+// Red error card
+{drop.state.value === "error" && drop.state.status && (
+  <div className="red-card">
+    <strong>{drop.state.status.title}</strong>
+    <p>{drop.state.status.details}</p>
+  </div>
+)}
 ```
 
 ## Key Features
 
-### 1. Folder Structure Preservation
+### 1. Computed Values
 
-The example uses `webkitGetAsEntry` to traverse folders and preserve structure:
+Clean button logic derived from state:
 
 ```typescript
-const entry = item.webkitGetAsEntry?.();
-await traverseFileTree(entry, files, entry.isDirectory ? entry.name : '');
+const canDeploy = drop.state.value === "ready" && !isDeploying && !deploymentUrl;
+
+<button disabled={!canDeploy}>Deploy</button>
 ```
 
-Each file gets its `webkitRelativePath` set, which Ship SDK uses to recreate the folder structure on deployment.
+### 2. Explicit State Handling
 
-### 2. Automatic Validation
+No boolean soup - just check the state value:
 
-Drop automatically validates files against Ship's limits:
-- File size limits
-- Total size limits
-- File count limits
-- MIME type validation
+```typescript
+// ✅ Clear and explicit
+{drop.state.value === "ready" && <ReadyUI />}
+{drop.state.value === "error" && <ErrorUI />}
 
-Validation errors show exactly which files failed and why.
+// ❌ Old way (multiple booleans)
+{!isProcessing && !validationError && files.length > 0 && <ReadyUI />}
+```
 
 ### 3. One-Line Deployment
 
@@ -89,45 +151,52 @@ const files = validFiles.map(f => f.file);
 const result = await ship.deployments.create(files);
 ```
 
-## States
-
-The example handles all states:
-
-1. **Empty** - Initial state
-2. **Dragging** - Visual feedback while dragging
-3. **Processing** - Files being processed/validated
-4. **Ready** - Files validated and ready to deploy
-5. **Deploying** - Deployment in progress (handled by Ship SDK)
-6. **Success** - Deployment URL shown
-7. **Error** - Validation or deployment errors shown
-
-## Architecture
+## State Machine Flow
 
 ```
-User drops files
-       ↓
-webkitGetAsEntry (folder traversal)
-       ↓
-drop.processFiles() (ZIP extraction, path normalization)
-       ↓
-Ship SDK validation (size, count, MIME type)
-       ↓
-drop.getValidFiles() (ready for deployment)
-       ↓
-ship.deployments.create() (upload & deploy)
-       ↓
-Deployment URL
+            ┌─────────┐
+            │  idle   │ ← Initial state
+            └────┬────┘
+                 │ onDragOver
+                 ↓
+         ┌───────────────┐
+         │   dragging    │ ← Visual feedback
+         └───────┬───────┘
+                 │ onDrop
+                 ↓
+         ┌───────────────┐
+         │  processing   │ ← ZIP extraction, validation
+         └───────┬───────┘
+                 │
+        ┌────────┴────────┐
+        ↓                 ↓
+  ┌─────────┐       ┌─────────┐
+  │  ready  │       │  error  │ ← Terminal states
+  └─────────┘       └─────────┘
+        │                 │
+        └────────┬────────┘
+                 ↓ clearAll()
+            ┌─────────┐
+            │  idle   │
+            └─────────┘
 ```
 
-## Why So Simple?
+## Why This Architecture?
 
+**State Machine Benefits:**
+- ✅ **No impossible states** - Can't be processing AND ready simultaneously
+- ✅ **Explicit transitions** - Clear state flow easy to reason about
+- ✅ **Type safety** - TypeScript discriminated unions prevent bugs
+- ✅ **Testable** - Each state has predictable behavior
+
+**Simplicity Through Abstraction:**
 - **No form state management** - Drop hook handles everything
 - **No manual validation** - Ship SDK provides config & validates
-- **No file readers** - Files are passed directly to Ship
+- **No file readers** - Files passed directly to Ship
+- **No folder parsing** - Built into `getDropzoneProps()`
 - **No progress tracking** - Ship SDK handles upload internally
-- **No folder parsing** - Browser's `webkitGetAsEntry` does it
 
-The complexity is in the packages. Your code stays simple.
+The complexity lives in the packages. Your code stays clean.
 
 ## Learn More
 
