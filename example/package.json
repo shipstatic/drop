@@ -9,7 +9,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@shipstatic/drop": "^0.1.6",
+    "@shipstatic/drop": "^0.1.7",
     "@shipstatic/ship": "^0.3.5",
     "react": "^19.2.0",
     "react-dom": "^19.2.0"

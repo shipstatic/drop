@@ -4,9 +4,25 @@
 
 A focused React hook for preparing files for deployment with [@shipstatic/ship](https://github.com/shipstatic/ship). Handles ZIP extraction, path normalization, and validation - everything needed before calling `ship.deploy()`.
 
-**v0.1.6 Update:** Now includes built-in drag & drop support with prop getters! No need to manually implement drag & drop handlers - just spread `{...drop.getDropzoneProps()}` on your container and `{...drop.getInputProps()}` on the input element. Folder structure preservation is handled automatically.
+Built-in drag & drop support with prop getters! No need to manually implement drag & drop handlers - just spread `{...drop.getDropzoneProps()}` on your container and `{...drop.getInputProps()}` on the input element. Folder structure preservation is handled automatically.
 
 **Note:** MD5 calculation is handled by Ship SDK during deployment. Drop focuses on file processing and UI state management.
+
+## Table of Contents
+
+- [Why Headless?](#why-headless)
+- [Features](#features)
+- [Installation](#installation)
+- [Requirements](#requirements)
+- [Quick Start](#quick-start)
+- [Configuration Architecture](#️-configuration-architecture)
+- [Advanced Usage](#advanced-programmatic-file-picker)
+- [API Reference](#api)
+- [State Machine](#state-machine)
+- [Error Handling](#error-handling)
+- [Types](#types)
+- [Ship SDK Integration](#direct-ship-sdk-integration)
+- [Architecture Decisions](#architecture-decisions)
 
 ## Why Headless?
 
@@ -16,8 +32,7 @@ This package provides **zero UI components** - just a React hook with built-in d
 1. **Built-in drag & drop** - Proper folder support with `webkitGetAsEntry` API, all handled internally
 2. **Prop getters API** - Similar to `react-dropzone`, just spread props on your elements
 3. **Full styling control** - No imposed CSS, design system, or theming
-4. **Smaller bundle** - No UI components means less bloat
-5. **Ship SDK integration** - Purpose-built for Ship deployments, not a generic file upload library
+4. **Ship SDK integration** - Purpose-built for Ship deployments, not a generic file upload library
 
 **What's different from other libraries:**
 - Generic dropzone libraries don't preserve folder structure properly
@@ -34,6 +49,7 @@ This package provides **zero UI components** - just a React hook with built-in d
 - 🔒 **Path Sanitization** - Defense-in-depth protection against directory traversal attacks
 - 📁 **Folder Structure Preservation** - Proper folder paths via `webkitRelativePath`
 - 🎨 **Headless UI** - No visual components, just logic and state management
+- 📘 **Full TypeScript Support** - Complete type definitions with discriminated unions for state machine
 - 🚀 **Focused Scope** - File processing and UI state only. MD5 calculation and deployment handled by Ship SDK
 
 ## Installation
@@ -43,6 +59,17 @@ npm install @shipstatic/drop
 # or
 pnpm add @shipstatic/drop
 ```
+
+## Requirements
+
+- **React**: ^18.0.0 or ^19.0.0
+- **TypeScript**: Full TypeScript support with exported types
+- **Browsers**: Modern browsers with support for:
+  - File API (universal support)
+  - DataTransfer API for drag & drop (universal support)
+  - `webkitGetAsEntry` for folder uploads (Chrome, Edge, Safari 11.1+, Firefox 50+)
+
+**Note on folder uploads**: The folder drag & drop feature uses the `webkitGetAsEntry` API. While widely supported, older browsers may only support file-by-file selection. ZIP extraction works universally as a fallback.
 
 ## Quick Start
 
@@ -231,7 +258,7 @@ interface DropReturn {
     type: 'file';
     style: { display: string };
     multiple: boolean;
-    webkitdirectory: string;
+    webkitdirectory: string; // Note: React expects string ('') for boolean attributes
     onChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
   };
 
