@@ -37,44 +37,48 @@ async function traverseFileTree(
   files: File[],
   currentPath = ''
 ): Promise<void> {
-  if (entry.isFile) {
-    const file = await new Promise<File>((resolve, reject) => {
-      (entry as FileSystemFileEntry).file(resolve, reject);
-    });
-    const relativePath = currentPath
-      ? `${currentPath}/${file.name}`
-      : file.name;
-    Object.defineProperty(file, 'webkitRelativePath', {
-      value: relativePath,
-      writable: false,
-    });
-    files.push(file);
-  } else if (entry.isDirectory) {
-    const dirReader = (entry as FileSystemDirectoryEntry).createReader();
-    let allEntries: FileSystemEntry[] = [];
+  try {
+    if (entry.isFile) {
+      const file = await new Promise<File>((resolve, reject) => {
+        (entry as FileSystemFileEntry).file(resolve, reject);
+      });
+      const relativePath = currentPath
+        ? `${currentPath}/${file.name}`
+        : file.name;
+      Object.defineProperty(file, 'webkitRelativePath', {
+        value: relativePath,
+        writable: false,
+      });
+      files.push(file);
+    } else if (entry.isDirectory) {
+      const dirReader = (entry as FileSystemDirectoryEntry).createReader();
+      let allEntries: FileSystemEntry[] = [];
 
-    // Read all entries (may require multiple calls due to browser limits)
-    const readEntriesBatch = async (): Promise<void> => {
-      const batch = await new Promise<FileSystemEntry[]>(
-        (resolve, reject) => {
-          dirReader.readEntries(resolve, reject);
+      // Read all entries (may require multiple calls due to browser limits)
+      const readEntriesBatch = async (): Promise<void> => {
+        const batch = await new Promise<FileSystemEntry[]>(
+          (resolve, reject) => {
+            dirReader.readEntries(resolve, reject);
+          }
+        );
+        if (batch.length > 0) {
+          allEntries = allEntries.concat(batch);
+          await readEntriesBatch();
         }
-      );
-      if (batch.length > 0) {
-        allEntries = allEntries.concat(batch);
-        await readEntriesBatch();
-      }
-    };
-    await readEntriesBatch();
+      };
+      await readEntriesBatch();
 
-    for (const childEntry of allEntries) {
-      // For directories: include directory name in path (we're entering it)
-      // For files: don't include filename (it will be appended when processing the file)
-      const entryPath = childEntry.isDirectory
-        ? (currentPath ? `${currentPath}/${childEntry.name}` : childEntry.name)
-        : currentPath;
-      await traverseFileTree(childEntry, files, entryPath);
+      for (const childEntry of allEntries) {
+        // For directories: include directory name in path (we're entering it)
+        // For files: don't include filename (it will be appended when processing the file)
+        const entryPath = childEntry.isDirectory
+          ? (currentPath ? `${currentPath}/${childEntry.name}` : childEntry.name)
+          : currentPath;
+        await traverseFileTree(childEntry, files, entryPath);
+      }
     }
+  } catch (error) {
+    console.warn(`Error traversing file tree for entry ${entry.name}:`, error);
   }
 }
 
@@ -378,14 +382,29 @@ export function useDrop(options: DropOptions): DropReturn {
     let hasEntries = false;
     for (const item of items) {
       if (item.kind === 'file') {
-        const entry = item.webkitGetAsEntry?.();
-        if (entry) {
-          hasEntries = true;
-          await traverseFileTree(
-            entry,
-            files,
-            entry.isDirectory ? entry.name : ''
-          );
+        try {
+          const entry = item.webkitGetAsEntry?.();
+          if (entry) {
+            hasEntries = true;
+            await traverseFileTree(
+              entry,
+              files,
+              entry.isDirectory ? entry.name : ''
+            );
+          } else {
+            // Fallback: webkitGetAsEntry failed (returned null), try getAsFile
+            const file = item.getAsFile();
+            if (file) {
+              files.push(file);
+            }
+          }
+        } catch (error) {
+          console.warn('Error processing drop item:', error);
+          // Try fallback on error
+          const file = item.getAsFile();
+          if (file) {
+            files.push(file);
+          }
         }
       }
     }
