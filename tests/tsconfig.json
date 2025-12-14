@@ -1,0 +1,24 @@
+{
+    "extends": "../tsconfig.json",
+    "compilerOptions": {
+        "composite": false,
+        "noEmit": true,
+        "baseUrl": "..",
+        "rootDir": "..",
+        "paths": {
+            "@/*": [
+                "src/*"
+            ]
+        },
+        "types": [
+            "vitest/globals",
+            "node"
+        ]
+    },
+    "include": [
+        "./**/*.ts",
+        "./**/*.tsx",
+        "../src/**/*.ts",
+        "../src/**/*.tsx"
+    ]
+}

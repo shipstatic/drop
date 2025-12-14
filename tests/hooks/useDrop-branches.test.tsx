@@ -31,7 +31,7 @@ vi.mock('@shipstatic/ship', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@shipstatic/ship')>();
   return {
     ...actual,
-    validateFiles: (...args: any[]) => mockValidateFiles(...args),
+    validateFiles: (files: any[]) => mockValidateFiles(files),
     formatFileSize: actual.formatFileSize,
     getValidFiles: (files: any[]) => files.filter(f => f.status === 'ready'),
     filterJunk: actual.filterJunk,
@@ -79,7 +79,7 @@ describe('useDrop - branch coverage', () => {
           details: 'File exceeds size limit',
           isClientError: true,
         },
-      }));
+      } as any));
 
       const { result } = renderHook(() =>
         useDrop({ ship: mockShip, onValidationError })

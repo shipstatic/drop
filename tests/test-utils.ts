@@ -62,5 +62,6 @@ export const createMockProcessedFile = (
   lastModified: Date.now(),
   status: FILE_STATUSES.READY,
   md5: 'mocked-md5-hash',
+  content: new File([], 'mock-file'),
   ...overrides,
 });
