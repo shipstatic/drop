@@ -1,19 +1,21 @@
+import {
+  formatFileSize as shipFormatFileSize,
+} from '@shipstatic/ship';
+import { getMimeType } from './mimeType';
+import { FILE_STATUSES, type ProcessedFile, type FileStatus } from '../types';
+
 /**
  * Unified file processing utilities
  * Converts Files directly to ProcessedFiles
  */
-import {
-  formatFileSize as shipFormatFileSize,
-  getValidFiles as shipGetValidFiles,
-} from '@shipstatic/ship';
-import { getMimeType } from './mimeType';
-import { FILE_STATUSES, type ProcessedFile, type FileStatus } from '../types';
 
 /**
  * Format file size to human-readable string
  * Re-exported from Ship SDK for convenience
  */
 export const formatFileSize = shipFormatFileSize;
+
+// getValidFiles removed - imported directly from @shipstatic/ship
 
 /**
  * Create a ProcessedFile from a File object
@@ -57,11 +59,7 @@ export async function createProcessedFile(
   };
 }
 
-/**
- * Get only the valid files (status: READY) from a list
- * Re-exported from Ship SDK for convenience
- */
-export const getValidFiles = shipGetValidFiles<ProcessedFile>;
+
 
 /**
  * Strip common directory prefix from file paths
@@ -95,3 +93,57 @@ export function stripCommonPrefix(files: ProcessedFile[]): ProcessedFile[] {
   }));
 }
 
+
+/**
+ * Recursively traverse FileSystemEntry from drag & drop to collect all files
+ * Properly sets webkitRelativePath to preserve folder structure
+ */
+export async function traverseFileTree(
+  entry: FileSystemEntry,
+  files: File[],
+  currentPath = ''
+): Promise<void> {
+  try {
+    if (entry.isFile) {
+      const file = await new Promise<File>((resolve, reject) => {
+        (entry as FileSystemFileEntry).file(resolve, reject);
+      });
+      const relativePath = currentPath
+        ? `${currentPath}/${file.name}`
+        : file.name;
+      Object.defineProperty(file, 'webkitRelativePath', {
+        value: relativePath,
+        writable: false,
+      });
+      files.push(file);
+    } else if (entry.isDirectory) {
+      const dirReader = (entry as FileSystemDirectoryEntry).createReader();
+      let allEntries: FileSystemEntry[] = [];
+
+      // Read all entries (may require multiple calls due to browser limits)
+      const readEntriesBatch = async (): Promise<void> => {
+        const batch = await new Promise<FileSystemEntry[]>(
+          (resolve, reject) => {
+            dirReader.readEntries(resolve, reject);
+          }
+        );
+        if (batch.length > 0) {
+          allEntries = allEntries.concat(batch);
+          await readEntriesBatch();
+        }
+      };
+      await readEntriesBatch();
+
+      for (const childEntry of allEntries) {
+        // For directories: include directory name in path (we're entering it)
+        // For files: don't include filename (it will be appended when processing the file)
+        const entryPath = childEntry.isDirectory
+          ? (currentPath ? `${currentPath}/${childEntry.name}` : childEntry.name)
+          : currentPath;
+        await traverseFileTree(childEntry, files, entryPath);
+      }
+    }
+  } catch (error) {
+    console.warn(`Error traversing file tree for entry ${entry.name}:`, error);
+  }
+}

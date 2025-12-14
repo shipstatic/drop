@@ -18,69 +18,15 @@
  * ```
  */
 import { useState, useCallback, useRef, useMemo } from 'react';
-import type { ProcessedFile, ClientError, FileStatus, DropState } from '../types';
+import type { ProcessedFile, ClientError, FileStatus, DropState, DropStateValue } from '../types';
 import { extractZipToFiles, isZipFile } from '../utils/zipExtractor';
 import {
   createProcessedFile,
-  getValidFiles,
   stripCommonPrefix,
+  traverseFileTree,
 } from '../utils/fileProcessing';
 import type { Ship } from '@shipstatic/ship';
-import { validateFiles, filterJunk } from '@shipstatic/ship';
-
-/**
- * Recursively traverse FileSystemEntry from drag & drop to collect all files
- * Properly sets webkitRelativePath to preserve folder structure
- */
-async function traverseFileTree(
-  entry: FileSystemEntry,
-  files: File[],
-  currentPath = ''
-): Promise<void> {
-  try {
-    if (entry.isFile) {
-      const file = await new Promise<File>((resolve, reject) => {
-        (entry as FileSystemFileEntry).file(resolve, reject);
-      });
-      const relativePath = currentPath
-        ? `${currentPath}/${file.name}`
-        : file.name;
-      Object.defineProperty(file, 'webkitRelativePath', {
-        value: relativePath,
-        writable: false,
-      });
-      files.push(file);
-    } else if (entry.isDirectory) {
-      const dirReader = (entry as FileSystemDirectoryEntry).createReader();
-      let allEntries: FileSystemEntry[] = [];
-
-      // Read all entries (may require multiple calls due to browser limits)
-      const readEntriesBatch = async (): Promise<void> => {
-        const batch = await new Promise<FileSystemEntry[]>(
-          (resolve, reject) => {
-            dirReader.readEntries(resolve, reject);
-          }
-        );
-        if (batch.length > 0) {
-          allEntries = allEntries.concat(batch);
-          await readEntriesBatch();
-        }
-      };
-      await readEntriesBatch();
-
-      for (const childEntry of allEntries) {
-        // For directories: include directory name in path (we're entering it)
-        // For files: don't include filename (it will be appended when processing the file)
-        const entryPath = childEntry.isDirectory
-          ? (currentPath ? `${currentPath}/${childEntry.name}` : childEntry.name)
-          : currentPath;
-        await traverseFileTree(childEntry, files, entryPath);
-      }
-    }
-  } catch (error) {
-    console.warn(`Error traversing file tree for entry ${entry.name}:`, error);
-  }
-}
+import { validateFiles, filterJunk, getValidFiles } from '@shipstatic/ship';
 
 export interface DropOptions {
   /** Ship SDK instance (required for validation) */
@@ -94,15 +40,22 @@ export interface DropOptions {
 }
 
 export interface DropReturn {
-  // State machine
-  /** Current state of the drop hook */
-  state: DropState;
+  // State machine -- Internal only now
+  // state: DropState; // REMOVED per user request for "impossible simplicity"
 
   // Convenience getters (computed from state)
+  /** Current phase of the state machine */
+  phase: DropStateValue;
   /** Whether currently processing files (ZIP extraction, etc.) */
   isProcessing: boolean;
   /** Whether user is currently dragging over the dropzone */
   isDragging: boolean;
+  /** Flattened access to files */
+  files: ProcessedFile[];
+  /** Flattened access to source name */
+  sourceName: string;
+  /** Flattened access to status */
+  status: { title: string; details: string } | null;
 
   // Primary API: Prop getters for easy integration
   /** Get props to spread on dropzone element (handles drag & drop) */
@@ -132,7 +85,7 @@ export interface DropReturn {
 
   // Helpers
   /** Get only valid files ready for upload */
-  getValidFiles: () => ProcessedFile[];
+  validFiles: ProcessedFile[];
   /** Update upload state for a specific file (status, progress, message) */
   updateFileStatus: (fileId: string, state: { status: FileStatus; statusMessage?: string; progress?: number }) => void;
 }
@@ -178,6 +131,9 @@ export function useDrop(options: DropOptions): DropReturn {
   // Computed convenience getters
   const isProcessing = useMemo(() => state.value === 'processing', [state.value]);
   const isDragging = useMemo(() => state.value === 'dragging', [state.value]);
+
+  // Computed valid files
+  const validFiles = useMemo(() => getValidFiles<ProcessedFile>(state.files), [state.files]);
 
   const processFiles = useCallback(async (newFiles: File[]) => {
     // Guard against concurrent calls
@@ -276,7 +232,11 @@ export function useDrop(options: DropOptions): DropReturn {
           value: 'error',
           files: validation.files,
           sourceName: detectedSourceName,
-          status: { title: validation.error.error, details: validation.error.details },
+          status: {
+            title: validation.error.error,
+            details: validation.error.details,
+            errors: validation.error.errors
+          },
         });
         onValidationError?.(validation.error as ClientError);
       } else if (validation.validFiles.length > 0) {
@@ -326,10 +286,6 @@ export function useDrop(options: DropOptions): DropReturn {
     setState(initialState);
     isProcessingRef.current = false;
   }, []);
-
-  const getValidFilesCallback = useCallback(() => {
-    return getValidFiles(state.files);
-  }, [state.files]);
 
   const updateFileStatus = useCallback((
     fileId: string,
@@ -453,11 +409,15 @@ export function useDrop(options: DropOptions): DropReturn {
 
   return {
     // State machine
-    state,
+    // state, // REMOVED
 
     // Convenience getters (computed from state)
+    phase: state.value,
     isProcessing,
     isDragging,
+    files: state.files,
+    sourceName: state.sourceName,
+    status: state.status,
 
     // Primary API: Prop getters
     getDropzoneProps,
@@ -469,7 +429,7 @@ export function useDrop(options: DropOptions): DropReturn {
     clearAll,
 
     // Helpers
-    getValidFiles: getValidFilesCallback,
+    validFiles,
     updateFileStatus,
   };
 }

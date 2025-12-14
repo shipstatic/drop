@@ -8,13 +8,14 @@ import type { Ship } from '@shipstatic/ship';
 const mockGetConfig = vi.fn();
 const mockValidateFiles = vi.fn();
 
+// Mock @shipstatic/ship
 vi.mock('@shipstatic/ship', async (importOriginal) => {
     const actual = await importOriginal<typeof import('@shipstatic/ship')>();
     return {
         ...actual,
         validateFiles: (...args: any[]) => mockValidateFiles(...args),
-        formatFileSize: (bytes: number) => `${bytes} bytes`,
-        getValidFiles: (files: any[]) => files.filter(f => f.status === 'ready'),
+        formatFileSize: actual.formatFileSize,
+        getValidFiles: actual.getValidFiles,
         filterJunk: actual.filterJunk,
     };
 });
@@ -113,7 +114,7 @@ describe('useDrop - Reproduction Issue', () => {
             expect(result.current.isProcessing).toBe(false);
         });
 
-        const files = result.current.state.files;
+        const files = result.current.files;
         const paths = files.map(f => f.path).sort();
 
         console.log('Resulting paths:', paths);
@@ -166,7 +167,7 @@ describe('useDrop - Reproduction Issue', () => {
             expect(result.current.isProcessing).toBe(false);
         });
 
-        const files = result.current.state.files;
+        const files = result.current.files;
         const paths = files.map(f => f.path).sort();
 
         console.log('Resulting paths:', paths);
@@ -219,7 +220,7 @@ describe('useDrop - Reproduction Issue', () => {
             expect(result.current.isProcessing).toBe(false);
         });
 
-        const files = result.current.state.files;
+        const files = result.current.files;
         const paths = files.map(f => f.path).sort();
 
         console.log('Resulting paths:', paths);
