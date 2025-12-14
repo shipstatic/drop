@@ -363,7 +363,7 @@ describe('useDrop', () => {
 
       expect(result.current.files).toHaveLength(0);
       expect(result.current.status).toBeNull();
-      expect(result.current.value).not.toBe('error');
+      expect(result.current.phase).not.toBe('error');
       expect(result.current.isProcessing).toBe(false);
     });
 

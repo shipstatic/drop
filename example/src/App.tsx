@@ -19,7 +19,7 @@ function App() {
     setIsDeploying(true);
 
     try {
-      const validFiles = drop.getValidFiles();
+      const validFiles = drop.validFiles;
       const files = validFiles.map((f) => f.file);
       const result = await ship.deployments.create(files);
       setDeploymentUrl(result.url);
@@ -109,7 +109,7 @@ function App() {
             {drop.sourceName}
           </div>
           <div style={{ color: "#16a34a", fontSize: "0.9rem" }}>
-            {drop.getValidFiles().length} {drop.getValidFiles().length === 1 ? "file" : "files"} ready to deploy
+            {drop.validFiles.length} {drop.validFiles.length === 1 ? "file" : "files"} ready to deploy
           </div>
         </div>
       )}

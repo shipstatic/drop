@@ -85,9 +85,8 @@ function MyUploader() {
   });
 
   const handleUpload = async () => {
-    const validFiles = drop.getValidFiles();
     // ProcessedFile extends StaticFile - no conversion needed!
-    await ship.deployments.create(validFiles.map(f => f.file));
+    await ship.deployments.create(drop.validFiles.map(f => f.file));
   };
 
   return (
@@ -126,7 +125,7 @@ function MyUploader() {
         onClick={handleUpload}
         disabled={drop.phase !== 'ready'}
       >
-        Upload {drop.getValidFiles().length} files
+        Upload {drop.validFiles.length} files
       </button>
     </div>
   );
@@ -277,7 +276,7 @@ interface DropReturn {
 
   // Helpers
   /** Get only valid files ready for upload */
-  getValidFiles: () => ProcessedFile[];
+  validFiles: ProcessedFile[];
   /** Update upload state for a specific file (status, progress, message) */
   updateFileStatus: (fileId: string, state: {
     status: FileStatus;
@@ -628,7 +627,7 @@ All errors are surfaced at the per-file level:
 - Processing errors (e.g., ZIP extraction failures) are marked with `status: 'processing_error'`
 - Validation failures are marked with `status: 'validation_failed'`
 - The `statusMessage` always contains specific error details
-- Failed files are excluded from `getValidFiles()` and cannot be deployed
+- Failed files are excluded from `validFiles` and cannot be deployed
 - No silent failures - all errors are visible to users
 
 See the [Error Handling](#error-handling) section for examples of displaying per-file errors in your UI.
