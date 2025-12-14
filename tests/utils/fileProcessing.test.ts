@@ -1,30 +1,26 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import {
-  formatFileSize,
   createProcessedFile,
-  getValidFiles,
   stripCommonPrefix,
 } from '@/utils/fileProcessing';
+import { getValidFiles, formatFileSize } from '@shipstatic/ship';
 import { FILE_STATUSES } from '@/types';
 import { createMockFile } from '../test-utils';
 
 // Mock @shipstatic/ship
-vi.mock('@shipstatic/ship', () => ({
-  formatFileSize: (bytes: number, decimals: number = 1): string => {
-    if (bytes === 0) return '0 Bytes';
-    const k = 1024;
-    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
-    const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return parseFloat((bytes / Math.pow(k, i)).toFixed(decimals)) + ' ' + sizes[i];
-  },
-  getValidFiles: (files: any[]) => {
-    return files.filter(f => f.status === 'ready');
-  },
-}));
+vi.mock('@shipstatic/ship', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@shipstatic/ship')>();
+  return {
+    ...actual,
+    formatFileSize: actual.formatFileSize,
+    getValidFiles: actual.getValidFiles,
+    filterJunk: actual.filterJunk,
+  };
+});
 
 describe('fileProcessing', () => {
   beforeEach(() => {
-    vi.spyOn(console, 'error').mockImplementation(() => {});
+    vi.spyOn(console, 'error').mockImplementation(() => { });
   });
 
   afterEach(() => {

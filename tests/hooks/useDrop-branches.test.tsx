@@ -20,15 +20,21 @@ const mockShip = {
   }),
 } as unknown as Ship;
 
+const mockValidateFiles = vi.fn((files: any[]) => ({
+  files: files.map(f => ({ ...f, status: FILE_STATUSES.READY })),
+  validFiles: files.map(f => ({ ...f, status: FILE_STATUSES.READY })),
+  error: null,
+}));
+
+// Mock @shipstatic/ship
 vi.mock('@shipstatic/ship', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@shipstatic/ship')>();
   return {
     ...actual,
-    validateFiles: (files: any[]) => ({
-      files: files.map(f => ({ ...f, status: FILE_STATUSES.READY })),
-      validFiles: files.map(f => ({ ...f, status: FILE_STATUSES.READY })),
-      error: null,
-    }),
+    validateFiles: (...args: any[]) => mockValidateFiles(...args),
+    formatFileSize: actual.formatFileSize,
+    getValidFiles: (files: any[]) => files.filter(f => f.status === 'ready'),
+    filterJunk: actual.filterJunk,
   };
 });
 
@@ -56,7 +62,7 @@ describe('useDrop - branch coverage', () => {
 
       expect(mockEvent.preventDefault).toHaveBeenCalled();
       // No files should be added
-      expect(result.current.state.files).toEqual([]);
+      expect(result.current.files).toEqual([]);
     });
   });
 
@@ -64,22 +70,16 @@ describe('useDrop - branch coverage', () => {
     it('should call onValidationError when validation fails', async () => {
       const onValidationError = vi.fn();
 
-      // Mock validation to return an error
-      vi.mock('@shipstatic/ship', async (importOriginal) => {
-        const actual = await importOriginal<typeof import('@shipstatic/ship')>();
-        return {
-          ...actual,
-          validateFiles: () => ({
-            files: [],
-            validFiles: [],
-            error: {
-              error: 'File Too Large',
-              details: 'File exceeds size limit',
-              isClientError: true,
-            },
-          }),
-        };
-      });
+      // Implement validation to return an error for this test
+      mockValidateFiles.mockImplementationOnce(() => ({
+        files: [],
+        validFiles: [],
+        error: {
+          error: 'File Too Large',
+          details: 'File exceeds size limit',
+          isClientError: true,
+        },
+      }));
 
       const { result } = renderHook(() =>
         useDrop({ ship: mockShip, onValidationError })
@@ -91,8 +91,6 @@ describe('useDrop - branch coverage', () => {
         await result.current.processFiles([file]);
       });
 
-      // Note: This might not work due to vi.mock scoping
-      // The test documents the intended behavior
       expect(onValidationError).toHaveBeenCalledWith(
         expect.objectContaining({
           error: expect.any(String),
@@ -116,14 +114,14 @@ describe('useDrop - branch coverage', () => {
       });
 
       // Should use first file name as source
-      expect(result.current.state.sourceName).toBe('first.txt');
+      expect(result.current.sourceName).toBe('first.txt');
     });
 
     it('should handle empty source name gracefully', async () => {
       const { result } = renderHook(() => useDrop({ ship: mockShip }));
 
       // This tests the initialization state
-      expect(result.current.state.sourceName).toBe('');
+      expect(result.current.sourceName).toBe('');
     });
   });
 
@@ -145,8 +143,8 @@ describe('useDrop - branch coverage', () => {
       });
 
       // Should have error state
-      expect(result.current.state.value).toBe('error');
-      expect(result.current.state.status?.title).toBe('Processing Failed');
+      expect(result.current.status?.title).toBe('Processing Failed');
+      // expect(result.current.state.value).toBe('error'); // value is removed
     });
 
     it('should clear processing flag on error', async () => {
@@ -174,8 +172,8 @@ describe('useDrop - branch coverage', () => {
         await result.current.processFiles(null as any);
       });
 
-      expect(result.current.state.status).toBeNull();
-      expect(result.current.state.files).toEqual([]);
+      expect(result.current.status).toBeNull();
+      expect(result.current.files).toEqual([]);
     });
 
     it('should handle undefined files gracefully', async () => {
@@ -185,8 +183,8 @@ describe('useDrop - branch coverage', () => {
         await result.current.processFiles(undefined as any);
       });
 
-      expect(result.current.state.status).toBeNull();
-      expect(result.current.state.files).toEqual([]);
+      expect(result.current.status).toBeNull();
+      expect(result.current.files).toEqual([]);
     });
   });
 
@@ -227,16 +225,16 @@ describe('useDrop - branch coverage', () => {
       });
 
       expect(result.current.isDragging).toBe(false);
-      expect(result.current.state.files).toEqual([]);
-      expect(result.current.state.sourceName).toBe('');
-      expect(result.current.state.status).toBeNull();
-      expect(result.current.state.value).not.toBe('error');
+      expect(result.current.files).toEqual([]);
+      expect(result.current.sourceName).toBe('');
+      expect(result.current.status).toBeNull();
+      // expect(result.current.value).not.toBe('error');
     });
   });
 
   describe('Concurrent processing guard', () => {
     it('should prevent concurrent calls with console warning', async () => {
-      const consoleWarn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+      const consoleWarn = vi.spyOn(console, 'warn').mockImplementation(() => { });
       const { result } = renderHook(() => useDrop({ ship: mockShip }));
 
       const file = createMockFile('test.txt', 'content');

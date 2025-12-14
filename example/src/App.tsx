@@ -38,8 +38,8 @@ function App() {
   };
 
   // Computed state for cleaner logic
-  const canDeploy = drop.state.value === "ready" && !isDeploying && !deploymentUrl;
-  const showActions = drop.state.files.length > 0;
+  const canDeploy = drop.phase === "ready" && !isDeploying && !deploymentUrl;
+  const showActions = drop.files.length > 0;
 
   return (
     <div
@@ -76,7 +76,7 @@ function App() {
       </div>
 
       {/* State-based status display */}
-      {drop.state.value === "processing" && drop.state.status && (
+      {drop.phase === "processing" && drop.status && (
         <div
           style={{
             backgroundColor: "#f0f9ff",
@@ -87,15 +87,15 @@ function App() {
           }}
         >
           <div style={{ color: "#1e40af", fontWeight: 500 }}>
-            {drop.state.status.title}
+            {drop.status.title}
           </div>
           <div style={{ color: "#3b82f6", fontSize: "0.9rem", marginTop: "0.25rem" }}>
-            {drop.state.status.details}
+            {drop.status.details}
           </div>
         </div>
       )}
 
-      {drop.state.value === "ready" && drop.state.sourceName && (
+      {drop.phase === "ready" && drop.sourceName && (
         <div
           style={{
             backgroundColor: "#f0fdf4",
@@ -106,7 +106,7 @@ function App() {
           }}
         >
           <div style={{ color: "#166534", fontWeight: 600, marginBottom: "0.25rem" }}>
-            {drop.state.sourceName}
+            {drop.sourceName}
           </div>
           <div style={{ color: "#16a34a", fontSize: "0.9rem" }}>
             {drop.getValidFiles().length} {drop.getValidFiles().length === 1 ? "file" : "files"} ready to deploy
@@ -114,7 +114,7 @@ function App() {
         </div>
       )}
 
-      {drop.state.value === "error" && drop.state.status && (
+      {drop.phase === "error" && drop.status && (
         <div
           style={{
             backgroundColor: "#fef2f2",
@@ -125,10 +125,10 @@ function App() {
           }}
         >
           <div style={{ fontWeight: 600, color: "#991b1b", marginBottom: "0.25rem" }}>
-            {drop.state.status.title}
+            {drop.status.title}
           </div>
           <div style={{ color: "#dc2626", fontSize: "0.9rem" }}>
-            {drop.state.status.details}
+            {drop.status.details}
           </div>
         </div>
       )}
@@ -155,10 +155,10 @@ function App() {
             {drop.isProcessing
               ? "Processing..."
               : isDeploying
-              ? "Deploying..."
-              : deploymentUrl
-              ? "Deployed ✓"
-              : "Deploy"}
+                ? "Deploying..."
+                : deploymentUrl
+                  ? "Deployed ✓"
+                  : "Deploy"}
           </button>
           <button
             onClick={handleClear}
@@ -230,13 +230,13 @@ function App() {
       )}
 
       {/* File list (optional - only shown in ready/error state) */}
-      {drop.state.files.length > 0 && (drop.state.value === "ready" || drop.state.value === "error") && (
+      {drop.files.length > 0 && (drop.phase === "ready" || drop.phase === "error") && (
         <details style={{ marginTop: "1rem", fontSize: "0.9rem" }}>
           <summary style={{ cursor: "pointer", color: "#6b7280", userSelect: "none" }}>
-            View {drop.state.files.length} file{drop.state.files.length === 1 ? "" : "s"}
+            View {drop.files.length} file{drop.files.length === 1 ? "" : "s"}
           </summary>
           <div style={{ marginTop: "0.5rem", maxHeight: "200px", overflowY: "auto" }}>
-            {drop.state.files.map((file) => (
+            {drop.files.map((file) => (
               <div
                 key={file.id}
                 style={{

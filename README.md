@@ -107,15 +107,15 @@ function MyUploader() {
         {drop.isDragging ? '📂 Drop here' : '📁 Click or drag files/folders'}
       </div>
 
-      {/* Status - using state machine */}
-      {drop.state.status && (
+      {/* Status - using state machine phase */}
+      {drop.status && (
         <p>
-          <strong>{drop.state.status.title}:</strong> {drop.state.status.details}
+          <strong>{drop.status.title}:</strong> {drop.status.details}
         </p>
       )}
 
       {/* File list */}
-      {drop.state.files.map(file => (
+      {drop.files.map(file => (
         <div key={file.id}>
           {file.name} - {file.status}
         </div>
@@ -124,7 +124,7 @@ function MyUploader() {
       {/* Upload button */}
       <button
         onClick={handleUpload}
-        disabled={drop.state.value !== 'ready'}
+        disabled={drop.phase !== 'ready'}
       >
         Upload {drop.getValidFiles().length} files
       </button>
@@ -233,16 +233,21 @@ interface DropOptions {
 **Returns:**
 
 ```typescript
+```typescript
 interface DropReturn {
-  // State machine
-  /** Current state of the drop hook */
-  state: DropState;
-
   // Convenience getters (computed from state)
+  /** Current phase of the state machine */
+  phase: DropStateValue;
   /** Whether currently processing files (ZIP extraction, etc.) */
   isProcessing: boolean;
   /** Whether user is currently dragging over the dropzone */
   isDragging: boolean;
+  /** Flattened access to files */
+  files: ProcessedFile[];
+  /** Flattened access to source name */
+  sourceName: string;
+  /** Flattened access to status */
+  status: DropStatus | null;
 
   // Primary API: Prop getters for easy integration
   /** Get props to spread on dropzone element (handles drag & drop) */
@@ -289,22 +294,16 @@ type DropStateValue =
   | 'ready'      // Files are valid and ready for deployment
   | 'error';     // An error occurred during processing
 
-interface DropState {
-  value: DropStateValue;
-  files: ProcessedFile[];
-  sourceName: string;
-  status: DropStatus | null;
-}
-
 interface DropStatus {
   title: string;
   details: string;
+  errors?: string[];
 }
 ```
 
 ## State Machine
 
-The drop hook uses a state machine for predictable, clear state management. Instead of multiple boolean flags, you have a single `state.value` that represents exactly what's happening.
+The drop hook uses a state machine for predictable, clear state management. Instead of multiple boolean flags, you have a single `drop.phase` that represents exactly what's happening.
 
 ### State Flow
 
@@ -320,9 +319,8 @@ error → dragging → processing → ... (retry)
 
 ```tsx
 function StatusIndicator({ drop }) {
-  const { state } = drop;
-
-  switch (state.value) {
+  // Use drop.phase to switch-case on the state
+  switch (drop.phase) {
     case 'idle':
       return <p>Drop files here or click to select</p>;
 
@@ -330,12 +328,12 @@ function StatusIndicator({ drop }) {
       return <p>Drop your files now!</p>;
 
     case 'processing':
-      return <p>{state.status?.details || 'Processing...'}</p>;
+      return <p>{drop.status?.details || 'Processing...'}</p>;
 
     case 'ready':
       return (
         <div>
-          <p>✓ {state.files.length} files ready</p>
+          <p>✓ {drop.files.length} files ready</p>
           <button>Upload to Ship</button>
         </div>
       );
@@ -343,8 +341,8 @@ function StatusIndicator({ drop }) {
     case 'error':
       return (
         <div>
-          <p>✗ {state.status?.title}</p>
-          <p>{state.status?.details}</p>
+          <p>✗ {drop.status?.title}</p>
+          <p>{drop.status?.details}</p>
           <button onClick={drop.clearAll}>Try Again</button>
         </div>
       );
@@ -357,14 +355,14 @@ function StatusIndicator({ drop }) {
 For simpler use cases, boolean convenience getters are provided:
 
 ```tsx
-// These are computed from state.value (read-only projections)
-drop.isProcessing  // true when state.value === 'processing'
-drop.isDragging    // true when state.value === 'dragging'
+// These are computed from drop.phase (read-only projections)
+drop.isProcessing  // true when phase === 'processing'
+drop.isDragging    // true when phase === 'dragging'
 
-// For error information, use the state object
-drop.state.value === 'error'  // Check if in error state
-drop.state.status?.title      // Error title
-drop.state.status?.details    // Error details
+// For error information, use the flattened status object
+drop.phase === 'error'      // Check if in error state
+drop.status?.title          // Error title
+drop.status?.details        // Error details
 ```
 
 ### Benefits
@@ -384,7 +382,8 @@ Each file in the `state.files` array contains its own `status` and `statusMessag
 function FileList({ drop }) {
   return (
     <div>
-      {drop.state.files.map(file => (
+      {/* Flattened access to files array */}
+      {drop.files.map(file => (
         <div key={file.id}>
           <span>{file.path}</span>
 
@@ -401,7 +400,7 @@ function FileList({ drop }) {
       ))}
 
       {/* If validation fails, allow user to clear all and try again */}
-      {drop.state.value === 'error' && (
+      {drop.phase === 'error' && (
         <button onClick={drop.clearAll}>
           Clear All & Try Again
         </button>
@@ -422,10 +421,10 @@ function FileList({ drop }) {
 When files fail validation or processing, check the error state:
 
 ```tsx
-{drop.state.value === 'error' && drop.state.status && (
+{drop.phase === 'error' && drop.status && (
   <div>
-    <p>{drop.state.status.title}</p>
-    <p>{drop.state.status.details}</p>
+    <p>{drop.status.title}</p>
+    <p>{drop.status.details}</p>
   </div>
 )}
 ```
@@ -455,10 +454,10 @@ Use `clearAll()` to reset and try again:
 
 ```tsx
 // If validation fails, show user which files failed
-{drop.state.value === 'error' && (
+{drop.phase === 'error' && (
   <div>
     <p>Validation failed. Please fix the issues and try again:</p>
-    {drop.state.files.map(file => (
+    {drop.files.map(file => (
       <div key={file.id}>
         {file.path}: {file.statusMessage}
       </div>

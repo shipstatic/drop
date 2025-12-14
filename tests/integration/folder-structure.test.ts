@@ -16,14 +16,15 @@ import type { Ship } from '@shipstatic/ship';
 const mockGetConfig = vi.fn();
 const mockValidateFiles = vi.fn();
 
+// Mock @shipstatic/ship
 vi.mock('@shipstatic/ship', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@shipstatic/ship')>();
   return {
     ...actual,
     validateFiles: (...args: any[]) => mockValidateFiles(...args),
-    formatFileSize: (bytes: number) => `${bytes} bytes`,
-    getValidFiles: (files: any[]) => files.filter(f => f.status === 'ready'),
-    filterJunk: actual.filterJunk, // Use real implementation
+    formatFileSize: actual.formatFileSize,
+    getValidFiles: actual.getValidFiles,
+    filterJunk: actual.filterJunk,
   };
 });
 
@@ -34,9 +35,9 @@ const createMockShip = (): Ship => ({
 
 describe('Folder Structure Preservation', () => {
   beforeEach(() => {
-    vi.spyOn(console, 'log').mockImplementation(() => {});
-    vi.spyOn(console, 'error').mockImplementation(() => {});
-    vi.spyOn(console, 'warn').mockImplementation(() => {});
+    vi.spyOn(console, 'log').mockImplementation(() => { });
+    vi.spyOn(console, 'error').mockImplementation(() => { });
+    vi.spyOn(console, 'warn').mockImplementation(() => { });
 
     // Default mock config
     mockGetConfig.mockResolvedValue({
@@ -78,10 +79,10 @@ describe('Folder Structure Preservation', () => {
         expect(result.current.isProcessing).toBe(false);
       });
 
-      expect(result.current.state.files).toHaveLength(1);
-      expect(result.current.state.files[0].path).toBe('mysite/src/app.js');
-      expect(result.current.state.files[0].name).toBe('app.js');
-      expect(result.current.state.files[0].status).toBe(FILE_STATUSES.READY);
+      expect(result.current.files).toHaveLength(1);
+      expect(result.current.files[0].path).toBe('mysite/src/app.js');
+      expect(result.current.files[0].name).toBe('app.js');
+      expect(result.current.files[0].status).toBe(FILE_STATUSES.READY);
     });
 
     it('should use file.name when webkitRelativePath is empty', async () => {
@@ -104,9 +105,9 @@ describe('Folder Structure Preservation', () => {
         expect(result.current.isProcessing).toBe(false);
       });
 
-      expect(result.current.state.files).toHaveLength(1);
-      expect(result.current.state.files[0].path).toBe('standalone.js');
-      expect(result.current.state.files[0].name).toBe('standalone.js');
+      expect(result.current.files).toHaveLength(1);
+      expect(result.current.files[0].path).toBe('standalone.js');
+      expect(result.current.files[0].name).toBe('standalone.js');
     });
 
     it('should maintain folder structure for multiple files', async () => {
@@ -127,13 +128,13 @@ describe('Folder Structure Preservation', () => {
         expect(result.current.isProcessing).toBe(false);
       });
 
-      expect(result.current.state.files).toHaveLength(3);
-      expect(result.current.state.files.map(f => f.path)).toEqual([
+      expect(result.current.files).toHaveLength(3);
+      expect(result.current.files.map(f => f.path)).toEqual([
         'mysite/index.html',
         'mysite/src/app.js',
         'mysite/css/style.css',
       ]);
-      expect(result.current.state.files.map(f => f.name)).toEqual([
+      expect(result.current.files.map(f => f.name)).toEqual([
         'index.html',
         'app.js',
         'style.css',
@@ -158,9 +159,9 @@ describe('Folder Structure Preservation', () => {
         expect(result.current.isProcessing).toBe(false);
       });
 
-      expect(result.current.state.files).toHaveLength(3);
+      expect(result.current.files).toHaveLength(3);
       // Common prefix 'mysite/' should be stripped
-      expect(result.current.state.files.map(f => f.path)).toEqual([
+      expect(result.current.files.map(f => f.path)).toEqual([
         'index.html',
         'src/app.js',
         'css/style.css',
@@ -185,10 +186,10 @@ describe('Folder Structure Preservation', () => {
         expect(result.current.isProcessing).toBe(false);
       });
 
-      expect(result.current.state.files).toHaveLength(3);
-      expect(result.current.state.files[0].path).toBe('project/src/components/Button/index.js');
-      expect(result.current.state.files[1].path).toBe('project/src/components/Button/styles.css');
-      expect(result.current.state.files[2].path).toBe('project/src/components/Button/__tests__/test.js');
+      expect(result.current.files).toHaveLength(3);
+      expect(result.current.files[0].path).toBe('project/src/components/Button/index.js');
+      expect(result.current.files[1].path).toBe('project/src/components/Button/styles.css');
+      expect(result.current.files[2].path).toBe('project/src/components/Button/__tests__/test.js');
     });
   });
 
@@ -212,9 +213,9 @@ describe('Folder Structure Preservation', () => {
         expect(result.current.isProcessing).toBe(false);
       });
 
-      expect(result.current.state.files).toHaveLength(2);
-      expect(result.current.state.files[0].path).toBe('src/app.js');
-      expect(result.current.state.files[1].path).toBe('standalone.txt');
+      expect(result.current.files).toHaveLength(2);
+      expect(result.current.files[0].path).toBe('src/app.js');
+      expect(result.current.files[1].path).toBe('standalone.txt');
     });
   });
 
@@ -236,7 +237,7 @@ describe('Folder Structure Preservation', () => {
         expect(result.current.isProcessing).toBe(false);
       });
 
-      const validFiles = result.current.getValidFiles();
+      const validFiles = result.current.validFiles;
 
       // Verify format matches Ship SDK requirements
       validFiles.forEach(f => {
@@ -269,7 +270,7 @@ describe('Folder Structure Preservation', () => {
         expect(result.current.isProcessing).toBe(false);
       });
 
-      const validFiles = result.current.getValidFiles();
+      const validFiles = result.current.validFiles;
 
       // Simulate Ship SDK deploy() call
       const staticFiles = validFiles.map(f => ({

@@ -73,6 +73,7 @@ export type DropStateValue =
 export interface DropStatus {
   title: string;
   details: string;
+  errors?: string[];
 }
 
 /**
