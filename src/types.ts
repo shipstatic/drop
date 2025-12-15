@@ -1,11 +1,11 @@
 /**
- * Core types for @shipstatic/dropzone
+ * Core types for @shipstatic/drop
  * Imports types from @shipstatic/types (single source of truth)
- * and defines dropzone-specific types
+ * and defines drop-specific types
  */
 
-// Import SDK types as single source of truth
-import type { StaticFile, ConfigResponse } from '@shipstatic/types';
+// Import SDK types for reference (ConfigResponse used elsewhere)
+import type { ConfigResponse } from '@shipstatic/types';
 
 // File statuses during processing
 export const FILE_STATUSES = {
@@ -35,14 +35,20 @@ export interface ClientError {
 
 /**
  * Processed file entry ready for upload
- * Extends StaticFile from SDK, adding UI-specific properties
- * This means ProcessedFile IS a StaticFile - can be passed directly to ship.deployments.create()
+ * Contains both the File object and UI-specific metadata
+ * Use `file` property to access the underlying File for SDK operations
  */
-export interface ProcessedFile extends StaticFile {
+export interface ProcessedFile {
   /** Unique identifier for React keys and tracking */
   id: string;
-  /** Original File object (alias for 'content' from StaticFile for better DX) */
+  /** The File object - pass this to ship.deployments.create() */
   file: File;
+  /** Relative path for deployment (e.g., "images/photo.jpg") */
+  path: string;
+  /** File size in bytes */
+  size: number;
+  /** MD5 hash (optional - Ship SDK calculates during deployment if not provided) */
+  md5?: string;
   /** Filename without path */
   name: string;
   /** MIME type for UI icons/previews */
