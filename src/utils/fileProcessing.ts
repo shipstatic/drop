@@ -15,8 +15,6 @@ import { FILE_STATUSES, type ProcessedFile, type FileStatus } from '../types';
  */
 export const formatFileSize = shipFormatFileSize;
 
-
-
 /**
  * Create a ProcessedFile from a File object
  * This is the single conversion point from File to ProcessedFile
@@ -44,22 +42,18 @@ export async function createProcessedFile(
   const type = file.type || getMimeType(path);
 
   return {
-    // StaticFile properties (SDK compatibility)
+    // ProcessedFile properties
     // Note: md5 is intentionally undefined - Ship SDK will calculate it during deployment
-    content: file,
+    id: crypto.randomUUID(),
+    file,
     path,
     size: file.size,
-    // ProcessedFile-specific properties (UI functionality)
-    id: crypto.randomUUID(),
-    file,  // Keep as alias for better DX
     name: path.split('/').pop() || file.name,
     type,
     lastModified: file.lastModified,
     status: FILE_STATUSES.PENDING,
   };
 }
-
-
 
 /**
  * Strip common directory prefix from file paths
@@ -107,7 +101,6 @@ export function stripCommonPrefix(files: ProcessedFile[]): ProcessedFile[] {
     };
   });
 }
-
 
 /**
  * Recursively traverse FileSystemEntry from drag & drop to collect all files
