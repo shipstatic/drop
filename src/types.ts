@@ -5,16 +5,17 @@
  */
 
 // Import SDK types for reference (ConfigResponse used elsewhere)
-import type { ConfigResponse } from '@shipstatic/types';
+import type {
+  ConfigResponse,
+  ValidationError,
+  FileValidationStatusType
+} from '@shipstatic/types';
+import { FileValidationStatus } from '@shipstatic/types';
 
 // File statuses during processing
 export const FILE_STATUSES = {
-  PENDING: "pending",
+  ...FileValidationStatus,
   PROCESSING: "processing",
-  VALIDATION_FAILED: "validation_failed",
-  PROCESSING_ERROR: "processing_error",
-  EMPTY_FILE: "empty_file",
-  READY: "ready",
   UPLOADING: "uploading",
   COMPLETE: "complete",
   ERROR: "error",
@@ -26,12 +27,7 @@ export type FileStatus = (typeof FILE_STATUSES)[keyof typeof FILE_STATUSES];
  * Client-side error structure
  * Matches ValidationError from @shipstatic/ship for consistency
  */
-export interface ClientError {
-  error: string;
-  details: string;
-  errors?: string[];
-  isClientError: true;
-}
+export type ClientError = ValidationError;
 
 /**
  * Processed file entry ready for upload

@@ -252,6 +252,7 @@ export function useDrop(options: DropOptions): DropReturn {
         const noValidError: ClientError = {
           error: 'No Valid Files',
           details: 'None of the provided files could be processed.',
+          errors: [],
           isClientError: true,
         };
         setState({
@@ -267,6 +268,7 @@ export function useDrop(options: DropOptions): DropReturn {
       const processingError: ClientError = {
         error: 'Processing Failed',
         details: `Failed to process files: ${error instanceof Error ? error.message : String(error)}`,
+        errors: [],
         isClientError: true,
       };
       setState(prev => ({
