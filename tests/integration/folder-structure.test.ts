@@ -93,7 +93,7 @@ describe('Folder Structure Preservation', () => {
       // webkitRelativePath exists but is empty string (standard browser behavior)
       Object.defineProperty(file, 'webkitRelativePath', {
         value: '',
-        writable: false,
+        writable: false, configurable: true,
         enumerable: true,
       });
 

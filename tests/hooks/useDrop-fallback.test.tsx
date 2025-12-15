@@ -91,9 +91,21 @@ describe('useDrop - Reproduction Issue', () => {
         const assetsEntry = createMockDirectoryEntry('assets', [styleEntry]);
 
         const mockDataTransferItems = [
-            { kind: 'file', webkitGetAsEntry: () => indexEntry },
-            { kind: 'file', webkitGetAsEntry: () => robotsEntry },
-            { kind: 'file', webkitGetAsEntry: () => assetsEntry },
+            {
+                kind: 'file',
+                webkitGetAsEntry: () => indexEntry,
+                getAsFile: () => new File([''], 'index.html')
+            },
+            {
+                kind: 'file',
+                webkitGetAsEntry: () => robotsEntry,
+                getAsFile: () => new File([''], 'robots.txt')
+            },
+            {
+                kind: 'file',
+                webkitGetAsEntry: () => assetsEntry,
+                getAsFile: () => null // Directory
+            },
         ];
 
         const mockEvent = {
@@ -145,8 +157,16 @@ describe('useDrop - Reproduction Issue', () => {
         const assetsEntry = createMockDirectoryEntry('assets', [styleEntry, imagesEntry]);
 
         const mockDataTransferItems = [
-            { kind: 'file', webkitGetAsEntry: () => indexEntry },
-            { kind: 'file', webkitGetAsEntry: () => assetsEntry },
+            {
+                kind: 'file',
+                webkitGetAsEntry: () => indexEntry,
+                getAsFile: () => new File([''], 'index.html')
+            },
+            {
+                kind: 'file',
+                webkitGetAsEntry: () => assetsEntry,
+                getAsFile: () => null
+            },
         ];
 
         const mockEvent = {

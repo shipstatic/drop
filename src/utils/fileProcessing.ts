@@ -15,7 +15,7 @@ import { FILE_STATUSES, type ProcessedFile, type FileStatus } from '../types';
  */
 export const formatFileSize = shipFormatFileSize;
 
-// getValidFiles removed - imported directly from @shipstatic/ship
+
 
 /**
  * Create a ProcessedFile from a File object
@@ -87,10 +87,25 @@ export function stripCommonPrefix(files: ProcessedFile[]): ProcessedFile[] {
 
   const prefix = segments.slice(0, commonDepth).join('/') + '/';
 
-  return files.map(f => ({
-    ...f,
-    path: f.path.startsWith(prefix) ? f.path.slice(prefix.length) : f.path,
-  }));
+  return files.map(f => {
+    const newPath = f.path.startsWith(prefix) ? f.path.slice(prefix.length) : f.path;
+
+    // Patch the underlying File object so that downstream consumers (like Ship SDK)
+    // see the correct, stripped path when reading webkitRelativePath.
+    // This allows passing the raw File objects while preserving the "Drop" logic.
+    if (f.file) {
+      Object.defineProperty(f.file, 'webkitRelativePath', {
+        value: newPath,
+        writable: false,
+        configurable: true,
+      });
+    }
+
+    return {
+      ...f,
+      path: newPath,
+    };
+  });
 }
 
 
@@ -114,6 +129,7 @@ export async function traverseFileTree(
       Object.defineProperty(file, 'webkitRelativePath', {
         value: relativePath,
         writable: false,
+        configurable: true,
       });
       files.push(file);
     } else if (entry.isDirectory) {

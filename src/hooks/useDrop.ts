@@ -41,7 +41,6 @@ export interface DropOptions {
 
 export interface DropReturn {
   // State machine -- Internal only now
-  // state: DropState; // REMOVED per user request for "impossible simplicity"
 
   // Convenience getters (computed from state)
   /** Current phase of the state machine */
@@ -335,28 +334,37 @@ export function useDrop(options: DropOptions): DropReturn {
     const files: File[] = [];
 
     // Use FileSystemEntry API for proper folder traversal
-    let hasEntries = false;
+    // CRITICAL: We must access dataTransfer.items SYNCHRONOUSLY.
+    // Putting "await" inside a loop over dataTransfer.items causes the items to be 
+    // garbage collected/invalidated by the browser before the next iteration.
+
+    const entriesToTraverse: { entry: FileSystemEntry, path: string }[] = [];
+
+    // 1. Synchronous Collection
     for (const item of items) {
       if (item.kind === 'file') {
         try {
           const entry = item.webkitGetAsEntry?.();
-          if (entry) {
-            hasEntries = true;
-            await traverseFileTree(
-              entry,
-              files,
-              entry.isDirectory ? entry.name : ''
-            );
+
+          if (entry && entry.isDirectory) {
+            // Queue directory for async traversal later
+            entriesToTraverse.push({ entry, path: entry.name });
           } else {
-            // Fallback: webkitGetAsEntry failed (returned null), try getAsFile
+            // It's a root file - grab it NOW while item is valid
             const file = item.getAsFile();
             if (file) {
+              // Ensure root files have their name as path (consistent with traverseFileTree)
+              Object.defineProperty(file, 'webkitRelativePath', {
+                value: file.name,
+                writable: false,
+                configurable: true,
+              });
               files.push(file);
             }
           }
         } catch (error) {
           console.warn('Error processing drop item:', error);
-          // Try fallback on error
+          // Try fallback
           const file = item.getAsFile();
           if (file) {
             files.push(file);
@@ -365,8 +373,16 @@ export function useDrop(options: DropOptions): DropReturn {
       }
     }
 
-    // Fallback for browsers without webkitGetAsEntry support
-    if (!hasEntries && e.dataTransfer.files.length > 0) {
+    // 2. Asynchronous Processing
+    // Now that we have captured everything safely, we can await
+    if (entriesToTraverse.length > 0) {
+      await Promise.all(entriesToTraverse.map(item =>
+        traverseFileTree(item.entry, files, item.path)
+      ));
+    }
+
+    // Fallback for browsers without webkitGetAsEntry support (if no items processed yet)
+    if (files.length === 0 && e.dataTransfer.files.length > 0) {
       files.push(...Array.from(e.dataTransfer.files));
     }
 
@@ -409,7 +425,6 @@ export function useDrop(options: DropOptions): DropReturn {
 
   return {
     // State machine
-    // state, // REMOVED
 
     // Convenience getters (computed from state)
     phase: state.value,
