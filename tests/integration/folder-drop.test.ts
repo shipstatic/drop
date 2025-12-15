@@ -18,7 +18,7 @@ describe('Folder drop integration', () => {
         const file = createMockFile(name, 'content');
         Object.defineProperty(file, 'webkitRelativePath', {
           value: relativePath,
-          writable: false,
+          writable: false, configurable: true,
         });
         return file;
       });
@@ -49,7 +49,7 @@ describe('Folder drop integration', () => {
         const file = createMockFile(name, 'content');
         Object.defineProperty(file, 'webkitRelativePath', {
           value: relativePath,
-          writable: false,
+          writable: false, configurable: true,
         });
         return file;
       });
@@ -74,7 +74,7 @@ describe('Folder drop integration', () => {
       // Correct behavior: webkitRelativePath includes the full path
       Object.defineProperty(file, 'webkitRelativePath', {
         value: 'dist/index.html',
-        writable: false,
+        writable: false, configurable: true,
       });
 
       const processed = await createProcessedFile(file);
@@ -93,7 +93,7 @@ describe('Folder drop integration', () => {
         const file = createMockFile(name, 'content');
         Object.defineProperty(file, 'webkitRelativePath', {
           value: relativePath,
-          writable: false,
+          writable: false, configurable: true,
         });
         return file;
       });
@@ -122,7 +122,7 @@ describe('Folder drop integration', () => {
         const file = createMockFile(name, 'content');
         Object.defineProperty(file, 'webkitRelativePath', {
           value: relativePath,
-          writable: false,
+          writable: false, configurable: true,
         });
         return file;
       });
@@ -145,7 +145,7 @@ describe('Folder drop integration', () => {
       const file = createMockFile('config.json', 'content');
       Object.defineProperty(file, 'webkitRelativePath', {
         value: 'project/src/config/environments/production/config.json',
-        writable: false,
+        writable: false, configurable: true,
       });
 
       const processed = await createProcessedFile(file);
@@ -165,7 +165,7 @@ describe('Folder drop integration', () => {
         const file = createMockFile(name, 'content');
         Object.defineProperty(file, 'webkitRelativePath', {
           value: relativePath,
-          writable: false,
+          writable: false, configurable: true,
         });
         return file;
       });
@@ -192,7 +192,7 @@ describe('Folder drop integration', () => {
         const file = createMockFile(name, 'content');
         Object.defineProperty(file, 'webkitRelativePath', {
           value: relativePath,
-          writable: false,
+          writable: false, configurable: true,
         });
         return file;
       });
@@ -215,7 +215,7 @@ describe('Folder drop integration', () => {
         const file = createMockFile(name, 'content');
         Object.defineProperty(file, 'webkitRelativePath', {
           value: relativePath,
-          writable: false,
+          writable: false, configurable: true,
         });
         return file;
       });
@@ -238,7 +238,7 @@ describe('Folder drop integration', () => {
         const file = createMockFile(name, 'content');
         Object.defineProperty(file, 'webkitRelativePath', {
           value: relativePath,
-          writable: false,
+          writable: false, configurable: true,
         });
         return file;
       });
@@ -270,7 +270,7 @@ describe('Folder drop integration', () => {
       const file1 = createMockFile('file1.txt', 'content');
       Object.defineProperty(file1, 'webkitRelativePath', {
         value: 'folder/file1.txt',
-        writable: false,
+        writable: false, configurable: true,
       });
 
       const file2 = createMockFile('file2.txt', 'content');

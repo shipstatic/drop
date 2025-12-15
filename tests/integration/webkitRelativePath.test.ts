@@ -16,7 +16,7 @@ describe('webkitRelativePath handling', () => {
       const file = createMockFile('test.txt', 'content');
       Object.defineProperty(file, 'webkitRelativePath', {
         value: 'my-folder/test.txt',
-        writable: false,
+        writable: false, configurable: true,
       });
 
       const processed = await createProcessedFile(file);
@@ -29,7 +29,7 @@ describe('webkitRelativePath handling', () => {
       const file = createMockFile('test.txt', 'content');
       Object.defineProperty(file, 'webkitRelativePath', {
         value: '',
-        writable: false,
+        writable: false, configurable: true,
       });
 
       const processed = await createProcessedFile(file);
@@ -42,7 +42,7 @@ describe('webkitRelativePath handling', () => {
       const file = createMockFile('test.txt', 'content');
       Object.defineProperty(file, 'webkitRelativePath', {
         value: 'wrong/path.txt',
-        writable: false,
+        writable: false, configurable: true,
       });
 
       const processed = await createProcessedFile(file, { path: 'correct/path.txt' });
@@ -65,7 +65,7 @@ describe('webkitRelativePath handling', () => {
           const file = createMockFile(name, 'content');
           Object.defineProperty(file, 'webkitRelativePath', {
             value: path,
-            writable: false,
+            writable: false, configurable: true,
           });
           return createProcessedFile(file);
         })
@@ -95,7 +95,7 @@ describe('webkitRelativePath handling', () => {
           const file = createMockFile(name, 'content');
           Object.defineProperty(file, 'webkitRelativePath', {
             value: path,
-            writable: false,
+            writable: false, configurable: true,
           });
           return createProcessedFile(file);
         })
@@ -120,7 +120,7 @@ describe('webkitRelativePath handling', () => {
           const file = createMockFile(name, 'content');
           Object.defineProperty(file, 'webkitRelativePath', {
             value: path,
-            writable: false,
+            writable: false, configurable: true,
           });
           return createProcessedFile(file);
         })
@@ -139,7 +139,7 @@ describe('webkitRelativePath handling', () => {
       const file = createMockFile('index.html', 'content');
       Object.defineProperty(file, 'webkitRelativePath', {
         value: 'dist/index.html', // Correct: path includes folder AND filename
-        writable: false,
+        writable: false, configurable: true,
       });
 
       const processed = await createProcessedFile(file);
@@ -156,7 +156,7 @@ describe('webkitRelativePath handling', () => {
       const file = createMockFile('index.html', 'content');
       Object.defineProperty(file, 'webkitRelativePath', {
         value: 'dist/index.html/index.html', // WRONG - but test documents behavior
-        writable: false,
+        writable: false, configurable: true,
       });
 
       const processed = await createProcessedFile(file);
@@ -171,7 +171,7 @@ describe('webkitRelativePath handling', () => {
       const file = createMockFile('index.html', 'content');
       Object.defineProperty(file, 'webkitRelativePath', {
         value: 'index.html/index.html',
-        writable: false,
+        writable: false, configurable: true,
       });
 
       const processed = await createProcessedFile(file);
@@ -199,7 +199,7 @@ describe('webkitRelativePath handling', () => {
           const file = createMockFile(name, 'content');
           Object.defineProperty(file, 'webkitRelativePath', {
             value: path,
-            writable: false,
+            writable: false, configurable: true,
           });
           return createProcessedFile(file);
         })
@@ -233,7 +233,7 @@ describe('webkitRelativePath handling', () => {
           const file = createMockFile(name, 'content');
           Object.defineProperty(file, 'webkitRelativePath', {
             value: path,
-            writable: false,
+            writable: false, configurable: true,
           });
           return createProcessedFile(file);
         })
@@ -252,7 +252,7 @@ describe('webkitRelativePath handling', () => {
       const file = createMockFile('test.txt', 'content');
       Object.defineProperty(file, 'webkitRelativePath', {
         value: '   ', // whitespace only
-        writable: false,
+        writable: false, configurable: true,
       });
 
       const processed = await createProcessedFile(file);
@@ -266,7 +266,7 @@ describe('webkitRelativePath handling', () => {
       const file = createMockFile('file.txt', 'content');
       Object.defineProperty(file, 'webkitRelativePath', {
         value: longPath,
-        writable: false,
+        writable: false, configurable: true,
       });
 
       const processed = await createProcessedFile(file);
@@ -279,7 +279,7 @@ describe('webkitRelativePath handling', () => {
       const file = createMockFile('my file.txt', 'content');
       Object.defineProperty(file, 'webkitRelativePath', {
         value: 'my folder/sub folder/my file.txt',
-        writable: false,
+        writable: false, configurable: true,
       });
 
       const processed = await createProcessedFile(file);
@@ -292,7 +292,7 @@ describe('webkitRelativePath handling', () => {
       const file = createMockFile('文件.txt', 'content');
       Object.defineProperty(file, 'webkitRelativePath', {
         value: '文件夹/文件.txt',
-        writable: false,
+        writable: false, configurable: true,
       });
 
       const processed = await createProcessedFile(file);
@@ -316,7 +316,7 @@ describe('webkitRelativePath handling', () => {
           const file = createMockFile(name, 'content');
           Object.defineProperty(file, 'webkitRelativePath', {
             value: path,
-            writable: false,
+            writable: false, configurable: true,
           });
           return createProcessedFile(file);
         })
