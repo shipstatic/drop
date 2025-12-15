@@ -502,6 +502,7 @@ interface ProcessedFile extends StaticFile {
 interface ClientError {
   error: string;
   details: string;
+  errors: string[];
   isClientError: true;
 }
 

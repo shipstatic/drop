@@ -48,7 +48,7 @@
   },
   "dependencies": {
     "@shipstatic/ship": "^0.3.5",
-    "@shipstatic/types": "^0.3.2",
+    "@shipstatic/types": "^0.3.3",
     "jszip": "^3.10.1",
     "mime-db": "^1.54.0"
   },
