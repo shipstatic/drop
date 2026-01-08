@@ -54,7 +54,7 @@ export interface DropReturn {
   /** Flattened access to source name */
   sourceName: string;
   /** Flattened access to status */
-  status: { title: string; details: string } | null;
+  status: { title: string; details: string; errors?: string[] } | null;
 
   // Primary API: Prop getters for easy integration
   /** Get props to spread on dropzone element (handles drag & drop) */
