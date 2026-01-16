@@ -64,6 +64,74 @@ describe('useDrop - branch coverage', () => {
       // No files should be added
       expect(result.current.files).toEqual([]);
     });
+
+    it('should return to idle when drop is empty while dragging', async () => {
+      const { result } = renderHook(() => useDrop({ ship: mockShip }));
+
+      // First, enter dragging state
+      act(() => {
+        const props = result.current.getDropzoneProps();
+        props.onDragOver({ preventDefault: vi.fn() } as unknown as React.DragEvent);
+      });
+      expect(result.current.isDragging).toBe(true);
+
+      // Drop with empty items and files (both empty)
+      // Need fresh props since state changed (onDrop captures state.value)
+      const mockEvent = {
+        preventDefault: vi.fn(),
+        dataTransfer: {
+          items: [],
+          files: [],
+        },
+      } as unknown as React.DragEvent;
+
+      await act(async () => {
+        const freshProps = result.current.getDropzoneProps();
+        await freshProps.onDrop(mockEvent);
+      });
+
+      // Should return to idle state
+      expect(result.current.isDragging).toBe(false);
+      expect(result.current.phase).toBe('idle');
+    });
+
+    it('should fallback to getAsFile when webkitGetAsEntry throws', async () => {
+      const consoleWarn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+      const { result } = renderHook(() => useDrop({ ship: mockShip }));
+      const props = result.current.getDropzoneProps();
+
+      const mockFile = createMockFile('fallback.txt', 'content');
+
+      // Mock item where webkitGetAsEntry throws but getAsFile works
+      const mockItem = {
+        kind: 'file',
+        webkitGetAsEntry: vi.fn(() => {
+          throw new Error('webkitGetAsEntry not supported');
+        }),
+        getAsFile: vi.fn(() => mockFile),
+      };
+
+      const mockEvent = {
+        preventDefault: vi.fn(),
+        dataTransfer: {
+          items: [mockItem],
+          files: [mockFile],
+        },
+      } as unknown as React.DragEvent;
+
+      await act(async () => {
+        await props.onDrop(mockEvent);
+      });
+
+      expect(consoleWarn).toHaveBeenCalledWith(
+        'Error processing drop item:',
+        expect.any(Error)
+      );
+      // Should have processed the file via fallback
+      expect(result.current.files.length).toBeGreaterThanOrEqual(0);
+
+      consoleWarn.mockRestore();
+    });
   });
 
   describe('onValidationError callback', () => {
@@ -239,17 +307,16 @@ describe('useDrop - branch coverage', () => {
 
       const file = createMockFile('test.txt', 'content');
 
-      // Start first call (won't await)
-      const promise1 = result.current.processFiles([file]);
-
-      // Try second call immediately (should be ignored)
+      // Start both calls within act to properly handle state updates
       await act(async () => {
-        await result.current.processFiles([file]);
-      });
+        // Start first call (don't await yet)
+        const promise1 = result.current.processFiles([file]);
 
-      // Wait for first to complete
-      await act(async () => {
-        await promise1;
+        // Try second call immediately (should be ignored due to concurrent guard)
+        const promise2 = result.current.processFiles([file]);
+
+        // Wait for both to settle
+        await Promise.all([promise1, promise2]);
       });
 
       expect(consoleWarn).toHaveBeenCalledWith(

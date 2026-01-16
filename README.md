@@ -85,7 +85,7 @@ function MyUploader() {
   });
 
   const handleUpload = async () => {
-    // ProcessedFile extends StaticFile - no conversion needed!
+    // Extract File objects from ProcessedFiles for Ship SDK
     await ship.deployments.create(drop.validFiles.map(f => f.file));
   };
 
@@ -476,27 +476,34 @@ Use `clearAll()` to reset and try again:
 
 ```typescript
 /**
- * ProcessedFile extends StaticFile from @shipstatic/types
- * This means it can be passed directly to ship.deployments.create()
+ * ProcessedFile - a file processed by Drop, ready for Ship SDK deployment
  *
+ * Use the `file` property to pass to ship.deployments.create()
  * Note: md5 is intentionally undefined - Ship SDK calculates it during deployment
  */
-interface ProcessedFile extends StaticFile {
-  // StaticFile properties (SDK compatibility)
-  content: File;        // File object (required by SDK)
-  path: string;         // Normalized path (webkitRelativePath or file.name)
-  size: number;         // File size in bytes
-  md5?: string;         // Undefined - Ship SDK calculates during deployment
-
-  // ProcessedFile-specific properties (UI functionality)
-  id: string;           // Unique identifier for React keys
-  file: File;           // Alias for 'content' (better DX)
-  name: string;         // File name without path
-  type: string;         // MIME type
+interface ProcessedFile {
+  /** Unique identifier for React keys */
+  id: string;
+  /** The File object - pass this to ship.deployments.create() */
+  file: File;
+  /** Relative path for deployment (e.g., "images/photo.jpg") */
+  path: string;
+  /** File size in bytes */
+  size: number;
+  /** MD5 hash (optional - Ship SDK calculates during deployment if not provided) */
+  md5?: string;
+  /** Filename without path */
+  name: string;
+  /** MIME type for UI icons/previews */
+  type: string;
+  /** Last modified timestamp */
   lastModified: number;
+  /** Current processing/upload status */
   status: FileStatus;
-  statusMessage?: string;  // Per-file error message
-  progress?: number;       // Upload progress (0-100)
+  /** Human-readable status message for UI */
+  statusMessage?: string;
+  /** Upload progress (0-100) - only set during upload */
+  progress?: number;
 }
 
 interface ClientError {
@@ -519,36 +526,30 @@ type FileStatus =
 
 ## Direct Ship SDK Integration
 
-**ProcessedFile extends StaticFile** - no conversion needed! Since `ProcessedFile` extends `StaticFile` from `@shipstatic/types`, you can pass the files directly to the Ship SDK:
+Extract the `file` property from ProcessedFiles to pass to Ship SDK:
 
 ```typescript
-const validFiles = drop.getValidFiles();
+// Get valid files and extract File objects for deployment
+const filesToDeploy = drop.validFiles.map(f => f.file);
 
-// ProcessedFile[] IS StaticFile[] - pass directly!
-await ship.deployments.create({ files: validFiles });
+// Pass File[] to Ship SDK
+await ship.deployments.create(filesToDeploy);
 ```
 
-### Type Compatibility
+### Why Extract `.file`?
+
+Ship SDK's browser `deployments.create()` accepts `File[]`. Drop's `ProcessedFile` wraps the File with additional UI metadata (id, status, progress). The `.file` property gives you the raw File object that Ship SDK expects.
 
 ```typescript
-// ✅ This works because ProcessedFile extends StaticFile
-interface ProcessedFile extends StaticFile {
-  content: File;   // Required by StaticFile
-  path: string;    // Required by StaticFile
-  size: number;    // Required by StaticFile
-  md5?: string;    // Required by StaticFile
-
-  // Additional UI properties
-  id: string;
-  file: File;      // Alias for 'content' (better DX)
-  name: string;
-  type: string;
-  status: FileStatus;
-  // ... etc
+// ProcessedFile structure
+interface ProcessedFile {
+  file: File;      // ← Pass this to Ship SDK
+  path: string;    // Normalized path (set on file.webkitRelativePath)
+  // ... UI properties (id, status, progress, etc.)
 }
 ```
 
-**Important**: The drop hook preserves folder structure via `webkitRelativePath` and processes paths with `stripCommonPrefix` automatically. The `path` property is always deployment-ready.
+**Important**: Drop automatically sets `webkitRelativePath` on each File to preserve folder structure. Ship SDK reads this property during deployment, so paths are handled correctly.
 
 ## Architecture Decisions
 
@@ -599,19 +600,19 @@ This is the same pattern used by popular libraries like `react-dropzone`, `downs
 **3. Loosely Coupled Integration**
 Following industry standards (Firebase hooks, Supabase utilities), we chose:
 - ✅ **Ship instance as dependency**: Validates using `ship.getConfig()`
-- ✅ **Simple output**: ProcessedFile[] can be passed directly to Ship SDK
+- ✅ **Simple output**: Extract `.file` from ProcessedFile[] for Ship SDK
 - ✅ **Testable**: Easy to mock Ship SDK for testing
 - ✅ **Flexible**: Host app controls WHEN to deploy
 
 **4. Type System Integration**
 
-ProcessedFile extends StaticFile from `@shipstatic/types` - the single source of truth for Ship SDK types:
+ProcessedFile wraps File objects with UI-specific metadata:
 
 ```
-File[] → ProcessedFile[] (which IS StaticFile[]) → ship.deployments.create()
+File[] → ProcessedFile[] → .map(f => f.file) → ship.deployments.create()
 ```
 
-No conversion needed. ProcessedFile adds UI-specific properties (id, name, status, progress) to StaticFile's base properties (content, path, size, md5).
+ProcessedFile adds UI properties (id, name, status, progress) while preserving the original File object. The `.file` property gives you direct access for Ship SDK deployment.
 
 **5. No Visual Components**
 

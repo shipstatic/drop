@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import {
   createProcessedFile,
   stripCommonPrefix,
+  traverseFileTree,
 } from '@/utils/fileProcessing';
 import { getValidFiles, formatFileSize } from '@shipstatic/ship';
 import { FILE_STATUSES } from '@/types';
@@ -164,6 +165,93 @@ describe('fileProcessing', () => {
     it('should handle empty array', () => {
       const result = stripCommonPrefix([]);
       expect(result).toEqual([]);
+    });
+  });
+
+  describe('traverseFileTree', () => {
+    it('should handle errors gracefully and log warning', async () => {
+      const consoleWarn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+      const files: File[] = [];
+
+      // Create a mock entry that throws when accessed
+      const mockEntry = {
+        name: 'broken-entry',
+        isFile: true,
+        isDirectory: false,
+        file: vi.fn((onSuccess, onError) => {
+          onError(new Error('Permission denied'));
+        }),
+      } as unknown as FileSystemEntry;
+
+      await traverseFileTree(mockEntry, files, '');
+
+      expect(consoleWarn).toHaveBeenCalledWith(
+        'Error traversing file tree for entry broken-entry:',
+        expect.any(Error)
+      );
+      // No files should be added due to error
+      expect(files).toEqual([]);
+
+      consoleWarn.mockRestore();
+    });
+
+    it('should process file entries successfully', async () => {
+      const files: File[] = [];
+      const mockFile = createMockFile('test.txt', 'content');
+
+      const mockEntry = {
+        name: 'test.txt',
+        isFile: true,
+        isDirectory: false,
+        file: vi.fn((onSuccess) => {
+          onSuccess(mockFile);
+        }),
+      } as unknown as FileSystemEntry;
+
+      await traverseFileTree(mockEntry, files, 'folder');
+
+      expect(files).toHaveLength(1);
+      expect((files[0] as any).webkitRelativePath).toBe('folder/test.txt');
+    });
+
+    it('should process directory entries recursively', async () => {
+      const files: File[] = [];
+      const mockFile = createMockFile('nested.txt', 'content');
+
+      const mockFileEntry = {
+        name: 'nested.txt',
+        isFile: true,
+        isDirectory: false,
+        file: vi.fn((onSuccess) => {
+          onSuccess(mockFile);
+        }),
+      } as unknown as FileSystemEntry;
+
+      // Track read calls per instance
+      let readCount = 0;
+      const mockDirEntry = {
+        name: 'subdir',
+        isFile: false,
+        isDirectory: true,
+        createReader: () => ({
+          readEntries: vi.fn((onSuccess) => {
+            // First call returns entries, second call returns empty (signals done)
+            if (readCount === 0) {
+              readCount++;
+              onSuccess([mockFileEntry]);
+            } else {
+              onSuccess([]);
+            }
+          }),
+        }),
+      } as unknown as FileSystemEntry;
+
+      // Note: In actual usage, the directory name is passed as currentPath
+      // (see useDrop.ts: entriesToTraverse.push({ entry, path: entry.name }))
+      await traverseFileTree(mockDirEntry, files, 'subdir');
+
+      expect(files).toHaveLength(1);
+      expect((files[0] as any).webkitRelativePath).toBe('subdir/nested.txt');
     });
   });
 });
