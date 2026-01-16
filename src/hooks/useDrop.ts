@@ -19,6 +19,7 @@
  */
 import { useState, useCallback, useRef, useMemo } from 'react';
 import type { ProcessedFile, ClientError, FileStatus, DropState, DropStateValue } from '../types';
+import { FILE_STATUSES } from '../types';
 import { extractZipToFiles, isZipFile } from '../utils/zipExtractor';
 import {
   createProcessedFile,
@@ -320,10 +321,20 @@ export function useDrop(options: DropOptions): DropReturn {
       // Only transition out of dragging state
       if (prev.value !== 'dragging') return prev;
 
-      // Determine which state to return to based on current files/status
-      const nextValue = prev.files.length > 0
-        ? (prev.status?.title === 'Ready' ? 'ready' : 'error')
-        : 'idle';
+      // Determine which state to return to based on file statuses
+      if (prev.files.length === 0) {
+        return { ...prev, value: 'idle' };
+      }
+
+      // Check if any file has an error status
+      const errorStatuses: FileStatus[] = [
+        FILE_STATUSES.VALIDATION_FAILED,
+        FILE_STATUSES.PROCESSING_ERROR,
+        FILE_STATUSES.EMPTY_FILE,
+        FILE_STATUSES.ERROR,
+      ];
+      const hasErrors = prev.files.some(f => errorStatuses.includes(f.status));
+      const nextValue: DropStateValue = hasErrors ? 'error' : 'ready';
 
       return { ...prev, value: nextValue };
     });

@@ -4,12 +4,7 @@
  * and defines drop-specific types
  */
 
-// Import SDK types for reference (ConfigResponse used elsewhere)
-import type {
-  ConfigResponse,
-  ValidationError,
-  FileValidationStatusType
-} from '@shipstatic/types';
+import type { ValidationError } from '@shipstatic/types';
 import { FileValidationStatus } from '@shipstatic/types';
 
 // File statuses during processing
