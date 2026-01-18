@@ -20,13 +20,7 @@ vi.mock('@shipstatic/ship', async (importOriginal) => {
 });
 
 describe('fileProcessing', () => {
-  beforeEach(() => {
-    vi.spyOn(console, 'error').mockImplementation(() => { });
-  });
-
-  afterEach(() => {
-    vi.restoreAllMocks();
-  });
+  // Console mocking is handled globally in setup.ts
 
   describe('formatFileSize', () => {
     it('should format bytes correctly', () => {

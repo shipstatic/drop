@@ -35,9 +35,7 @@ const createMockShip = (): Ship => ({
 
 describe('Folder Structure Preservation', () => {
   beforeEach(() => {
-    vi.spyOn(console, 'log').mockImplementation(() => { });
-    vi.spyOn(console, 'error').mockImplementation(() => { });
-    vi.spyOn(console, 'warn').mockImplementation(() => { });
+    // Console mocking is handled globally in setup.ts
 
     // Default mock config - relaxed limits for unit tests
     mockGetConfig.mockResolvedValue({
