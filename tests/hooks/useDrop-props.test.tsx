@@ -7,14 +7,13 @@ import { renderHook, act, waitFor } from '@testing-library/react';
 import { useDrop } from '@/hooks/useDrop';
 import type { Ship } from '@shipstatic/ship';
 
-// Mock Ship SDK
+// Mock Ship SDK - config matches ConfigResponse structure
 const mockShip = {
   getConfig: vi.fn().mockResolvedValue({
-    limits: {
-      maxFileSize: 10 * 1024 * 1024,
-      maxFiles: 1000,
-      maxTotalSize: 100 * 1024 * 1024,
-    },
+    maxFileSize: 100 * 1024 * 1024,
+    maxFilesCount: 10000,
+    maxTotalSize: 500 * 1024 * 1024,
+    allowedMimeTypes: ['text/', 'image/', 'audio/', 'video/', 'font/', 'model/', 'application/'],
   }),
 } as unknown as Ship;
 

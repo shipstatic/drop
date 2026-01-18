@@ -317,4 +317,71 @@ describe('zipExtractor', () => {
       expect(isZipFile(file)).toBe(false);
     });
   });
+
+  describe('Error message branch coverage', () => {
+    it('should handle non-Error objects in ZIP loading failure', async () => {
+      // Reject with a string instead of an Error
+      vi.mocked(JSZip.loadAsync).mockRejectedValue('string error');
+
+      const zipFile = new File(['dummy'], 'test.zip', { type: 'application/zip' });
+      const result = await extractZipToFiles(zipFile);
+
+      expect(result.files).toHaveLength(0);
+      expect(result.errors).toHaveLength(1);
+      expect(result.errors[0]).toContain('Failed to load ZIP file');
+      expect(result.errors[0]).toContain('string error');
+    });
+
+    it('should handle non-Error objects in individual file extraction failure', async () => {
+      const failingEntry = createMockZipEntry('bad.txt', '');
+      // Reject with something that's not an Error
+      failingEntry.async.mockRejectedValue({ code: 'WEIRD_ERROR' });
+
+      const mockZip = {
+        files: {
+          'bad.txt': failingEntry,
+        },
+      };
+
+      vi.mocked(JSZip.loadAsync).mockResolvedValue(mockZip as any);
+
+      const zipFile = new File(['dummy'], 'test.zip', { type: 'application/zip' });
+      const result = await extractZipToFiles(zipFile);
+
+      expect(result.files).toHaveLength(0);
+      expect(result.errors).toHaveLength(1);
+      expect(result.errors[0]).toContain('Failed to extract bad.txt');
+      // Should use String() for non-Error objects
+      expect(result.errors[0]).toContain('[object Object]');
+    });
+
+    it('should handle null/undefined rejection in ZIP loading', async () => {
+      vi.mocked(JSZip.loadAsync).mockRejectedValue(null);
+
+      const zipFile = new File(['dummy'], 'test.zip', { type: 'application/zip' });
+      const result = await extractZipToFiles(zipFile);
+
+      expect(result.files).toHaveLength(0);
+      expect(result.errors).toHaveLength(1);
+      expect(result.errors[0]).toContain('null');
+    });
+
+    it('should handle number rejection in file extraction', async () => {
+      const failingEntry = createMockZipEntry('bad.txt', '');
+      failingEntry.async.mockRejectedValue(42);
+
+      const mockZip = {
+        files: {
+          'bad.txt': failingEntry,
+        },
+      };
+
+      vi.mocked(JSZip.loadAsync).mockResolvedValue(mockZip as any);
+
+      const zipFile = new File(['dummy'], 'test.zip', { type: 'application/zip' });
+      const result = await extractZipToFiles(zipFile);
+
+      expect(result.errors[0]).toContain('42');
+    });
+  });
 });

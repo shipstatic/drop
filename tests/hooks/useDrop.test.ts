@@ -47,12 +47,13 @@ describe('useDrop', () => {
     vi.spyOn(console, 'error').mockImplementation(() => { });
     vi.spyOn(console, 'warn').mockImplementation(() => { });
 
-    // Default mock config
+    // Default mock config - uses relaxed limits for unit tests
+    // MIME types match production to avoid false negatives with video/audio files
     mockGetConfig.mockResolvedValue({
-      maxFileSize: 10 * 1024 * 1024, // 10MB
-      maxTotalSize: 100 * 1024 * 1024, // 100MB
-      maxFilesCount: 1000,
-      allowedMimeTypes: ['text/', 'application/', 'image/'],
+      maxFileSize: 100 * 1024 * 1024,
+      maxTotalSize: 500 * 1024 * 1024,
+      maxFilesCount: 10000,
+      allowedMimeTypes: ['text/', 'image/', 'audio/', 'video/', 'font/', 'model/', 'application/'],
     });
 
     // Default mock validation (all files valid)
@@ -741,10 +742,10 @@ describe('useDrop', () => {
       // 2. Now simulate success
       // Reset mock to working state
       mockGetConfig.mockResolvedValue({
-        maxFileSize: 10 * 1024 * 1024,
-        maxTotalSize: 100 * 1024 * 1024,
-        maxFilesCount: 1000,
-        allowedMimeTypes: ['text/', 'application/', 'image/'],
+        maxFileSize: 100 * 1024 * 1024,
+        maxTotalSize: 500 * 1024 * 1024,
+        maxFilesCount: 10000,
+        allowedMimeTypes: ['text/', 'image/', 'audio/', 'video/', 'font/', 'model/', 'application/'],
       });
 
       await act(async () => {
