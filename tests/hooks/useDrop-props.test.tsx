@@ -172,6 +172,30 @@ describe('useDrop - prop getters', () => {
         props.onChange(mockEvent);
       }).not.toThrow();
     });
+
+    it('should clear input value after file selection to allow re-selecting same file', async () => {
+      const { result } = renderHook(() => useDrop({ ship: mockShip }));
+      const props = result.current.getInputProps();
+
+      const mockFile = new File(['content'], 'test.txt', { type: 'text/plain' });
+
+      // Track if value was cleared
+      let inputValue = 'C:\\fakepath\\test.txt';
+      const mockEvent = {
+        target: {
+          files: [mockFile],
+          get value() { return inputValue; },
+          set value(v: string) { inputValue = v; },
+        },
+      } as unknown as React.ChangeEvent<HTMLInputElement>;
+
+      await act(async () => {
+        props.onChange(mockEvent);
+      });
+
+      // Input value should be cleared to allow selecting the same file again
+      expect(inputValue).toBe('');
+    });
   });
 
   describe('isDragging state', () => {

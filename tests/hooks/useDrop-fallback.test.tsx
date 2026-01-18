@@ -1,3 +1,9 @@
+/**
+ * Regression tests for useDrop edge cases and bug fixes
+ *
+ * These tests document specific issues that were discovered and fixed.
+ * Each test should include context about what scenario it covers.
+ */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { renderHook, act, waitFor } from '@testing-library/react';
 import { useDrop } from '@/hooks/useDrop';
@@ -60,7 +66,19 @@ const createMockDirectoryEntry = (name: string, children: MockEntry[]): MockEntr
     };
 };
 
-describe('useDrop - Reproduction Issue', () => {
+/**
+ * Regression: Mixed file and folder drag-and-drop
+ *
+ * Issue: When users drag both files AND folders together (e.g., index.html + assets/),
+ * the path handling was inconsistent. Files at root level would get incorrect paths
+ * while folder contents were processed correctly.
+ *
+ * Root cause: webkitGetAsEntry returns FileSystemEntry for both files and folders,
+ * but the path construction logic didn't account for root-level files properly.
+ *
+ * These tests verify that mixed drops work correctly with proper path preservation.
+ */
+describe('useDrop - Mixed File/Folder Drop Regression', () => {
     beforeEach(() => {
         mockGetConfig.mockResolvedValue({
             maxFileSize: 100 * 1024 * 1024,
@@ -198,6 +216,14 @@ describe('useDrop - Reproduction Issue', () => {
             'index.html',
         ]);
     });
+    /**
+     * Regression: webkitGetAsEntry fallback
+     *
+     * Issue: Some browsers/scenarios return null from webkitGetAsEntry even for valid files.
+     * The code must fall back to getAsFile() in these cases to avoid losing files.
+     *
+     * This can happen with certain file types, browser extensions, or security policies.
+     */
     it('should fallback to getAsFile when webkitGetAsEntry returns null', async () => {
         const ship = createMockShip();
         const { result } = renderHook(() => useDrop({ ship }));
