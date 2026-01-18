@@ -13,7 +13,7 @@ describe('Unicode and Special Character Filenames', () => {
   describe('createProcessedFile with unicode names', () => {
     it('should handle Chinese characters', async () => {
       const file = new File(['内容'], '文件.txt', { type: 'text/plain' });
-      const processed = await createProcessedFile(file);
+      const processed = createProcessedFile(file);
 
       expect(processed.name).toBe('文件.txt');
       expect(processed.path).toBe('文件.txt');
@@ -21,7 +21,7 @@ describe('Unicode and Special Character Filenames', () => {
 
     it('should handle Japanese characters', async () => {
       const file = new File(['コンテンツ'], 'ファイル.html', { type: 'text/html' });
-      const processed = await createProcessedFile(file);
+      const processed = createProcessedFile(file);
 
       expect(processed.name).toBe('ファイル.html');
       expect(processed.path).toBe('ファイル.html');
@@ -29,7 +29,7 @@ describe('Unicode and Special Character Filenames', () => {
 
     it('should handle Korean characters', async () => {
       const file = new File(['콘텐츠'], '파일.css', { type: 'text/css' });
-      const processed = await createProcessedFile(file);
+      const processed = createProcessedFile(file);
 
       expect(processed.name).toBe('파일.css');
       expect(processed.path).toBe('파일.css');
@@ -37,7 +37,7 @@ describe('Unicode and Special Character Filenames', () => {
 
     it('should handle Cyrillic characters', async () => {
       const file = new File(['содержимое'], 'файл.js', { type: 'application/javascript' });
-      const processed = await createProcessedFile(file);
+      const processed = createProcessedFile(file);
 
       expect(processed.name).toBe('файл.js');
       expect(processed.path).toBe('файл.js');
@@ -45,7 +45,7 @@ describe('Unicode and Special Character Filenames', () => {
 
     it('should handle Arabic characters', async () => {
       const file = new File(['محتوى'], 'ملف.txt', { type: 'text/plain' });
-      const processed = await createProcessedFile(file);
+      const processed = createProcessedFile(file);
 
       expect(processed.name).toBe('ملف.txt');
       expect(processed.path).toBe('ملف.txt');
@@ -53,7 +53,7 @@ describe('Unicode and Special Character Filenames', () => {
 
     it('should handle Hebrew characters', async () => {
       const file = new File(['תוכן'], 'קובץ.txt', { type: 'text/plain' });
-      const processed = await createProcessedFile(file);
+      const processed = createProcessedFile(file);
 
       expect(processed.name).toBe('קובץ.txt');
       expect(processed.path).toBe('קובץ.txt');
@@ -61,7 +61,7 @@ describe('Unicode and Special Character Filenames', () => {
 
     it('should handle emoji in filenames', async () => {
       const file = new File(['emoji content'], '🔥fire🔥.txt', { type: 'text/plain' });
-      const processed = await createProcessedFile(file);
+      const processed = createProcessedFile(file);
 
       expect(processed.name).toBe('🔥fire🔥.txt');
       expect(processed.path).toBe('🔥fire🔥.txt');
@@ -69,7 +69,7 @@ describe('Unicode and Special Character Filenames', () => {
 
     it('should handle mixed unicode and ASCII', async () => {
       const file = new File(['mixed'], 'hello_世界_файл.txt', { type: 'text/plain' });
-      const processed = await createProcessedFile(file);
+      const processed = createProcessedFile(file);
 
       expect(processed.name).toBe('hello_世界_файл.txt');
       expect(processed.path).toBe('hello_世界_файл.txt');
@@ -77,7 +77,7 @@ describe('Unicode and Special Character Filenames', () => {
 
     it('should handle accented Latin characters', async () => {
       const file = new File(['café content'], 'café_naïve_résumé.txt', { type: 'text/plain' });
-      const processed = await createProcessedFile(file);
+      const processed = createProcessedFile(file);
 
       expect(processed.name).toBe('café_naïve_résumé.txt');
       expect(processed.path).toBe('café_naïve_résumé.txt');
@@ -85,7 +85,7 @@ describe('Unicode and Special Character Filenames', () => {
 
     it('should handle Greek characters', async () => {
       const file = new File(['περιεχόμενο'], 'αρχείο.txt', { type: 'text/plain' });
-      const processed = await createProcessedFile(file);
+      const processed = createProcessedFile(file);
 
       expect(processed.name).toBe('αρχείο.txt');
       expect(processed.path).toBe('αρχείο.txt');
@@ -100,7 +100,7 @@ describe('Unicode and Special Character Filenames', () => {
         writable: false,
       });
 
-      const processed = await createProcessedFile(file);
+      const processed = createProcessedFile(file);
 
       expect(processed.path).toBe('日本語フォルダ/file.txt');
       expect(processed.name).toBe('file.txt');
@@ -113,7 +113,7 @@ describe('Unicode and Special Character Filenames', () => {
         writable: false,
       });
 
-      const processed = await createProcessedFile(file);
+      const processed = createProcessedFile(file);
 
       expect(processed.path).toBe('项目/源代码/组件/文件.txt');
       expect(processed.name).toBe('文件.txt');
@@ -126,7 +126,7 @@ describe('Unicode and Special Character Filenames', () => {
         writable: false,
       });
 
-      const processed = await createProcessedFile(file);
+      const processed = createProcessedFile(file);
 
       expect(processed.path).toBe('📁docs/📄readme.md');
     });
@@ -202,14 +202,14 @@ describe('Unicode and Special Character Filenames', () => {
     it('should handle very long unicode filenames', async () => {
       const longName = '这是一个非常长的文件名'.repeat(10) + '.txt';
       const file = new File(['content'], longName, { type: 'text/plain' });
-      const processed = await createProcessedFile(file);
+      const processed = createProcessedFile(file);
 
       expect(processed.name).toBe(longName);
     });
 
     it('should handle filenames with spaces', async () => {
       const file = new File(['content'], 'my file name.txt', { type: 'text/plain' });
-      const processed = await createProcessedFile(file);
+      const processed = createProcessedFile(file);
 
       expect(processed.name).toBe('my file name.txt');
       expect(processed.path).toBe('my file name.txt');
@@ -217,14 +217,14 @@ describe('Unicode and Special Character Filenames', () => {
 
     it('should handle filenames with multiple dots', async () => {
       const file = new File(['content'], 'archive.tar.gz', { type: 'application/gzip' });
-      const processed = await createProcessedFile(file);
+      const processed = createProcessedFile(file);
 
       expect(processed.name).toBe('archive.tar.gz');
     });
 
     it('should handle hidden files (dot prefix)', async () => {
       const file = new File(['content'], '.gitignore', { type: 'text/plain' });
-      const processed = await createProcessedFile(file);
+      const processed = createProcessedFile(file);
 
       expect(processed.name).toBe('.gitignore');
       expect(processed.path).toBe('.gitignore');
@@ -232,21 +232,21 @@ describe('Unicode and Special Character Filenames', () => {
 
     it('should handle filenames with underscores and hyphens', async () => {
       const file = new File(['content'], 'my_file-name_v2.txt', { type: 'text/plain' });
-      const processed = await createProcessedFile(file);
+      const processed = createProcessedFile(file);
 
       expect(processed.name).toBe('my_file-name_v2.txt');
     });
 
     it('should handle filenames with numbers only', async () => {
       const file = new File(['content'], '12345.txt', { type: 'text/plain' });
-      const processed = await createProcessedFile(file);
+      const processed = createProcessedFile(file);
 
       expect(processed.name).toBe('12345.txt');
     });
 
     it('should handle filenames with mixed case', async () => {
       const file = new File(['content'], 'MyFile.TXT', { type: 'text/plain' });
-      const processed = await createProcessedFile(file);
+      const processed = createProcessedFile(file);
 
       expect(processed.name).toBe('MyFile.TXT');
     });
@@ -254,7 +254,7 @@ describe('Unicode and Special Character Filenames', () => {
     it('should handle zero-width characters (potential security issue)', async () => {
       // Zero-width space: \u200B
       const file = new File(['content'], 'file\u200Bname.txt', { type: 'text/plain' });
-      const processed = await createProcessedFile(file);
+      const processed = createProcessedFile(file);
 
       // The file should be processed - validation happens elsewhere
       expect(processed.name).toBe('file\u200Bname.txt');
@@ -263,7 +263,7 @@ describe('Unicode and Special Character Filenames', () => {
     it('should handle right-to-left override character', async () => {
       // RLO: \u202E - this is a security concern but processing should still work
       const file = new File(['content'], 'file\u202Ename.txt', { type: 'text/plain' });
-      const processed = await createProcessedFile(file);
+      const processed = createProcessedFile(file);
 
       expect(processed.name).toBe('file\u202Ename.txt');
     });

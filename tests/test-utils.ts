@@ -1,7 +1,6 @@
 /**
  * Shared test utilities for creating mock data across all test files
  */
-import { FILE_STATUSES, type ProcessedFile } from '../src/types';
 
 /**
  * Creates a mock File object with arrayBuffer support for testing
@@ -45,23 +44,3 @@ export const createMockFileWithPath = (
   });
   return file;
 };
-
-/**
- * Creates a complete ProcessedFile object for component testing
- * Used for testing UI components that display processed files
- */
-export const createMockProcessedFile = (
-  overrides: Partial<ProcessedFile> = {}
-): ProcessedFile => ({
-  id: crypto.randomUUID(),
-  file: new File(['content'], overrides.name || 'test.txt'),
-  name: 'test.txt',
-  path: 'test.txt',
-  size: 1024,
-  type: 'text/plain',
-  lastModified: Date.now(),
-  status: FILE_STATUSES.READY,
-  md5: 'mocked-md5-hash',
-  content: new File([], 'mock-file'),
-  ...overrides,
-});

@@ -21,18 +21,6 @@ vi.mock('@shipstatic/ship', async (importOriginal) => {
   };
 });
 
-// Mock SparkMD5
-vi.mock('spark-md5', () => ({
-  default: {
-    ArrayBuffer: class {
-      append() { }
-      end() {
-        return 'mocked-md5-hash';
-      }
-    },
-  },
-}));
-
 // Mock JSZip
 vi.mock('jszip');
 

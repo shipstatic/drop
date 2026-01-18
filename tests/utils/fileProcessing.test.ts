@@ -45,9 +45,9 @@ describe('fileProcessing', () => {
   });
 
   describe('createProcessedFile', () => {
-    it('should create ProcessedFile from File', async () => {
+    it('should create ProcessedFile from File', () => {
       const file = createMockFile('test.txt', 'hello world');
-      const processed = await createProcessedFile(file);
+      const processed = createProcessedFile(file);
 
       expect(processed.id).toBeTruthy();
       expect(processed.file).toBe(file);
@@ -60,24 +60,24 @@ describe('fileProcessing', () => {
       expect(processed.md5).toBeUndefined();
     });
 
-    it('should support custom path', async () => {
+    it('should support custom path', () => {
       const file = createMockFile('original.txt');
-      const processed = await createProcessedFile(file, { path: 'folder/custom.txt' });
+      const processed = createProcessedFile(file, { path: 'folder/custom.txt' });
 
       expect(processed.path).toBe('folder/custom.txt');
       expect(processed.name).toBe('custom.txt');
     });
 
-    it('should determine MIME type from extension', async () => {
+    it('should determine MIME type from extension', () => {
       const file = createMockFile('document.pdf', 'pdf content', '');
-      const processed = await createProcessedFile(file);
+      const processed = createProcessedFile(file);
 
       expect(processed.type).toBe('application/pdf');
     });
 
-    it('should fall back to application/octet-stream for unknown types', async () => {
+    it('should fall back to application/octet-stream for unknown types', () => {
       const file = createMockFile('unknown.unknownext', 'content', '');
-      const processed = await createProcessedFile(file);
+      const processed = createProcessedFile(file);
 
       expect(processed.type).toBe('application/octet-stream');
     });
@@ -87,9 +87,9 @@ describe('fileProcessing', () => {
   // Validation tests are in the Ship SDK package
 
   describe('getValidFiles', () => {
-    it('should return only files with READY status', async () => {
-      const file1 = await createProcessedFile(createMockFile('file1.txt'));
-      const file2 = await createProcessedFile(createMockFile('file2.txt'));
+    it('should return only files with READY status', () => {
+      const file1 = createProcessedFile(createMockFile('file1.txt'));
+      const file2 = createProcessedFile(createMockFile('file2.txt'));
 
       file1.status = FILE_STATUSES.READY;
       file2.status = FILE_STATUSES.VALIDATION_FAILED;
@@ -104,8 +104,8 @@ describe('fileProcessing', () => {
       expect(valid).toEqual([]);
     });
 
-    it('should return empty array when no files are READY', async () => {
-      const file1 = await createProcessedFile(createMockFile('file1.txt'));
+    it('should return empty array when no files are READY', () => {
+      const file1 = createProcessedFile(createMockFile('file1.txt'));
       file1.status = FILE_STATUSES.VALIDATION_FAILED;
 
       const valid = getValidFiles([file1]);
@@ -116,11 +116,11 @@ describe('fileProcessing', () => {
   // Note: allValidFilesHaveChecksums removed - MD5 calculation now handled by Ship SDK
 
   describe('stripCommonPrefix', () => {
-    it('should strip common directory prefix', async () => {
-      const files = await Promise.all([
+    it('should strip common directory prefix', () => {
+      const files = [
         createProcessedFile(createMockFile('file.txt'), { path: 'myProject/index.html' }),
         createProcessedFile(createMockFile('file.txt'), { path: 'myProject/src/app.js' }),
-      ]);
+      ];
 
       const result = stripCommonPrefix(files);
 
@@ -128,11 +128,11 @@ describe('fileProcessing', () => {
       expect(result[1].path).toBe('src/app.js');
     });
 
-    it('should not strip if no common prefix', async () => {
-      const files = await Promise.all([
+    it('should not strip if no common prefix', () => {
+      const files = [
         createProcessedFile(createMockFile('file.txt'), { path: 'projectA/file.txt' }),
         createProcessedFile(createMockFile('file.txt'), { path: 'projectB/file.txt' }),
-      ]);
+      ];
 
       const result = stripCommonPrefix(files);
 
@@ -140,11 +140,11 @@ describe('fileProcessing', () => {
       expect(result[1].path).toBe('projectB/file.txt');
     });
 
-    it('should handle files at root', async () => {
-      const files = await Promise.all([
+    it('should handle files at root', () => {
+      const files = [
         createProcessedFile(createMockFile('file1.txt'), { path: 'file1.txt' }),
         createProcessedFile(createMockFile('file2.txt'), { path: 'file2.txt' }),
-      ]);
+      ];
 
       const result = stripCommonPrefix(files);
 
@@ -152,10 +152,10 @@ describe('fileProcessing', () => {
       expect(result[1].path).toBe('file2.txt');
     });
 
-    it('should handle single file in folder', async () => {
-      const files = await Promise.all([
+    it('should handle single file in folder', () => {
+      const files = [
         createProcessedFile(createMockFile('file.txt'), { path: 'myProject/index.html' }),
-      ]);
+      ];
 
       const result = stripCommonPrefix(files);
 
