@@ -31,7 +31,7 @@ jobs:
       - if: success()
         uses: slackapi/slack-github-action@v1.23.0
         with:
-          payload: '{"text":"✅ @shipstatic/assets published successfully"}'
+          payload: '{"text":"✅ @shipstatic/drop published successfully"}'
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
           SLACK_WEBHOOK_TYPE: INCOMING_WEBHOOK
@@ -39,7 +39,7 @@ jobs:
       - if: failure()
         uses: slackapi/slack-github-action@v1.23.0
         with:
-          payload: '{"text":"🔴 @shipstatic/assets publish failed"}'
+          payload: '{"text":"🔴 @shipstatic/drop publish failed"}'
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
           SLACK_WEBHOOK_TYPE: INCOMING_WEBHOOK
