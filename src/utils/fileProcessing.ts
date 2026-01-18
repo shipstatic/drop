@@ -2,7 +2,7 @@ import {
   formatFileSize as shipFormatFileSize,
 } from '@shipstatic/ship';
 import { getMimeType } from './mimeType';
-import { FILE_STATUSES, type ProcessedFile, type FileStatus } from '../types';
+import { FILE_STATUSES, type ProcessedFile, type FileWithPath } from '../types';
 
 /**
  * Unified file processing utilities
@@ -27,15 +27,15 @@ export const formatFileSize = shipFormatFileSize;
  * 2. file.webkitRelativePath (if non-empty, preserves folder structure)
  * 3. file.name (fallback)
  */
-export async function createProcessedFile(
+export function createProcessedFile(
   file: File,
   options?: {
     /** Custom path (defaults to webkitRelativePath or file.name) */
     path?: string;
   }
-): Promise<ProcessedFile> {
+): ProcessedFile {
   // Priority: custom path > webkitRelativePath > file.name
-  const webkitPath = (file as any).webkitRelativePath || '';
+  const webkitPath = (file as FileWithPath).webkitRelativePath || '';
   const path = options?.path || (webkitPath && webkitPath.trim() ? webkitPath : file.name);
 
   // Determine MIME type

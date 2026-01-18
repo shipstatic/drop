@@ -1,6 +1,6 @@
 /**
  * @shipstatic/drop
- * Headless React hook for file processing, ZIP extraction, MD5 calculation, and validation
+ * Headless React hook for file processing, ZIP extraction, and validation
  * Purpose-built for Ship SDK deployments - provides zero UI, maximum flexibility
  */
 

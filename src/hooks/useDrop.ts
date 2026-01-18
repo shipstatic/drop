@@ -18,7 +18,7 @@
  * ```
  */
 import { useState, useCallback, useRef, useMemo } from 'react';
-import type { ProcessedFile, ClientError, FileStatus, DropState, DropStateValue } from '../types';
+import type { ProcessedFile, ClientError, FileStatus, DropState, DropStateValue, FileWithPath } from '../types';
 import { FILE_STATUSES } from '../types';
 import { extractZipToFiles, isZipFile } from '../utils/zipExtractor';
 import {
@@ -165,7 +165,7 @@ export function useDrop(options: DropOptions): DropReturn {
         detectedSourceName = newFiles[0].name.replace(/\.zip$/i, '');
       } else if (newFiles.length > 0) {
         // Check if files have webkitRelativePath (folder drop/selection)
-        const firstPath = (newFiles[0] as any).webkitRelativePath || '';
+        const firstPath = (newFiles[0] as FileWithPath).webkitRelativePath || '';
         if (firstPath && firstPath.includes('/')) {
           // Folder drop: extract folder name from path
           detectedSourceName = firstPath.split('/')[0];
@@ -201,7 +201,7 @@ export function useDrop(options: DropOptions): DropReturn {
       // Step 3: Filter junk files (single point for both ZIP and direct drops)
       // Extract paths: for ZIP files, name contains the full path; for direct drops, use webkitRelativePath or name
       const getFilePath = (f: File) => {
-        const webkitPath = (f as any).webkitRelativePath;
+        const webkitPath = (f as FileWithPath).webkitRelativePath;
         // Handle both undefined and empty string as falsy
         return (webkitPath && webkitPath.trim()) ? webkitPath : f.name;
       };
@@ -215,9 +215,7 @@ export function useDrop(options: DropOptions): DropReturn {
         ...prev,
         status: { title: 'Processing...', details: 'Processing files...' },
       }));
-      const processedFiles = await Promise.all(
-        cleanFiles.map(file => createProcessedFile(file))
-      );
+      const processedFiles = cleanFiles.map(file => createProcessedFile(file));
 
       // Step 5: Strip common prefix if requested
       const finalFiles = stripPrefix ? stripCommonPrefix(processedFiles) : processedFiles;
@@ -401,11 +399,11 @@ export function useDrop(options: DropOptions): DropReturn {
 
     if (files.length > 0) {
       await processFiles(files);
-    } else if (state.value === 'dragging') {
-      // Return to idle if drop was empty
-      setState(prev => ({ ...prev, value: 'idle' }));
+    } else {
+      // Return to idle if drop was empty (only if still in dragging state)
+      setState(prev => prev.value === 'dragging' ? { ...prev, value: 'idle' } : prev);
     }
-  }, [processFiles, state.value]);
+  }, [processFiles]);
 
   // File input handlers
   const handleInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
@@ -413,6 +411,8 @@ export function useDrop(options: DropOptions): DropReturn {
     if (files.length > 0) {
       processFiles(files);
     }
+    // Clear input so selecting the same file again triggers onChange
+    e.target.value = '';
   }, [processFiles]);
 
   const open = useCallback(() => {

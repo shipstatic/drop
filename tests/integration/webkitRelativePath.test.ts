@@ -19,7 +19,7 @@ describe('webkitRelativePath handling', () => {
         writable: false, configurable: true,
       });
 
-      const processed = await createProcessedFile(file);
+      const processed = createProcessedFile(file);
 
       expect(processed.path).toBe('my-folder/test.txt');
       expect(processed.name).toBe('test.txt');
@@ -32,7 +32,7 @@ describe('webkitRelativePath handling', () => {
         writable: false, configurable: true,
       });
 
-      const processed = await createProcessedFile(file);
+      const processed = createProcessedFile(file);
 
       expect(processed.path).toBe('test.txt');
       expect(processed.name).toBe('test.txt');
@@ -45,7 +45,7 @@ describe('webkitRelativePath handling', () => {
         writable: false, configurable: true,
       });
 
-      const processed = await createProcessedFile(file, { path: 'correct/path.txt' });
+      const processed = createProcessedFile(file, { path: 'correct/path.txt' });
 
       expect(processed.path).toBe('correct/path.txt');
       expect(processed.name).toBe('path.txt');
@@ -142,7 +142,7 @@ describe('webkitRelativePath handling', () => {
         writable: false, configurable: true,
       });
 
-      const processed = await createProcessedFile(file);
+      const processed = createProcessedFile(file);
 
       // Should be just the path as-is
       expect(processed.path).toBe('dist/index.html');
@@ -159,7 +159,7 @@ describe('webkitRelativePath handling', () => {
         writable: false, configurable: true,
       });
 
-      const processed = await createProcessedFile(file);
+      const processed = createProcessedFile(file);
 
       // We take the path as-is - it's the consumer's responsibility to set it correctly
       expect(processed.path).toBe('dist/index.html/index.html');
@@ -174,7 +174,7 @@ describe('webkitRelativePath handling', () => {
         writable: false, configurable: true,
       });
 
-      const processed = await createProcessedFile(file);
+      const processed = createProcessedFile(file);
 
       // The path has suspicious doubling
       const segments = processed.path.split('/');
@@ -214,7 +214,7 @@ describe('webkitRelativePath handling', () => {
       // Single file drops typically don't have webkitRelativePath
       const file = createMockFile('index.html', 'content');
 
-      const processed = await createProcessedFile(file);
+      const processed = createProcessedFile(file);
 
       expect(processed.path).toBe('index.html');
       expect(processed.name).toBe('index.html');
@@ -255,7 +255,7 @@ describe('webkitRelativePath handling', () => {
         writable: false, configurable: true,
       });
 
-      const processed = await createProcessedFile(file);
+      const processed = createProcessedFile(file);
 
       // Should fall back to file.name
       expect(processed.path).toBe('test.txt');
@@ -269,7 +269,7 @@ describe('webkitRelativePath handling', () => {
         writable: false, configurable: true,
       });
 
-      const processed = await createProcessedFile(file);
+      const processed = createProcessedFile(file);
 
       expect(processed.path).toBe(longPath);
       expect(processed.name).toBe('file.txt');
@@ -282,7 +282,7 @@ describe('webkitRelativePath handling', () => {
         writable: false, configurable: true,
       });
 
-      const processed = await createProcessedFile(file);
+      const processed = createProcessedFile(file);
 
       expect(processed.path).toBe('my folder/sub folder/my file.txt');
       expect(processed.name).toBe('my file.txt');
@@ -295,7 +295,7 @@ describe('webkitRelativePath handling', () => {
         writable: false, configurable: true,
       });
 
-      const processed = await createProcessedFile(file);
+      const processed = createProcessedFile(file);
 
       expect(processed.path).toBe('文件夹/文件.txt');
       expect(processed.name).toBe('文件.txt');

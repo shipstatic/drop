@@ -21,7 +21,7 @@ describe('Ship SDK Contract', () => {
   describe('ProcessedFile satisfies ValidatableFile interface', () => {
     it('should have all required ValidatableFile properties', async () => {
       const file = new File(['test content'], 'test.txt', { type: 'text/plain' });
-      const processed = await createProcessedFile(file);
+      const processed = createProcessedFile(file);
 
       // Compile-time check: ProcessedFile must be assignable to ValidatableFile
       const validatable: ValidatableFile = processed;
@@ -37,7 +37,7 @@ describe('Ship SDK Contract', () => {
 
     it('should work with real validateFiles function', async () => {
       const file = new File(['hello world'], 'index.html', { type: 'text/html' });
-      const processed = await createProcessedFile(file);
+      const processed = createProcessedFile(file);
 
       // Use real validateFiles - not mocked
       const result = validateFiles([processed], PRODUCTION_CONFIG);
@@ -52,7 +52,7 @@ describe('Ship SDK Contract', () => {
 
     it('should work with real getValidFiles function', async () => {
       const file = new File(['content'], 'app.js', { type: 'application/javascript' });
-      const processed = await createProcessedFile(file);
+      const processed = createProcessedFile(file);
 
       // First validate
       const validated = validateFiles([processed], PRODUCTION_CONFIG);
@@ -67,7 +67,7 @@ describe('Ship SDK Contract', () => {
 
     it('should preserve ProcessedFile properties through validation', async () => {
       const file = new File(['css content'], 'styles.css', { type: 'text/css' });
-      const processed = await createProcessedFile(file);
+      const processed = createProcessedFile(file);
 
       // ProcessedFile-specific properties
       expect(processed).toHaveProperty('id');
@@ -136,7 +136,7 @@ describe('Ship SDK Contract', () => {
       // Use a MIME type that's NOT in the allowed categories
       // chemical/ is a valid mime-db category but not allowed for static hosting
       const file = new File(['molecule data'], 'molecule.xyz', { type: 'chemical/x-xyz' });
-      const processed = await createProcessedFile(file);
+      const processed = createProcessedFile(file);
 
       const result = validateFiles([processed], PRODUCTION_CONFIG);
 
@@ -165,7 +165,7 @@ describe('Ship SDK Contract', () => {
       // This is the key test: .ts files get video/mp2t from mime-db
       // but should still be accepted because video/ is allowed
       const tsFile = new File(['const x = 1;'], 'app.ts', { type: 'video/mp2t' });
-      const processed = await createProcessedFile(tsFile);
+      const processed = createProcessedFile(tsFile);
 
       const result = validateFiles([processed], PRODUCTION_CONFIG);
 
@@ -175,7 +175,7 @@ describe('Ship SDK Contract', () => {
 
     it('should reject empty files', async () => {
       const file = new File([], 'empty.txt', { type: 'text/plain' });
-      const processed = await createProcessedFile(file);
+      const processed = createProcessedFile(file);
 
       const result = validateFiles([processed], PRODUCTION_CONFIG);
 
@@ -192,7 +192,7 @@ describe('Ship SDK Contract', () => {
       };
 
       const file = new File(['this is more than 5 bytes'], 'big.txt', { type: 'text/plain' });
-      const processed = await createProcessedFile(file);
+      const processed = createProcessedFile(file);
 
       const result = validateFiles([processed], tinyConfig);
 

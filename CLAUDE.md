@@ -159,6 +159,18 @@ Atomic validation means removing one file requires re-validating all. Simpler to
 
 Drop sets this property on File objects. Ship SDK reads it for deployment paths. Don't mutate it between Drop and SDK.
 
+### File Input is Folder-Only
+
+The hidden input always has `webkitdirectory` attribute set. This means clicking opens a **folder picker**, not a file picker. Users wanting to upload individual files must use drag-and-drop.
+
+### stripCommonPrefix Mutates File Objects
+
+`stripCommonPrefix` returns new `ProcessedFile` objects (immutable pattern), but it **mutates** the underlying `File.webkitRelativePath` property. This is intentional - Ship SDK reads `webkitRelativePath` from the raw File objects, so the mutation keeps them in sync.
+
+### Folder Traversal Silently Skips Errors
+
+If a file can't be read during folder drag-and-drop (permissions, etc.), it's logged to console but otherwise skipped. The caller has no programmatic way to know which files failed.
+
 ## Related Documentation
 
 | Document | Content |

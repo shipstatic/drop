@@ -77,7 +77,7 @@ describe('Folder drop integration', () => {
         writable: false, configurable: true,
       });
 
-      const processed = await createProcessedFile(file);
+      const processed = createProcessedFile(file);
 
       // Should be exactly as provided, NOT doubled
       expect(processed.path).toBe('dist/index.html');
@@ -148,7 +148,7 @@ describe('Folder drop integration', () => {
         writable: false, configurable: true,
       });
 
-      const processed = await createProcessedFile(file);
+      const processed = createProcessedFile(file);
       expect(processed.path).toBe('project/src/config/environments/production/config.json');
 
       // Single file should strip all parent directories
@@ -259,7 +259,7 @@ describe('Folder drop integration', () => {
       // When user drops a single file (not a folder), there's no webkitRelativePath
       const file = createMockFile('standalone.txt', 'content');
 
-      const processed = await createProcessedFile(file);
+      const processed = createProcessedFile(file);
 
       expect(processed.path).toBe('standalone.txt');
       expect(processed.name).toBe('standalone.txt');
