@@ -1,5 +1,5 @@
 /**
- * Global test setup for @shipstatic/assets
+ * Global test setup for @shipstatic/drop
  * Runs before all tests to configure mocks and environment
  */
 
