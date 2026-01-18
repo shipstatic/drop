@@ -63,10 +63,10 @@ const createMockDirectoryEntry = (name: string, children: MockEntry[]): MockEntr
 describe('useDrop - Reproduction Issue', () => {
     beforeEach(() => {
         mockGetConfig.mockResolvedValue({
-            maxFileSize: 10 * 1024 * 1024,
-            maxTotalSize: 100 * 1024 * 1024,
-            maxFilesCount: 1000,
-            allowedMimeTypes: ['text/', 'application/', 'image/'],
+            maxFileSize: 100 * 1024 * 1024,
+            maxTotalSize: 500 * 1024 * 1024,
+            maxFilesCount: 10000,
+            allowedMimeTypes: ['text/', 'image/', 'audio/', 'video/', 'font/', 'model/', 'application/'],
         });
 
         mockValidateFiles.mockImplementation((files) => ({

@@ -9,14 +9,13 @@ import { FILE_STATUSES } from '@/types';
 import { createMockFile } from '../test-utils';
 import type { Ship } from '@shipstatic/ship';
 
-// Mock Ship SDK
+// Mock Ship SDK - config matches ConfigResponse structure
 const mockShip = {
   getConfig: vi.fn().mockResolvedValue({
-    limits: {
-      maxFileSize: 10 * 1024 * 1024,
-      maxFiles: 1000,
-      maxTotalSize: 100 * 1024 * 1024,
-    },
+    maxFileSize: 100 * 1024 * 1024,
+    maxFilesCount: 10000,
+    maxTotalSize: 500 * 1024 * 1024,
+    allowedMimeTypes: ['text/', 'image/', 'audio/', 'video/', 'font/', 'model/', 'application/'],
   }),
 } as unknown as Ship;
 
@@ -324,6 +323,275 @@ describe('useDrop - branch coverage', () => {
       );
 
       consoleWarn.mockRestore();
+    });
+  });
+
+  describe('handleDragLeave state transitions', () => {
+    it('should return to error state when files have validation errors', async () => {
+      const { result } = renderHook(() => useDrop({ ship: mockShip }));
+
+      // Mock validation to return files with error status
+      mockValidateFiles.mockImplementationOnce((files: any[]) => ({
+        files: files.map(f => ({
+          ...f,
+          status: FILE_STATUSES.VALIDATION_FAILED,
+          statusMessage: 'File too large',
+        })),
+        validFiles: [],
+        error: {
+          error: 'File Too Large',
+          details: 'File exceeds size limit',
+          errors: ['File too large'],
+          isClientError: true,
+        },
+      }));
+
+      // First, process files that will fail validation
+      const file = createMockFile('big.txt', 'content');
+      await act(async () => {
+        await result.current.processFiles([file]);
+      });
+
+      // Should be in error state
+      expect(result.current.phase).toBe('error');
+      expect(result.current.files).toHaveLength(1);
+      expect(result.current.files[0].status).toBe(FILE_STATUSES.VALIDATION_FAILED);
+
+      // Now drag over (from error state)
+      const props = result.current.getDropzoneProps();
+      act(() => {
+        props.onDragOver({ preventDefault: vi.fn() } as unknown as React.DragEvent);
+      });
+      expect(result.current.isDragging).toBe(true);
+
+      // Drag leave should return to ERROR state (not ready)
+      act(() => {
+        props.onDragLeave({ preventDefault: vi.fn() } as unknown as React.DragEvent);
+      });
+
+      expect(result.current.isDragging).toBe(false);
+      expect(result.current.phase).toBe('error');
+    });
+
+    it('should return to ready state when files are valid', async () => {
+      const { result } = renderHook(() => useDrop({ ship: mockShip }));
+
+      // Process valid files
+      const file = createMockFile('good.txt', 'content');
+      await act(async () => {
+        await result.current.processFiles([file]);
+      });
+
+      expect(result.current.phase).toBe('ready');
+
+      // Drag over from ready state
+      const props = result.current.getDropzoneProps();
+      act(() => {
+        props.onDragOver({ preventDefault: vi.fn() } as unknown as React.DragEvent);
+      });
+      expect(result.current.isDragging).toBe(true);
+
+      // Drag leave should return to ready state
+      act(() => {
+        props.onDragLeave({ preventDefault: vi.fn() } as unknown as React.DragEvent);
+      });
+
+      expect(result.current.isDragging).toBe(false);
+      expect(result.current.phase).toBe('ready');
+    });
+
+    it('should handle files with PROCESSING_ERROR status', async () => {
+      const { result } = renderHook(() => useDrop({ ship: mockShip }));
+
+      // Mock validation to return files with processing error status
+      mockValidateFiles.mockImplementationOnce((files: any[]) => ({
+        files: files.map(f => ({
+          ...f,
+          status: FILE_STATUSES.PROCESSING_ERROR,
+          statusMessage: 'Failed to process file',
+        })),
+        validFiles: [],
+        error: {
+          error: 'Processing Error',
+          details: 'Failed to process file',
+          errors: ['Processing error'],
+          isClientError: true,
+        },
+      }));
+
+      const file = createMockFile('corrupt.txt', 'content');
+      await act(async () => {
+        await result.current.processFiles([file]);
+      });
+
+      expect(result.current.phase).toBe('error');
+
+      // Drag over then leave
+      const props = result.current.getDropzoneProps();
+      act(() => {
+        props.onDragOver({ preventDefault: vi.fn() } as unknown as React.DragEvent);
+      });
+      act(() => {
+        props.onDragLeave({ preventDefault: vi.fn() } as unknown as React.DragEvent);
+      });
+
+      // Should return to error due to PROCESSING_ERROR status
+      expect(result.current.phase).toBe('error');
+    });
+
+    it('should handle files with EMPTY_FILE status', async () => {
+      const { result } = renderHook(() => useDrop({ ship: mockShip }));
+
+      mockValidateFiles.mockImplementationOnce((files: any[]) => ({
+        files: files.map(f => ({
+          ...f,
+          status: FILE_STATUSES.EMPTY_FILE,
+          statusMessage: 'File is empty',
+        })),
+        validFiles: [],
+        error: {
+          error: 'Empty File',
+          details: 'File is empty (0 bytes)',
+          errors: ['Empty file'],
+          isClientError: true,
+        },
+      }));
+
+      const file = createMockFile('empty.txt', '');
+      await act(async () => {
+        await result.current.processFiles([file]);
+      });
+
+      expect(result.current.phase).toBe('error');
+
+      const props = result.current.getDropzoneProps();
+      act(() => {
+        props.onDragOver({ preventDefault: vi.fn() } as unknown as React.DragEvent);
+      });
+      act(() => {
+        props.onDragLeave({ preventDefault: vi.fn() } as unknown as React.DragEvent);
+      });
+
+      expect(result.current.phase).toBe('error');
+    });
+  });
+
+  describe('handleDragOver during processing', () => {
+    it('should NOT transition to dragging when already processing', async () => {
+      // Create a slow getConfig to keep processing state longer
+      let resolveConfig: () => void;
+      const slowConfigPromise = new Promise<void>((resolve) => {
+        resolveConfig = resolve;
+      });
+
+      (mockShip.getConfig as any).mockImplementationOnce(() =>
+        slowConfigPromise.then(() => ({
+          maxFileSize: 100 * 1024 * 1024,
+          maxFilesCount: 10000,
+          maxTotalSize: 500 * 1024 * 1024,
+          allowedMimeTypes: ['text/', 'image/', 'audio/', 'video/', 'font/', 'model/', 'application/'],
+        }))
+      );
+
+      const { result } = renderHook(() => useDrop({ ship: mockShip }));
+      const props = result.current.getDropzoneProps();
+
+      const file = createMockFile('test.txt', 'content');
+
+      // Start processing (don't await)
+      let processPromise: Promise<void>;
+      act(() => {
+        processPromise = result.current.processFiles([file]);
+      });
+
+      // Should be in processing state
+      expect(result.current.isProcessing).toBe(true);
+      expect(result.current.phase).toBe('processing');
+
+      // Try to drag over while processing
+      act(() => {
+        props.onDragOver({ preventDefault: vi.fn() } as unknown as React.DragEvent);
+      });
+
+      // Should NOT transition to dragging - should stay in processing
+      expect(result.current.isDragging).toBe(false);
+      expect(result.current.phase).toBe('processing');
+
+      // Clean up: resolve the config and wait for processing to complete
+      await act(async () => {
+        resolveConfig!();
+        await processPromise!;
+      });
+
+      expect(result.current.isProcessing).toBe(false);
+    });
+  });
+
+  describe('updateFileStatus edge cases', () => {
+    it('should not modify files when ID does not match', async () => {
+      const { result } = renderHook(() => useDrop({ ship: mockShip }));
+
+      const file = createMockFile('test.txt', 'content');
+      await act(async () => {
+        await result.current.processFiles([file]);
+      });
+
+      const originalFile = result.current.files[0];
+      const originalStatus = originalFile.status;
+
+      // Try to update with non-existent ID
+      act(() => {
+        result.current.updateFileStatus('non-existent-id-12345', {
+          status: FILE_STATUSES.UPLOADING,
+          statusMessage: 'Uploading...',
+          progress: 50,
+        });
+      });
+
+      // Original file should be unchanged
+      expect(result.current.files[0].id).toBe(originalFile.id);
+      expect(result.current.files[0].status).toBe(originalStatus);
+      expect(result.current.files[0].progress).toBeUndefined();
+    });
+
+    it('should only update the matching file when multiple files exist', async () => {
+      const { result } = renderHook(() => useDrop({ ship: mockShip }));
+
+      const files = [
+        createMockFile('file1.txt', 'content1'),
+        createMockFile('file2.txt', 'content2'),
+        createMockFile('file3.txt', 'content3'),
+      ];
+
+      await act(async () => {
+        await result.current.processFiles(files);
+      });
+
+      expect(result.current.files).toHaveLength(3);
+
+      const secondFileId = result.current.files[1].id;
+
+      // Update only the second file
+      act(() => {
+        result.current.updateFileStatus(secondFileId, {
+          status: FILE_STATUSES.UPLOADING,
+          statusMessage: 'Uploading file2...',
+          progress: 75,
+        });
+      });
+
+      // First file unchanged
+      expect(result.current.files[0].status).toBe(FILE_STATUSES.READY);
+      expect(result.current.files[0].progress).toBeUndefined();
+
+      // Second file updated
+      expect(result.current.files[1].status).toBe(FILE_STATUSES.UPLOADING);
+      expect(result.current.files[1].statusMessage).toBe('Uploading file2...');
+      expect(result.current.files[1].progress).toBe(75);
+
+      // Third file unchanged
+      expect(result.current.files[2].status).toBe(FILE_STATUSES.READY);
+      expect(result.current.files[2].progress).toBeUndefined();
     });
   });
 });

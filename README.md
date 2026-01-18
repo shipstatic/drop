@@ -232,7 +232,6 @@ interface DropOptions {
 **Returns:**
 
 ```typescript
-```typescript
 interface DropReturn {
   // Convenience getters (computed from state)
   /** Current phase of the state machine */

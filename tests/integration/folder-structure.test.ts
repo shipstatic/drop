@@ -39,12 +39,12 @@ describe('Folder Structure Preservation', () => {
     vi.spyOn(console, 'error').mockImplementation(() => { });
     vi.spyOn(console, 'warn').mockImplementation(() => { });
 
-    // Default mock config
+    // Default mock config - relaxed limits for unit tests
     mockGetConfig.mockResolvedValue({
-      maxFileSize: 10 * 1024 * 1024,
-      maxTotalSize: 100 * 1024 * 1024,
-      maxFilesCount: 1000,
-      allowedMimeTypes: ['text/', 'application/', 'image/'],
+      maxFileSize: 100 * 1024 * 1024,
+      maxTotalSize: 500 * 1024 * 1024,
+      maxFilesCount: 10000,
+      allowedMimeTypes: ['text/', 'image/', 'audio/', 'video/', 'font/', 'model/', 'application/'],
     });
 
     // Default mock validation (all files valid)
