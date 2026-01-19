@@ -199,6 +199,54 @@ describe('useDrop', () => {
       expect(result.current.isProcessing).toBe(false);
     });
 
+    it('should replace files on consecutive drops (not accumulate)', async () => {
+      /**
+       * Important UX behavior: Each drop/selection REPLACES the previous files.
+       * This is intentional - users expect a fresh start when they drop new files.
+       * To add files incrementally, users should use clearAll() first or we'd need
+       * an explicit "append" mode (which we don't have).
+       */
+      const ship = createMockShip();
+      const { result } = renderHook(() => useDrop({ ship }));
+
+      // First drop: 2 files
+      const firstBatch = [
+        createMockFile('file1.txt', 'content1'),
+        createMockFile('file2.txt', 'content2'),
+      ];
+
+      await act(async () => {
+        await result.current.processFiles(firstBatch);
+      });
+
+      await waitFor(() => {
+        expect(result.current.isProcessing).toBe(false);
+      });
+
+      expect(result.current.files).toHaveLength(2);
+      expect(result.current.files.map(f => f.name)).toEqual(['file1.txt', 'file2.txt']);
+
+      // Second drop: 1 file - should REPLACE, not add
+      const secondBatch = [
+        createMockFile('newfile.txt', 'new content'),
+      ];
+
+      await act(async () => {
+        await result.current.processFiles(secondBatch);
+      });
+
+      await waitFor(() => {
+        expect(result.current.isProcessing).toBe(false);
+      });
+
+      // Should have only the new file, not 3 files
+      expect(result.current.files).toHaveLength(1);
+      expect(result.current.files[0].name).toBe('newfile.txt');
+
+      // Source name should also be updated to new file
+      expect(result.current.sourceName).toBe('newfile.txt');
+    });
+
     it('should get only valid files', async () => {
       const ship = createMockShip();
 

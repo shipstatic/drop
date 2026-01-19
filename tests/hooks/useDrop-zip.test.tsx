@@ -143,4 +143,96 @@ describe('useDrop - ZIP File Handling', () => {
 
     extractSpy.mockRestore();
   });
+
+  it('should strip folder prefix from extracted ZIP contents (e.g., dist/ folder)', async () => {
+    /**
+     * End-to-end test for common scenario:
+     * User drops a ZIP like "site.zip" containing:
+     *   dist/index.html
+     *   dist/assets/app.js
+     *   dist/assets/style.css
+     *
+     * After extraction + stripPrefix (default), paths should be:
+     *   index.html
+     *   assets/app.js
+     *   assets/style.css
+     */
+    const ship = createMockShip();
+    const { result } = renderHook(() => useDrop({ ship })); // stripPrefix=true by default
+
+    // Mock extractZipToFiles to return files with dist/ prefix
+    const extractSpy = vi.spyOn(await import('@/utils/zipExtractor'), 'extractZipToFiles');
+    extractSpy.mockResolvedValue({
+      files: [
+        new File(['html'], 'dist/index.html', { type: 'text/html' }),
+        new File(['js'], 'dist/assets/app.js', { type: 'application/javascript' }),
+        new File(['css'], 'dist/assets/style.css', { type: 'text/css' }),
+      ],
+      errors: [],
+    });
+
+    // Drop a single ZIP file
+    const zipFile = createMockFile('site.zip', 'zip content', 'application/zip');
+
+    await act(async () => {
+      await result.current.processFiles([zipFile]);
+    });
+
+    await waitFor(() => {
+      expect(result.current.isProcessing).toBe(false);
+    });
+
+    // Verify extraction was called
+    expect(extractSpy).toHaveBeenCalledWith(zipFile);
+
+    // Verify files have stripped paths (dist/ prefix removed)
+    expect(result.current.files).toHaveLength(3);
+    expect(result.current.files.map(f => f.path).sort()).toEqual([
+      'assets/app.js',
+      'assets/style.css',
+      'index.html',
+    ]);
+
+    // Source name should be from ZIP filename
+    expect(result.current.sourceName).toBe('site');
+
+    extractSpy.mockRestore();
+  });
+
+  it('should preserve folder prefix when stripPrefix=false', async () => {
+    /**
+     * Verify that stripPrefix=false preserves the original folder structure
+     */
+    const ship = createMockShip();
+    const { result } = renderHook(() => useDrop({ ship, stripPrefix: false }));
+
+    // Mock extractZipToFiles to return files with dist/ prefix
+    const extractSpy = vi.spyOn(await import('@/utils/zipExtractor'), 'extractZipToFiles');
+    extractSpy.mockResolvedValue({
+      files: [
+        new File(['html'], 'dist/index.html', { type: 'text/html' }),
+        new File(['js'], 'dist/assets/app.js', { type: 'application/javascript' }),
+      ],
+      errors: [],
+    });
+
+    const zipFile = createMockFile('site.zip', 'zip content', 'application/zip');
+
+    await act(async () => {
+      await result.current.processFiles([zipFile]);
+    });
+
+    await waitFor(() => {
+      expect(result.current.isProcessing).toBe(false);
+    });
+
+    // Verify files retain original paths (dist/ prefix preserved)
+    expect(result.current.files).toHaveLength(2);
+    expect(result.current.files.map(f => f.path).sort()).toEqual([
+      'dist/assets/app.js',
+      'dist/index.html',
+    ]);
+
+    extractSpy.mockRestore();
+  });
 });
