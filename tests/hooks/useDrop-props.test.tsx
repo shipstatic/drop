@@ -2,10 +2,22 @@
  * Tests for getDropzoneProps and getInputProps
  * Verifies the new prop getter API for easy dropzone integration
  */
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { renderHook, act, waitFor } from '@testing-library/react';
 import { useDrop } from '@/hooks/useDrop';
+import { FILE_STATUSES } from '@/types';
 import type { Ship } from '@shipstatic/ship';
+
+// Mock validateFiles from Ship SDK
+const mockValidateFiles = vi.fn();
+
+vi.mock('@shipstatic/ship', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@shipstatic/ship')>();
+  return {
+    ...actual,
+    validateFiles: (...args: any[]) => mockValidateFiles(...args),
+  };
+});
 
 // Mock Ship SDK - config matches ConfigResponse structure
 const mockShip = {
@@ -20,6 +32,17 @@ const mockShip = {
 describe('useDrop - prop getters', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+
+    // Default mock validation (all files valid)
+    mockValidateFiles.mockImplementation((files) => ({
+      files: files.map((f: any) => ({ ...f, status: FILE_STATUSES.READY, statusMessage: 'Ready for upload' })),
+      validFiles: files.map((f: any) => ({ ...f, status: FILE_STATUSES.READY, statusMessage: 'Ready for upload' })),
+      error: null,
+    }));
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
   });
 
   describe('getDropzoneProps', () => {
@@ -195,6 +218,61 @@ describe('useDrop - prop getters', () => {
 
       // Input value should be cleared to allow selecting the same file again
       expect(inputValue).toBe('');
+    });
+
+    it('should handle folder selection with webkitRelativePath', async () => {
+      /**
+       * When user clicks the dropzone and selects a folder (via webkitdirectory),
+       * the browser sets webkitRelativePath on each file.
+       * This test verifies the complete flow: input → processFiles → correct paths
+       */
+      const { result } = renderHook(() => useDrop({ ship: mockShip }));
+      const props = result.current.getInputProps();
+
+      // Simulate files from folder selection (browser sets webkitRelativePath)
+      // Note: _testContent is needed for the File.prototype.arrayBuffer mock in setup.ts
+      const createFolderFile = (name: string, relativePath: string) => {
+        const file = new File(['content'], name, { type: 'text/html' });
+        (file as any)._testContent = 'content';
+        Object.defineProperty(file, 'webkitRelativePath', {
+          value: relativePath,
+          writable: false,
+          configurable: true,
+        });
+        return file;
+      };
+
+      const files = [
+        createFolderFile('index.html', 'my-site/index.html'),
+        createFolderFile('app.js', 'my-site/src/app.js'),
+        createFolderFile('style.css', 'my-site/css/style.css'),
+      ];
+
+      const mockEvent = {
+        target: {
+          files,
+          value: 'C:\\fakepath\\my-site',
+        },
+      } as unknown as React.ChangeEvent<HTMLInputElement>;
+
+      await act(async () => {
+        props.onChange(mockEvent);
+      });
+
+      await waitFor(() => {
+        expect(result.current.isProcessing).toBe(false);
+      });
+
+      // Files should be processed with correct paths (stripPrefix=true by default)
+      expect(result.current.files).toHaveLength(3);
+      expect(result.current.files.map(f => f.path).sort()).toEqual([
+        'css/style.css',
+        'index.html',
+        'src/app.js',
+      ]);
+
+      // Source name should be detected from folder
+      expect(result.current.sourceName).toBe('my-site');
     });
   });
 
