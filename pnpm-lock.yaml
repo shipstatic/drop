@@ -16,17 +16,17 @@ importers:
         version: 1.54.0
     devDependencies:
       '@shipstatic/ship':
-        specifier: ^0.4.2
-        version: 0.4.2(typescript@5.9.3)
+        specifier: ^0.4.3
+        version: 0.4.3(typescript@5.9.3)
       '@shipstatic/types':
-        specifier: ^0.4.2
-        version: 0.4.2
+        specifier: ^0.4.3
+        version: 0.4.3
       '@testing-library/jest-dom':
         specifier: ^6.9.1
         version: 6.9.1
       '@testing-library/react':
         specifier: ^16.3.2
-        version: 16.3.2(@testing-library/dom@10.4.1)(@types/react-dom@19.2.3(@types/react@19.2.8))(@types/react@19.2.8)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
+        version: 16.3.2(@testing-library/dom@10.4.1)(@types/react-dom@19.2.3(@types/react@19.2.9))(@types/react@19.2.9)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
       '@testing-library/user-event':
         specifier: ^14.6.1
         version: 14.6.1(@testing-library/dom@10.4.1)
@@ -37,11 +37,11 @@ importers:
         specifier: ^25.0.9
         version: 25.0.9
       '@types/react':
-        specifier: ^19.2.8
-        version: 19.2.8
+        specifier: ^19.2.9
+        version: 19.2.9
       '@types/react-dom':
         specifier: ^19.2.3
-        version: 19.2.3(@types/react@19.2.8)
+        version: 19.2.3(@types/react@19.2.9)
       '@vitest/coverage-v8':
         specifier: ^3.2.4
         version: 3.2.4(vitest@3.2.4(@types/node@25.0.9)(happy-dom@20.3.4)(jsdom@27.4.0))
@@ -473,13 +473,13 @@ packages:
     cpu: [x64]
     os: [win32]
 
-  '@shipstatic/ship@0.4.2':
-    resolution: {integrity: sha512-NYudM+NxP+MWHnYt/TplazgXiJat6DSD+tWz7Go96XkPsLlb8nWCxcYagihOgKJbeTj8KI4m0hzN/gdnNcqqKg==}
+  '@shipstatic/ship@0.4.3':
+    resolution: {integrity: sha512-xelsbM0EoslG7YcmUOPjjIk+wnc2pyaBVE0zgpe3lOUg2FHcFoKSC09M2UL3vz0DNkHnsZyACSf5QYqBe/XdIQ==}
     engines: {node: '>=20.0.0'}
     hasBin: true
 
-  '@shipstatic/types@0.4.2':
-    resolution: {integrity: sha512-wIONBsy4hvs2zJC0rCvI4hR05o0QygoU5IHtjqEE6OiEorMASibnEKyqYvhHa/JEJ2dZx/85MTPoEyeXSQuPUw==}
+  '@shipstatic/types@0.4.3':
+    resolution: {integrity: sha512-18lZNh9slm+HeD27Uv4CnrF5Q0bnNnDXCSOwzQS1WWS+0WoN95CJ4yQJrqfSdRDO5ct+4++pUOpEoPKdjMaCpw==}
     engines: {node: '>=20.0.0'}
 
   '@testing-library/dom@10.4.1':
@@ -534,8 +534,8 @@ packages:
     peerDependencies:
       '@types/react': ^19.2.0
 
-  '@types/react@19.2.8':
-    resolution: {integrity: sha512-3MbSL37jEchWZz2p2mjntRZtPt837ij10ApxKfgmXCTuHWagYg7iA5bqPw6C8BMPfwidlvfPI/fxOc42HLhcyg==}
+  '@types/react@19.2.9':
+    resolution: {integrity: sha512-Lpo8kgb/igvMIPeNV2rsYKTgaORYdO1XGVZ4Qz3akwOj0ySGYMPlQWa8BaLn0G63D1aSaAQ5ldR06wCpChQCjA==}
 
   '@types/whatwg-mimetype@3.0.2':
     resolution: {integrity: sha512-c2AKvDT8ToxLIOUlN51gTiHXflsfIFisS4pO7pDPoKouJCESkhZnEy623gwP9laCy5lnLDAw1vAzu2vM2YLOrA==}
@@ -731,8 +731,8 @@ packages:
   csstype@3.2.3:
     resolution: {integrity: sha512-z1HGKcYy2xA8AGQfwrn0PAy+PB7X/GSj3UVJW9qKyn43xWa+gl5nXmU4qqLMRzWVLFC8KusUX8T/0kCiOYpAIQ==}
 
-  data-urls@6.0.0:
-    resolution: {integrity: sha512-BnBS08aLUM+DKamupXs3w2tJJoqU+AkaE/+6vQxi/G/DPmIZFJJp9Dkb1kM03AZx8ADehDUZgsNxju3mPXZYIA==}
+  data-urls@6.0.1:
+    resolution: {integrity: sha512-euIQENZg6x8mj3fO6o9+fOW8MimUI4PpD/fZBhJfeioZVy9TUpM4UY7KjQNVZFlqwJ0UdzRDzkycB997HEq1BQ==}
     engines: {node: '>=20'}
 
   debug@4.4.3:
@@ -1414,6 +1414,10 @@ packages:
     resolution: {integrity: sha512-QaKxh0eNIi2mE9p2vEdzfagOKHCcj1pJ56EEHGQOVxp8r9/iszLUUV7v89x9O1p/T+NlTM5W7jW6+cz4Fq1YVg==}
     engines: {node: '>=18'}
 
+  whatwg-mimetype@5.0.0:
+    resolution: {integrity: sha512-sXcNcHOC51uPGF0P/D4NVtrkjSU2fNsm9iog4ZvZJsL3rjoDAzXZhkm2MWt1y+PUdggKAYVoMAIYcs78wJ51Cw==}
+    engines: {node: '>=20'}
+
   whatwg-url@15.1.0:
     resolution: {integrity: sha512-2ytDk0kiEj/yu90JOAp44PVPUkO9+jVhyf+SybKlRHSDlvOOZhdPIrr7xTH64l4WixO2cP+wQIcgujkGBPPz6g==}
     engines: {node: '>=20'}
@@ -1723,9 +1727,9 @@ snapshots:
   '@rollup/rollup-win32-x64-msvc@4.55.2':
     optional: true
 
-  '@shipstatic/ship@0.4.2(typescript@5.9.3)':
+  '@shipstatic/ship@0.4.3(typescript@5.9.3)':
     dependencies:
-      '@shipstatic/types': 0.4.2
+      '@shipstatic/types': 0.4.3
       columnify: 1.6.0
       commander: 12.1.0
       cosmiconfig: 9.0.0(typescript@5.9.3)
@@ -1740,7 +1744,7 @@ snapshots:
     transitivePeerDependencies:
       - typescript
 
-  '@shipstatic/types@0.4.2': {}
+  '@shipstatic/types@0.4.3': {}
 
   '@testing-library/dom@10.4.1':
     dependencies:
@@ -1762,15 +1766,15 @@ snapshots:
       picocolors: 1.1.1
       redent: 3.0.0
 
-  '@testing-library/react@16.3.2(@testing-library/dom@10.4.1)(@types/react-dom@19.2.3(@types/react@19.2.8))(@types/react@19.2.8)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)':
+  '@testing-library/react@16.3.2(@testing-library/dom@10.4.1)(@types/react-dom@19.2.3(@types/react@19.2.9))(@types/react@19.2.9)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)':
     dependencies:
       '@babel/runtime': 7.28.6
       '@testing-library/dom': 10.4.1
       react: 19.2.3
       react-dom: 19.2.3(react@19.2.3)
     optionalDependencies:
-      '@types/react': 19.2.8
-      '@types/react-dom': 19.2.3(@types/react@19.2.8)
+      '@types/react': 19.2.9
+      '@types/react-dom': 19.2.3(@types/react@19.2.9)
 
   '@testing-library/user-event@14.6.1(@testing-library/dom@10.4.1)':
     dependencies:
@@ -1793,11 +1797,11 @@ snapshots:
     dependencies:
       undici-types: 7.16.0
 
-  '@types/react-dom@19.2.3(@types/react@19.2.8)':
+  '@types/react-dom@19.2.3(@types/react@19.2.9)':
     dependencies:
-      '@types/react': 19.2.8
+      '@types/react': 19.2.9
 
-  '@types/react@19.2.8':
+  '@types/react@19.2.9':
     dependencies:
       csstype: 3.2.3
 
@@ -1996,9 +2000,9 @@ snapshots:
 
   csstype@3.2.3: {}
 
-  data-urls@6.0.0:
+  data-urls@6.0.1:
     dependencies:
-      whatwg-mimetype: 4.0.0
+      whatwg-mimetype: 5.0.0
       whatwg-url: 15.1.0
 
   debug@4.4.3:
@@ -2207,7 +2211,7 @@ snapshots:
       '@asamuzakjp/dom-selector': 6.7.6
       '@exodus/bytes': 1.9.0
       cssstyle: 5.3.7
-      data-urls: 6.0.0
+      data-urls: 6.0.1
       decimal.js: 10.6.0
       html-encoding-sniffer: 6.0.0
       http-proxy-agent: 7.0.2
@@ -2684,6 +2688,8 @@ snapshots:
   whatwg-mimetype@3.0.0: {}
 
   whatwg-mimetype@4.0.0: {}
+
+  whatwg-mimetype@5.0.0: {}
 
   whatwg-url@15.1.0:
     dependencies:
