@@ -6,6 +6,8 @@ Claude Code instructions for the **Drop** package.
 
 **@shipstatic/drop** is a React companion to Ship SDK. It provides what the SDK doesn't have for browser deployments: ZIP extraction, drag & drop with folder support, and React state management.
 
+**Maturity:** Release candidate. Interfaces are stabilizing; changes should be deliberate and well-considered.
+
 ```
 User drops files → Drop processes → Ship SDK deploys
      (ZIP, folders)    (validation)     (upload, MD5)
@@ -58,8 +60,8 @@ const drop = useDrop({ ship });  // Pass Ship instance
 // Drop calls ship.getConfig() internally for validation limits
 // Drop uses Ship's validateFiles() for validation
 
-// When ready, extract File objects for SDK:
-const files = drop.validFiles.map(f => f.file);
+// When ready, get File objects for SDK:
+const files = drop.getFilesForUpload();
 await ship.deployments.create(files);
 ```
 
@@ -80,7 +82,12 @@ idle → dragging → processing → ready (success)
 | `ready` | Files valid, can deploy |
 | `error` | Validation or processing failed |
 
-Use `drop.phase` for switch-case logic, `drop.isDragging`/`drop.isProcessing` for simple conditionals.
+**Convenience booleans:**
+- `drop.phase` - Raw state value for switch-case logic
+- `drop.isInteractive` - True when idle, dragging, or ready (user can interact)
+- `drop.hasError` - True when in error state
+- `drop.isProcessing` - True when processing files
+- `drop.isDragging` - True when user is dragging over dropzone
 
 ## Processing Flow
 
@@ -101,6 +108,12 @@ Use `drop.phase` for switch-case logic, `drop.isDragging`/`drop.isProcessing` fo
 ```typescript
 <div {...drop.getDropzoneProps()}>      // Handles drag events + click
   <input {...drop.getInputProps()} />   // Hidden file input with folder support
+</div>
+
+// For drag-only dropzones (no click-to-open):
+<div {...drop.getDropzoneProps({ clickable: false })}>
+  <input {...drop.getInputProps()} />
+  <button onClick={drop.open}>Select folder</button>
 </div>
 ```
 
@@ -123,13 +136,7 @@ Statuses from `@shipstatic/types` are extended with Drop-specific UI states.
 
 ### Atomic Validation
 
-If ANY file fails, ALL are marked `validation_failed`. Use `clearAll()` to reset and retry. This matches Ship SDK's all-or-nothing deployment philosophy.
-
-### Upload Progress
-
-```typescript
-drop.updateFileStatus(fileId, { status: 'uploading', progress: 50 });
-```
+If ANY file fails, ALL are marked `validation_failed`. Use `drop.reset()` to clear and retry. This matches Ship SDK's all-or-nothing deployment philosophy.
 
 ## Design Decisions
 
@@ -147,7 +154,7 @@ Ship SDK calculates MD5 during deployment. Duplicate calculation would waste cyc
 
 ### Why No Individual File Removal
 
-Atomic validation means removing one file requires re-validating all. Simpler to `clearAll()` and re-drop.
+Atomic validation means removing one file requires re-validating all. Simpler to call `reset()` and re-drop.
 
 ## Key Gotchas
 

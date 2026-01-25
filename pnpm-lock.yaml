@@ -16,11 +16,11 @@ importers:
         version: 1.54.0
     devDependencies:
       '@shipstatic/ship':
-        specifier: ^0.4.5
-        version: 0.4.5(typescript@5.9.3)
+        specifier: ^0.4.6
+        version: 0.4.6(typescript@5.9.3)
       '@shipstatic/types':
-        specifier: ^0.4.5
-        version: 0.4.5
+        specifier: ^0.4.7
+        version: 0.4.7
       '@testing-library/jest-dom':
         specifier: ^6.9.1
         version: 6.9.1
@@ -44,13 +44,13 @@ importers:
         version: 19.2.3(@types/react@19.2.9)
       '@vitest/coverage-v8':
         specifier: ^3.2.4
-        version: 3.2.4(vitest@3.2.4(@types/node@25.0.10)(happy-dom@20.3.4)(jsdom@27.4.0))
+        version: 3.2.4(vitest@3.2.4(@types/node@25.0.10)(happy-dom@20.3.7)(jsdom@27.4.0))
       buffer:
         specifier: ^6.0.3
         version: 6.0.3
       happy-dom:
-        specifier: ^20.3.4
-        version: 20.3.4
+        specifier: ^20.3.7
+        version: 20.3.7
       husky:
         specifier: ^9.1.7
         version: 9.1.7
@@ -74,7 +74,7 @@ importers:
         version: 5.9.3
       vitest:
         specifier: ^3.2.4
-        version: 3.2.4(@types/node@25.0.10)(happy-dom@20.3.4)(jsdom@27.4.0)
+        version: 3.2.4(@types/node@25.0.10)(happy-dom@20.3.7)(jsdom@27.4.0)
 
 packages:
 
@@ -473,13 +473,13 @@ packages:
     cpu: [x64]
     os: [win32]
 
-  '@shipstatic/ship@0.4.5':
-    resolution: {integrity: sha512-ZLzYaUOBqNjp1w9F+vnj6PZlNjqLIkVouldhGDa4kb54HeMqc2UKcjtxhhSh4ayuMdSmmTuQA4CsPwYqUKNnaA==}
+  '@shipstatic/ship@0.4.6':
+    resolution: {integrity: sha512-XkRyiDHr6kiFc7j786amjWXAtvOiRROyMixuxVI3rj/0I/qD5SJsf4J54vq2cggxHgbehlAEH+g+LM2iIWXOOg==}
     engines: {node: '>=20.0.0'}
     hasBin: true
 
-  '@shipstatic/types@0.4.5':
-    resolution: {integrity: sha512-AbaUF7zANW+gylBKULBuVqn/RLHRtlK0bqMjkg/IQg9FBzYAfGmgDh2QY6qeO+xmzJjZlCm38EvmRIXqlINeGA==}
+  '@shipstatic/types@0.4.7':
+    resolution: {integrity: sha512-FZ64B54rgmutJteH1EJGK75JB/ufNLnzbK8r8q6bT28wkyqytNwFfQi7TbHuC8U+TWoz6IAr7DA1CzTTl/rfEw==}
     engines: {node: '>=20.0.0'}
 
   '@testing-library/dom@10.4.1':
@@ -836,8 +836,8 @@ packages:
     resolution: {integrity: sha512-DfXN8DfhJ7NH3Oe7cFmu3NCu1wKbkReJ8TorzSAFbSKrlNaQSKfIzqYqVY8zlbs2NLBbWpRiU52GX2PbaBVNkg==}
     hasBin: true
 
-  happy-dom@20.3.4:
-    resolution: {integrity: sha512-rfbiwB6OKxZFIFQ7SRnCPB2WL9WhyXsFoTfecYgeCeFSOBxvkWLaXsdv5ehzJrfqwXQmDephAKWLRQoFoJwrew==}
+  happy-dom@20.3.7:
+    resolution: {integrity: sha512-sb5IzoRl1WJKsUSRe+IloJf3z1iDq5PQ7Yk/ULMsZ5IAQEs9ZL7RsFfiKBXU7nK9QmO+iz0e59EH8r8jexTZ/g==}
     engines: {node: '>=20.0.0'}
 
   has-flag@4.0.0:
@@ -1727,9 +1727,9 @@ snapshots:
   '@rollup/rollup-win32-x64-msvc@4.56.0':
     optional: true
 
-  '@shipstatic/ship@0.4.5(typescript@5.9.3)':
+  '@shipstatic/ship@0.4.6(typescript@5.9.3)':
     dependencies:
-      '@shipstatic/types': 0.4.5
+      '@shipstatic/types': 0.4.7
       columnify: 1.6.0
       commander: 12.1.0
       cosmiconfig: 9.0.0(typescript@5.9.3)
@@ -1744,7 +1744,7 @@ snapshots:
     transitivePeerDependencies:
       - typescript
 
-  '@shipstatic/types@0.4.5': {}
+  '@shipstatic/types@0.4.7': {}
 
   '@testing-library/dom@10.4.1':
     dependencies:
@@ -1811,7 +1811,7 @@ snapshots:
     dependencies:
       '@types/node': 25.0.10
 
-  '@vitest/coverage-v8@3.2.4(vitest@3.2.4(@types/node@25.0.10)(happy-dom@20.3.4)(jsdom@27.4.0))':
+  '@vitest/coverage-v8@3.2.4(vitest@3.2.4(@types/node@25.0.10)(happy-dom@20.3.7)(jsdom@27.4.0))':
     dependencies:
       '@ampproject/remapping': 2.3.0
       '@bcoe/v8-coverage': 1.0.2
@@ -1826,7 +1826,7 @@ snapshots:
       std-env: 3.10.0
       test-exclude: 7.0.1
       tinyrainbow: 2.0.0
-      vitest: 3.2.4(@types/node@25.0.10)(happy-dom@20.3.4)(jsdom@27.4.0)
+      vitest: 3.2.4(@types/node@25.0.10)(happy-dom@20.3.7)(jsdom@27.4.0)
     transitivePeerDependencies:
       - supports-color
 
@@ -2107,7 +2107,7 @@ snapshots:
       package-json-from-dist: 1.0.1
       path-scurry: 1.11.1
 
-  happy-dom@20.3.4:
+  happy-dom@20.3.7:
     dependencies:
       '@types/node': 25.0.10
       '@types/whatwg-mimetype': 3.0.2
@@ -2632,7 +2632,7 @@ snapshots:
       '@types/node': 25.0.10
       fsevents: 2.3.3
 
-  vitest@3.2.4(@types/node@25.0.10)(happy-dom@20.3.4)(jsdom@27.4.0):
+  vitest@3.2.4(@types/node@25.0.10)(happy-dom@20.3.7)(jsdom@27.4.0):
     dependencies:
       '@types/chai': 5.2.3
       '@vitest/expect': 3.2.4
@@ -2659,7 +2659,7 @@ snapshots:
       why-is-node-running: 2.3.0
     optionalDependencies:
       '@types/node': 25.0.10
-      happy-dom: 20.3.4
+      happy-dom: 20.3.7
       jsdom: 27.4.0
     transitivePeerDependencies:
       - jiti
