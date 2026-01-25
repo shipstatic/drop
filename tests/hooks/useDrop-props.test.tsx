@@ -46,7 +46,7 @@ describe('useDrop - prop getters', () => {
   });
 
   describe('getDropzoneProps', () => {
-    it('should return props object with event handlers', () => {
+    it('should return props object with event handlers (clickable by default)', () => {
       const { result } = renderHook(() => useDrop({ ship: mockShip }));
       const props = result.current.getDropzoneProps();
 
@@ -57,6 +57,24 @@ describe('useDrop - prop getters', () => {
       expect(typeof props.onDragOver).toBe('function');
       expect(typeof props.onDragLeave).toBe('function');
       expect(typeof props.onDrop).toBe('function');
+      expect(typeof props.onClick).toBe('function');
+    });
+
+    it('should exclude onClick when clickable is false', () => {
+      const { result } = renderHook(() => useDrop({ ship: mockShip }));
+      const props = result.current.getDropzoneProps({ clickable: false });
+
+      expect(props).toHaveProperty('onDragOver');
+      expect(props).toHaveProperty('onDragLeave');
+      expect(props).toHaveProperty('onDrop');
+      expect(props).not.toHaveProperty('onClick');
+    });
+
+    it('should include onClick when clickable is true explicitly', () => {
+      const { result } = renderHook(() => useDrop({ ship: mockShip }));
+      const props = result.current.getDropzoneProps({ clickable: true });
+
+      expect(props).toHaveProperty('onClick');
       expect(typeof props.onClick).toBe('function');
     });
 
@@ -282,7 +300,7 @@ describe('useDrop - prop getters', () => {
       expect(result.current.isDragging).toBe(false);
     });
 
-    it('should be cleared when clearAll is called', () => {
+    it('should be cleared when reset is called', () => {
       const { result } = renderHook(() => useDrop({ ship: mockShip }));
       const props = result.current.getDropzoneProps();
 
@@ -294,7 +312,7 @@ describe('useDrop - prop getters', () => {
 
       // Clear all
       act(() => {
-        result.current.clearAll();
+        result.current.reset();
       });
 
       expect(result.current.isDragging).toBe(false);

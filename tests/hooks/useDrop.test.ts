@@ -190,7 +190,7 @@ describe('useDrop', () => {
       });
 
       act(() => {
-        result.current.clearAll();
+        result.current.reset();
       });
 
       expect(result.current.files).toHaveLength(0);
@@ -203,7 +203,7 @@ describe('useDrop', () => {
       /**
        * Important UX behavior: Each drop/selection REPLACES the previous files.
        * This is intentional - users expect a fresh start when they drop new files.
-       * To add files incrementally, users should use clearAll() first or we'd need
+       * To add files incrementally, users should use reset() first or we'd need
        * an explicit "append" mode (which we don't have).
        */
       const ship = createMockShip();
@@ -291,35 +291,110 @@ describe('useDrop', () => {
     });
   });
 
-  describe('updateFileStatus', () => {
-    it('should update file upload status', async () => {
+  describe('getFilesForUpload', () => {
+    it('should return raw File objects from valid files', async () => {
       const ship = createMockShip();
       const { result } = renderHook(() => useDrop({ ship }));
 
-      const file = createMockFile('test.txt');
+      const file1 = createMockFile('test1.txt', 'content1');
+      const file2 = createMockFile('test2.txt', 'content2');
 
       await act(async () => {
-        await result.current.processFiles([file]);
+        await result.current.processFiles([file1, file2]);
       });
 
       await waitFor(() => {
-        expect(result.current.files).toHaveLength(1);
+        expect(result.current.files).toHaveLength(2);
       });
 
-      const fileId = result.current.files[0].id;
+      const filesForUpload = result.current.getFilesForUpload();
+      expect(filesForUpload).toHaveLength(2);
+      expect(filesForUpload[0]).toBeInstanceOf(File);
+      expect(filesForUpload[1]).toBeInstanceOf(File);
+      expect(filesForUpload[0].name).toBe('test1.txt');
+      expect(filesForUpload[1].name).toBe('test2.txt');
+    });
 
+    it('should return empty array when no valid files', async () => {
+      const ship = createMockShip();
+      const { result } = renderHook(() => useDrop({ ship }));
+
+      const filesForUpload = result.current.getFilesForUpload();
+      expect(filesForUpload).toEqual([]);
+    });
+  });
+
+  describe('isInteractive and hasError', () => {
+    it('should be interactive in idle state', () => {
+      const ship = createMockShip();
+      const { result } = renderHook(() => useDrop({ ship }));
+
+      expect(result.current.isInteractive).toBe(true);
+      expect(result.current.hasError).toBe(false);
+    });
+
+    it('should be interactive in ready state', async () => {
+      const ship = createMockShip();
+      const { result } = renderHook(() => useDrop({ ship }));
+
+      await act(async () => {
+        await result.current.processFiles([createMockFile('test.txt')]);
+      });
+
+      await waitFor(() => {
+        expect(result.current.phase).toBe('ready');
+      });
+
+      expect(result.current.isInteractive).toBe(true);
+      expect(result.current.hasError).toBe(false);
+    });
+
+    it('should have error in error state', async () => {
+      const ship = createMockShip();
+      const { result } = renderHook(() => useDrop({ ship }));
+
+      mockGetConfig.mockRejectedValueOnce(new Error('Network error'));
+
+      await act(async () => {
+        await result.current.processFiles([createMockFile('test.txt')]);
+      });
+
+      expect(result.current.phase).toBe('error');
+      expect(result.current.isInteractive).toBe(false);
+      expect(result.current.hasError).toBe(true);
+    });
+
+    it('should not be interactive while processing', async () => {
+      let resolveConfig: () => void;
+      const slowConfigPromise = new Promise<void>((resolve) => {
+        resolveConfig = resolve;
+      });
+
+      mockGetConfig.mockImplementationOnce(() =>
+        slowConfigPromise.then(() => ({
+          maxFileSize: 100 * 1024 * 1024,
+          maxTotalSize: 500 * 1024 * 1024,
+          maxFilesCount: 10000,
+          allowedMimeTypes: ['text/', 'image/', 'audio/', 'video/', 'font/', 'model/', 'application/'],
+        }))
+      );
+
+      const ship = createMockShip();
+      const { result } = renderHook(() => useDrop({ ship }));
+
+      let processPromise: Promise<void>;
       act(() => {
-        result.current.updateFileStatus(fileId, {
-          status: FILE_STATUSES.UPLOADING,
-          statusMessage: 'Uploading to server...',
-          progress: 50,
-        });
+        processPromise = result.current.processFiles([createMockFile('test.txt')]);
       });
 
-      const updatedFile = result.current.files.find(f => f.id === fileId);
-      expect(updatedFile?.status).toBe(FILE_STATUSES.UPLOADING);
-      expect(updatedFile?.statusMessage).toBe('Uploading to server...');
-      expect(updatedFile?.progress).toBe(50);
+      expect(result.current.phase).toBe('processing');
+      expect(result.current.isInteractive).toBe(false);
+      expect(result.current.hasError).toBe(false);
+
+      await act(async () => {
+        resolveConfig!();
+        await processPromise!;
+      });
     });
   });
 
@@ -609,7 +684,7 @@ describe('useDrop', () => {
       expect(result.current.sourceName).toBe('website');
     });
 
-    it('should clear source name when clearAll is called', async () => {
+    it('should clear source name when reset is called', async () => {
       const ship = createMockShip();
       const { result } = renderHook(() => useDrop({ ship }));
 
@@ -624,7 +699,7 @@ describe('useDrop', () => {
       });
 
       act(() => {
-        result.current.clearAll();
+        result.current.reset();
       });
 
       expect(result.current.sourceName).toBe('');

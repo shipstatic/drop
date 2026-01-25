@@ -18,7 +18,7 @@
  * ```
  */
 import { useState, useCallback, useRef, useMemo } from 'react';
-import type { ProcessedFile, ClientError, FileStatus, DropState, DropStateValue, FileWithPath } from '../types';
+import type { ProcessedFile, ClientError, DropState, DropStateValue, FileWithPath, FileStatus } from '../types';
 import { FILE_STATUSES } from '../types';
 import { extractZipToFiles, isZipFile } from '../utils/zipExtractor';
 import {
@@ -40,9 +40,13 @@ export interface DropOptions {
   stripPrefix?: boolean;
 }
 
-export interface DropReturn {
-  // State machine -- Internal only now
+/** Options for getDropzoneProps() */
+export interface DropzonePropsOptions {
+  /** Whether clicking the dropzone opens the file picker (default: true) */
+  clickable?: boolean;
+}
 
+export interface DropReturn {
   // Convenience getters (computed from state)
   /** Current phase of the state machine */
   phase: DropStateValue;
@@ -50,6 +54,10 @@ export interface DropReturn {
   isProcessing: boolean;
   /** Whether user is currently dragging over the dropzone */
   isDragging: boolean;
+  /** Whether the dropzone is interactive (idle, dragging, or ready - not processing or error) */
+  isInteractive: boolean;
+  /** Whether an error occurred during processing */
+  hasError: boolean;
   /** Flattened access to files */
   files: ProcessedFile[];
   /** Flattened access to source name */
@@ -58,12 +66,12 @@ export interface DropReturn {
   status: { title: string; details: string; errors?: string[] } | null;
 
   // Primary API: Prop getters for easy integration
-  /** Get props to spread on dropzone element (handles drag & drop) */
-  getDropzoneProps: () => {
+  /** Get props to spread on dropzone element (handles drag & drop, optionally click) */
+  getDropzoneProps: (options?: DropzonePropsOptions) => {
     onDragOver: (e: React.DragEvent) => void;
     onDragLeave: (e: React.DragEvent) => void;
     onDrop: (e: React.DragEvent) => void;
-    onClick: () => void;
+    onClick?: () => void;
   };
   /** Get props to spread on hidden file input element */
   getInputProps: () => {
@@ -80,14 +88,14 @@ export interface DropReturn {
   open: () => void;
   /** Manually process files (for advanced usage) */
   processFiles: (files: File[]) => Promise<void>;
-  /** Clear all files and reset state */
-  clearAll: () => void;
+  /** Reset state and clear all files */
+  reset: () => void;
 
   // Helpers
   /** Get only valid files ready for upload */
   validFiles: ProcessedFile[];
-  /** Update upload state for a specific file (status, progress, message) */
-  updateFileStatus: (fileId: string, state: { status: FileStatus; statusMessage?: string; progress?: number }) => void;
+  /** Get raw File objects ready for Ship SDK upload */
+  getFilesForUpload: () => File[];
 }
 
 /**
@@ -131,9 +139,19 @@ export function useDrop(options: DropOptions): DropReturn {
   // Computed convenience getters
   const isProcessing = useMemo(() => state.value === 'processing', [state.value]);
   const isDragging = useMemo(() => state.value === 'dragging', [state.value]);
+  const isInteractive = useMemo(() =>
+    state.value === 'idle' || state.value === 'dragging' || state.value === 'ready',
+    [state.value]
+  );
+  const hasError = useMemo(() => state.value === 'error', [state.value]);
 
   // Computed valid files
   const validFiles = useMemo(() => getValidFiles<ProcessedFile>(state.files), [state.files]);
+
+  // Get raw File objects for Ship SDK upload
+  const getFilesForUpload = useCallback(() => {
+    return validFiles.map(f => f.file);
+  }, [validFiles]);
 
   const processFiles = useCallback(async (newFiles: File[]) => {
     // Guard against concurrent calls
@@ -282,23 +300,9 @@ export function useDrop(options: DropOptions): DropReturn {
     }
   }, [ship, onValidationError, onFilesReady, stripPrefix]);
 
-  const clearAll = useCallback(() => {
+  const reset = useCallback(() => {
     setState(initialState);
     isProcessingRef.current = false;
-  }, []);
-
-  const updateFileStatus = useCallback((
-    fileId: string,
-    fileState: { status: FileStatus; statusMessage?: string; progress?: number }
-  ) => {
-    setState(prev => ({
-      ...prev,
-      files: prev.files.map(file =>
-        file.id === fileId
-          ? { ...file, ...fileState }
-          : file
-      ),
-    }));
   }, []);
 
   // Drag & drop event handlers
@@ -420,12 +424,15 @@ export function useDrop(options: DropOptions): DropReturn {
   }, []);
 
   // Prop getters
-  const getDropzoneProps = useCallback(() => ({
-    onDragOver: handleDragOver,
-    onDragLeave: handleDragLeave,
-    onDrop: handleDrop,
-    onClick: open,
-  }), [handleDragOver, handleDragLeave, handleDrop, open]);
+  const getDropzoneProps = useCallback((options?: DropzonePropsOptions) => {
+    const { clickable = true } = options ?? {};
+    return {
+      onDragOver: handleDragOver,
+      onDragLeave: handleDragLeave,
+      onDrop: handleDrop,
+      ...(clickable && { onClick: open }),
+    };
+  }, [handleDragOver, handleDragLeave, handleDrop, open]);
 
   const getInputProps = useCallback(() => ({
     ref: inputRef,
@@ -437,12 +444,12 @@ export function useDrop(options: DropOptions): DropReturn {
   }), [handleInputChange]);
 
   return {
-    // State machine
-
     // Convenience getters (computed from state)
     phase: state.value,
     isProcessing,
     isDragging,
+    isInteractive,
+    hasError,
     files: state.files,
     sourceName: state.sourceName,
     status: state.status,
@@ -454,10 +461,10 @@ export function useDrop(options: DropOptions): DropReturn {
     // Actions
     open,
     processFiles,
-    clearAll,
+    reset,
 
     // Helpers
     validFiles,
-    updateFileStatus,
+    getFilesForUpload,
   };
 }

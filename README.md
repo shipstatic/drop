@@ -22,7 +22,8 @@ function Uploader() {
   const drop = useDrop({ ship });
 
   const handleUpload = async () => {
-    await ship.deployments.create(drop.validFiles.map(f => f.file));
+    const files = drop.getFilesForUpload();
+    await ship.deployments.create(files);
   };
 
   return (
@@ -42,7 +43,7 @@ function Uploader() {
 
       {drop.status && <p>{drop.status.title}: {drop.status.details}</p>}
 
-      <button onClick={handleUpload} disabled={drop.phase !== 'ready'}>
+      <button onClick={handleUpload} disabled={!drop.validFiles.length}>
         Upload {drop.validFiles.length} files
       </button>
     </div>
@@ -64,6 +65,16 @@ function Uploader() {
 ```
 idle → dragging → processing → ready/error
 ```
+
+Use semantic booleans for clean rendering:
+
+```tsx
+{drop.isProcessing && <Spinner />}
+{drop.hasError && <Error message={drop.status?.details} onRetry={drop.reset} />}
+{drop.isInteractive && <DropZone />}
+```
+
+Or use `phase` for switch-case logic:
 
 ```tsx
 switch (drop.phase) {
@@ -96,20 +107,37 @@ interface DropReturn {
   phase: 'idle' | 'dragging' | 'processing' | 'ready' | 'error';
   isProcessing: boolean;
   isDragging: boolean;
+  isInteractive: boolean;  // true when idle, dragging, or ready
+  hasError: boolean;       // true when in error state
   files: ProcessedFile[];
   validFiles: ProcessedFile[];
-  status: { title: string; details: string } | null;
+  sourceName: string;
+  status: { title: string; details: string; errors?: string[] } | null;
 
   // Prop getters
-  getDropzoneProps: () => { onDragOver, onDragLeave, onDrop, onClick };
-  getInputProps: () => { ref, type, style, multiple, webkitdirectory, onChange };
+  getDropzoneProps: (options?: { clickable?: boolean }) => {...};
+  getInputProps: () => {...};
 
   // Actions
-  open: () => void;           // Trigger file picker
+  open: () => void;                              // Trigger file picker
   processFiles: (files: File[]) => Promise<void>;
-  clearAll: () => void;
-  updateFileStatus: (fileId: string, state: {...}) => void;
+  reset: () => void;                             // Clear all files and reset state
+
+  // Helpers
+  getFilesForUpload: () => File[];               // Get raw File objects for SDK
 }
+```
+
+### Prop Getter Options
+
+```tsx
+// Default: clickable dropzone (click opens file picker)
+<div {...drop.getDropzoneProps()}>
+
+// Drag-only dropzone (no click behavior)
+<div {...drop.getDropzoneProps({ clickable: false })}>
+  <button onClick={drop.open}>Select folder</button>
+</div>
 ```
 
 ## Ship SDK Integration
@@ -126,8 +154,8 @@ const drop = useDrop({ ship });
 Pass files to Ship SDK:
 
 ```tsx
-const filesToDeploy = drop.validFiles.map(f => f.file);
-await ship.deployments.create(filesToDeploy);
+const files = drop.getFilesForUpload();
+await ship.deployments.create(files);
 ```
 
 ## Requirements

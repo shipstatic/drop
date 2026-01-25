@@ -274,7 +274,7 @@ describe('useDrop - branch coverage', () => {
     });
   });
 
-  describe('clearAll coverage', () => {
+  describe('reset coverage', () => {
     it('should reset isDragging state', async () => {
       const { result } = renderHook(() => useDrop({ ship: mockShip }));
       const props = result.current.getDropzoneProps();
@@ -288,7 +288,7 @@ describe('useDrop - branch coverage', () => {
 
       // Clear all
       act(() => {
-        result.current.clearAll();
+        result.current.reset();
       });
 
       expect(result.current.isDragging).toBe(false);
@@ -527,71 +527,4 @@ describe('useDrop - branch coverage', () => {
     });
   });
 
-  describe('updateFileStatus edge cases', () => {
-    it('should not modify files when ID does not match', async () => {
-      const { result } = renderHook(() => useDrop({ ship: mockShip }));
-
-      const file = createMockFile('test.txt', 'content');
-      await act(async () => {
-        await result.current.processFiles([file]);
-      });
-
-      const originalFile = result.current.files[0];
-      const originalStatus = originalFile.status;
-
-      // Try to update with non-existent ID
-      act(() => {
-        result.current.updateFileStatus('non-existent-id-12345', {
-          status: FILE_STATUSES.UPLOADING,
-          statusMessage: 'Uploading...',
-          progress: 50,
-        });
-      });
-
-      // Original file should be unchanged
-      expect(result.current.files[0].id).toBe(originalFile.id);
-      expect(result.current.files[0].status).toBe(originalStatus);
-      expect(result.current.files[0].progress).toBeUndefined();
-    });
-
-    it('should only update the matching file when multiple files exist', async () => {
-      const { result } = renderHook(() => useDrop({ ship: mockShip }));
-
-      const files = [
-        createMockFile('file1.txt', 'content1'),
-        createMockFile('file2.txt', 'content2'),
-        createMockFile('file3.txt', 'content3'),
-      ];
-
-      await act(async () => {
-        await result.current.processFiles(files);
-      });
-
-      expect(result.current.files).toHaveLength(3);
-
-      const secondFileId = result.current.files[1].id;
-
-      // Update only the second file
-      act(() => {
-        result.current.updateFileStatus(secondFileId, {
-          status: FILE_STATUSES.UPLOADING,
-          statusMessage: 'Uploading file2...',
-          progress: 75,
-        });
-      });
-
-      // First file unchanged
-      expect(result.current.files[0].status).toBe(FILE_STATUSES.READY);
-      expect(result.current.files[0].progress).toBeUndefined();
-
-      // Second file updated
-      expect(result.current.files[1].status).toBe(FILE_STATUSES.UPLOADING);
-      expect(result.current.files[1].statusMessage).toBe('Uploading file2...');
-      expect(result.current.files[1].progress).toBe(75);
-
-      // Third file unchanged
-      expect(result.current.files[2].status).toBe(FILE_STATUSES.READY);
-      expect(result.current.files[2].progress).toBeUndefined();
-    });
-  });
 });
