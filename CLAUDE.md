@@ -20,6 +20,7 @@ User drops files → Drop processes → Ship SDK deploys
 ```
 src/
 ├── index.ts              # Package exports
+├── testing.ts            # Test utilities (exported via /testing subpath)
 ├── types.ts              # Extends @shipstatic/types with UI-specific statuses
 ├── hooks/
 │   └── useDrop.ts        # Main hook (state machine, processing, prop getters)
@@ -177,6 +178,124 @@ The hidden input always has `webkitdirectory` attribute set. This means clicking
 ### Folder Traversal Silently Skips Errors
 
 If a file can't be read during folder drag-and-drop (permissions, etc.), it's logged to console but otherwise skipped. The caller has no programmatic way to know which files failed.
+
+## Testing
+
+### Package Tests
+
+318 tests with 99%+ coverage across:
+
+| Test Suite | Focus |
+|------------|-------|
+| `useDrop.test.ts` | Core hook behavior, state transitions |
+| `useDrop-props.test.tsx` | Prop getters, clickable option |
+| `useDrop-zip.test.tsx` | ZIP extraction integration |
+| `useDrop-validation.test.tsx` | Ship SDK validation integration |
+| `useDrop-branches.test.tsx` | Edge cases, error paths |
+| `zipExtractor.test.ts` | ZIP extraction utility |
+| `fileProcessing.test.ts` | Path normalization, folder traversal |
+| `commonPrefix.test.ts` | Directory prefix stripping |
+| `testing.test.ts` | Test utilities themselves |
+| `ship-sdk-contract.test.ts` | Contract with Ship SDK |
+
+```bash
+pnpm test --run              # Run all tests
+pnpm test --run --coverage   # With coverage report
+```
+
+### Consumer Test Utilities
+
+The `/testing` subpath exports mock utilities for testing components that consume `useDrop`:
+
+```typescript
+import {
+  createMockDrop,
+  createMockDropWithSpies,
+  createMockProcessedFile,
+  createMockFile,
+  createMockFileWithPath,
+  createMockErrorStatus,
+  createMockProcessingStatus,
+  createMockReadyStatus,
+} from '@shipstatic/drop/testing';
+```
+
+#### createMockDrop
+
+Creates a mock `DropReturn` for testing components that receive `drop` as a prop:
+
+```typescript
+const drop = createMockDrop({
+  phase: 'ready',
+  files: [createMockProcessedFile('index.html')],
+  sourceName: 'my-project.zip',
+});
+
+render(<DeployDropArea drop={drop} />);
+expect(screen.getByText('1 files ready')).toBeInTheDocument();
+```
+
+#### createMockDropWithSpies
+
+Same as `createMockDrop` but with call tracking for interaction tests:
+
+```typescript
+const { drop, spies } = createMockDropWithSpies({
+  phase: 'ready',
+  files: [createMockProcessedFile('index.html')],
+});
+
+render(<DeployDropArea drop={drop} />);
+await userEvent.click(screen.getByText('Clear'));
+
+expect(spies.reset.toHaveBeenCalled()).toBe(true);
+expect(spies.open.calls()).toBe(0);
+```
+
+#### File Mocks
+
+```typescript
+// ProcessedFile with all metadata
+const processed = createMockProcessedFile('style.css', {
+  path: 'assets/style.css',
+  content: 'body { margin: 0 }',
+  type: 'text/css',
+  status: 'ready',
+});
+
+// Plain File object
+const file = createMockFile('data.json', '{"key": "value"}', 'application/json');
+
+// File with webkitRelativePath set
+const fileWithPath = createMockFileWithPath(
+  'index.html',
+  'my-project/dist/index.html'
+);
+```
+
+#### Status Mocks
+
+```typescript
+const error = createMockErrorStatus(
+  'Validation Failed',
+  'Some files could not be processed',
+  ['virus.exe: File type not allowed']
+);
+
+const processing = createMockProcessingStatus(
+  'Extracting ZIP...',
+  'Processing 42 files'
+);
+
+const ready = createMockReadyStatus(5); // "5 file(s) are ready"
+```
+
+### Testing Philosophy
+
+- **Mock at the boundary** - Mock `DropReturn`, not internal utilities
+- **Test states, not implementation** - Focus on phase transitions and UI states
+- **Use spies for interactions** - Verify `reset()`, `open()` are called correctly
+- **No DOM event simulation** - Use the mock utilities instead of simulating drag events
 
 ## Related Documentation
 

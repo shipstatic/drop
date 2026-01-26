@@ -16,11 +16,11 @@ importers:
         version: 1.54.0
     devDependencies:
       '@shipstatic/ship':
-        specifier: ^0.4.6
-        version: 0.4.6(typescript@5.9.3)
-      '@shipstatic/types':
         specifier: ^0.4.7
-        version: 0.4.7
+        version: 0.4.7(typescript@5.9.3)
+      '@shipstatic/types':
+        specifier: ^0.4.12
+        version: 0.4.12
       '@testing-library/jest-dom':
         specifier: ^6.9.1
         version: 6.9.1
@@ -44,13 +44,13 @@ importers:
         version: 19.2.3(@types/react@19.2.9)
       '@vitest/coverage-v8':
         specifier: ^3.2.4
-        version: 3.2.4(vitest@3.2.4(@types/node@25.0.10)(happy-dom@20.3.7)(jsdom@27.4.0))
+        version: 3.2.4(vitest@3.2.4(@types/node@25.0.10)(happy-dom@20.3.9)(jsdom@27.4.0))
       buffer:
         specifier: ^6.0.3
         version: 6.0.3
       happy-dom:
-        specifier: ^20.3.7
-        version: 20.3.7
+        specifier: ^20.3.9
+        version: 20.3.9
       husky:
         specifier: ^9.1.7
         version: 9.1.7
@@ -74,7 +74,7 @@ importers:
         version: 5.9.3
       vitest:
         specifier: ^3.2.4
-        version: 3.2.4(@types/node@25.0.10)(happy-dom@20.3.7)(jsdom@27.4.0)
+        version: 3.2.4(@types/node@25.0.10)(happy-dom@20.3.9)(jsdom@27.4.0)
 
 packages:
 
@@ -150,9 +150,8 @@ packages:
     peerDependencies:
       '@csstools/css-tokenizer': ^3.0.4
 
-  '@csstools/css-syntax-patches-for-csstree@1.0.25':
-    resolution: {integrity: sha512-g0Kw9W3vjx5BEBAF8c5Fm2NcB/Fs8jJXh85aXqwEXiL+tqtOut07TWgyaGzAAfTM+gKckrrncyeGEZPcaRgm2Q==}
-    engines: {node: '>=18'}
+  '@csstools/css-syntax-patches-for-csstree@1.0.26':
+    resolution: {integrity: sha512-6boXK0KkzT5u5xOgF6TKB+CLq9SOpEGmkZw0g5n9/7yg85wab3UzSxB8TxhLJ31L4SGJ6BCFRw/iftTha1CJXA==}
 
   '@csstools/css-tokenizer@3.0.4':
     resolution: {integrity: sha512-Vd/9EVDiu6PPJt9yAh6roZP6El1xHrdvIVGjyBsHR0RYwNHgL7FJPyIIW4fANJNG6FtyZfvlRPpFI4ZM/lubvw==}
@@ -314,8 +313,8 @@ packages:
     cpu: [x64]
     os: [win32]
 
-  '@exodus/bytes@1.9.0':
-    resolution: {integrity: sha512-lagqsvnk09NKogQaN/XrtlWeUF8SRhT12odMvbTIIaVObqzwAogL6jhR4DAp0gPuKoM1AOVrKUshJpRdpMFrww==}
+  '@exodus/bytes@1.10.0':
+    resolution: {integrity: sha512-tf8YdcbirXdPnJ+Nd4UN1EXnz+IP2DI45YVEr3vvzcVTOyrApkmIB4zvOQVd3XPr7RXnfBtAx+PXImXOIU0Ajg==}
     engines: {node: ^20.19.0 || ^22.12.0 || >=24.0.0}
     peerDependencies:
       '@noble/hashes': ^1.8.0 || ^2.0.0
@@ -473,13 +472,13 @@ packages:
     cpu: [x64]
     os: [win32]
 
-  '@shipstatic/ship@0.4.6':
-    resolution: {integrity: sha512-XkRyiDHr6kiFc7j786amjWXAtvOiRROyMixuxVI3rj/0I/qD5SJsf4J54vq2cggxHgbehlAEH+g+LM2iIWXOOg==}
+  '@shipstatic/ship@0.4.7':
+    resolution: {integrity: sha512-J0fuJWoGZ9Do8AHmijC+92PtF1JGEDyZ0Rt9w7FOsnGDrhUc5utVkvKY7SV4vKQLINWcjROq+3SvzYVydeVipA==}
     engines: {node: '>=20.0.0'}
     hasBin: true
 
-  '@shipstatic/types@0.4.7':
-    resolution: {integrity: sha512-FZ64B54rgmutJteH1EJGK75JB/ufNLnzbK8r8q6bT28wkyqytNwFfQi7TbHuC8U+TWoz6IAr7DA1CzTTl/rfEw==}
+  '@shipstatic/types@0.4.12':
+    resolution: {integrity: sha512-Xy4gKv2btXSLz2qGUzm7ldtW8u2cQIzXisd+o8KeR29jRpINcZcb5Dpn1yXYGT5OI4vzhonXldkZ/kmwzrl8sA==}
     engines: {node: '>=20.0.0'}
 
   '@testing-library/dom@10.4.1':
@@ -836,8 +835,8 @@ packages:
     resolution: {integrity: sha512-DfXN8DfhJ7NH3Oe7cFmu3NCu1wKbkReJ8TorzSAFbSKrlNaQSKfIzqYqVY8zlbs2NLBbWpRiU52GX2PbaBVNkg==}
     hasBin: true
 
-  happy-dom@20.3.7:
-    resolution: {integrity: sha512-sb5IzoRl1WJKsUSRe+IloJf3z1iDq5PQ7Yk/ULMsZ5IAQEs9ZL7RsFfiKBXU7nK9QmO+iz0e59EH8r8jexTZ/g==}
+  happy-dom@20.3.9:
+    resolution: {integrity: sha512-OIoj0PcK2JaxQuANHxWkxFRSNXAuSgO1vCzCT66KItE0W/ieZLG+/iW8OetlxB+F9EaPB7DoFYKAubFG1f4Mvw==}
     engines: {node: '>=20.0.0'}
 
   has-flag@4.0.0:
@@ -969,8 +968,8 @@ packages:
   lru-cache@10.4.3:
     resolution: {integrity: sha512-JNAzZcXrCt42VGLuYz0zfAzDfAvJWW6AfYlDBQyDV5DClI2m5sAmK+OIO7s59XfsRsWHp02jAJrRadPRGTt6SQ==}
 
-  lru-cache@11.2.4:
-    resolution: {integrity: sha512-B5Y16Jr9LB9dHVkh6ZevG+vAbOsNOYCX+sXvFWFu7B3Iz5mijW3zdbMyhsh8ANd2mSWBYdJgnqi+mL7/LrOPYg==}
+  lru-cache@11.2.5:
+    resolution: {integrity: sha512-vFrFJkWtJvJnD5hg+hJvVE8Lh/TcMzKnTgCWmtBipwI5yLX/iX+5UB2tfuyODF5E7k9xEzMdYgGqaSb1c0c5Yw==}
     engines: {node: 20 || >=22}
 
   lz-string@1.5.0:
@@ -1487,7 +1486,7 @@ snapshots:
       '@csstools/css-color-parser': 3.1.0(@csstools/css-parser-algorithms@3.0.5(@csstools/css-tokenizer@3.0.4))(@csstools/css-tokenizer@3.0.4)
       '@csstools/css-parser-algorithms': 3.0.5(@csstools/css-tokenizer@3.0.4)
       '@csstools/css-tokenizer': 3.0.4
-      lru-cache: 11.2.4
+      lru-cache: 11.2.5
 
   '@asamuzakjp/dom-selector@6.7.6':
     dependencies:
@@ -1495,7 +1494,7 @@ snapshots:
       bidi-js: 1.0.3
       css-tree: 3.1.0
       is-potential-custom-element-name: 1.0.1
-      lru-cache: 11.2.4
+      lru-cache: 11.2.5
 
   '@asamuzakjp/nwsapi@2.3.9': {}
 
@@ -1540,7 +1539,7 @@ snapshots:
     dependencies:
       '@csstools/css-tokenizer': 3.0.4
 
-  '@csstools/css-syntax-patches-for-csstree@1.0.25': {}
+  '@csstools/css-syntax-patches-for-csstree@1.0.26': {}
 
   '@csstools/css-tokenizer@3.0.4': {}
 
@@ -1622,7 +1621,7 @@ snapshots:
   '@esbuild/win32-x64@0.27.2':
     optional: true
 
-  '@exodus/bytes@1.9.0': {}
+  '@exodus/bytes@1.10.0': {}
 
   '@isaacs/cliui@8.0.2':
     dependencies:
@@ -1727,9 +1726,9 @@ snapshots:
   '@rollup/rollup-win32-x64-msvc@4.56.0':
     optional: true
 
-  '@shipstatic/ship@0.4.6(typescript@5.9.3)':
+  '@shipstatic/ship@0.4.7(typescript@5.9.3)':
     dependencies:
-      '@shipstatic/types': 0.4.7
+      '@shipstatic/types': 0.4.12
       columnify: 1.6.0
       commander: 12.1.0
       cosmiconfig: 9.0.0(typescript@5.9.3)
@@ -1744,7 +1743,7 @@ snapshots:
     transitivePeerDependencies:
       - typescript
 
-  '@shipstatic/types@0.4.7': {}
+  '@shipstatic/types@0.4.12': {}
 
   '@testing-library/dom@10.4.1':
     dependencies:
@@ -1811,7 +1810,7 @@ snapshots:
     dependencies:
       '@types/node': 25.0.10
 
-  '@vitest/coverage-v8@3.2.4(vitest@3.2.4(@types/node@25.0.10)(happy-dom@20.3.7)(jsdom@27.4.0))':
+  '@vitest/coverage-v8@3.2.4(vitest@3.2.4(@types/node@25.0.10)(happy-dom@20.3.9)(jsdom@27.4.0))':
     dependencies:
       '@ampproject/remapping': 2.3.0
       '@bcoe/v8-coverage': 1.0.2
@@ -1826,7 +1825,7 @@ snapshots:
       std-env: 3.10.0
       test-exclude: 7.0.1
       tinyrainbow: 2.0.0
-      vitest: 3.2.4(@types/node@25.0.10)(happy-dom@20.3.7)(jsdom@27.4.0)
+      vitest: 3.2.4(@types/node@25.0.10)(happy-dom@20.3.9)(jsdom@27.4.0)
     transitivePeerDependencies:
       - supports-color
 
@@ -1994,9 +1993,9 @@ snapshots:
   cssstyle@5.3.7:
     dependencies:
       '@asamuzakjp/css-color': 4.1.1
-      '@csstools/css-syntax-patches-for-csstree': 1.0.25
+      '@csstools/css-syntax-patches-for-csstree': 1.0.26
       css-tree: 3.1.0
-      lru-cache: 11.2.4
+      lru-cache: 11.2.5
 
   csstype@3.2.3: {}
 
@@ -2107,7 +2106,7 @@ snapshots:
       package-json-from-dist: 1.0.1
       path-scurry: 1.11.1
 
-  happy-dom@20.3.7:
+  happy-dom@20.3.9:
     dependencies:
       '@types/node': 25.0.10
       '@types/whatwg-mimetype': 3.0.2
@@ -2123,7 +2122,7 @@ snapshots:
 
   html-encoding-sniffer@6.0.0:
     dependencies:
-      '@exodus/bytes': 1.9.0
+      '@exodus/bytes': 1.10.0
     transitivePeerDependencies:
       - '@noble/hashes'
 
@@ -2209,7 +2208,7 @@ snapshots:
     dependencies:
       '@acemir/cssom': 0.9.31
       '@asamuzakjp/dom-selector': 6.7.6
-      '@exodus/bytes': 1.9.0
+      '@exodus/bytes': 1.10.0
       cssstyle: 5.3.7
       data-urls: 6.0.1
       decimal.js: 10.6.0
@@ -2258,7 +2257,7 @@ snapshots:
 
   lru-cache@10.4.3: {}
 
-  lru-cache@11.2.4: {}
+  lru-cache@11.2.5: {}
 
   lz-string@1.5.0: {}
 
@@ -2632,7 +2631,7 @@ snapshots:
       '@types/node': 25.0.10
       fsevents: 2.3.3
 
-  vitest@3.2.4(@types/node@25.0.10)(happy-dom@20.3.7)(jsdom@27.4.0):
+  vitest@3.2.4(@types/node@25.0.10)(happy-dom@20.3.9)(jsdom@27.4.0):
     dependencies:
       '@types/chai': 5.2.3
       '@vitest/expect': 3.2.4
@@ -2659,7 +2658,7 @@ snapshots:
       why-is-node-running: 2.3.0
     optionalDependencies:
       '@types/node': 25.0.10
-      happy-dom: 20.3.7
+      happy-dom: 20.3.9
       jsdom: 27.4.0
     transitivePeerDependencies:
       - jiti
