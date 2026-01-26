@@ -158,6 +158,70 @@ const files = drop.getFilesForUpload();
 await ship.deployments.create(files);
 ```
 
+## Testing
+
+The `/testing` subpath provides mock utilities for testing components that use `useDrop`:
+
+```typescript
+import {
+  createMockDrop,
+  createMockDropWithSpies,
+  createMockProcessedFile,
+} from '@shipstatic/drop/testing';
+```
+
+### Testing Component States
+
+```tsx
+import { render, screen } from '@testing-library/react';
+import { createMockDrop, createMockProcessedFile } from '@shipstatic/drop/testing';
+
+it('shows file count when ready', () => {
+  const drop = createMockDrop({
+    phase: 'ready',
+    files: [
+      createMockProcessedFile('index.html'),
+      createMockProcessedFile('style.css'),
+    ],
+  });
+
+  render(<MyDropzone drop={drop} />);
+  expect(screen.getByText('2 files ready')).toBeInTheDocument();
+});
+```
+
+### Testing Interactions
+
+```tsx
+import userEvent from '@testing-library/user-event';
+import { createMockDropWithSpies, createMockProcessedFile } from '@shipstatic/drop/testing';
+
+it('calls reset when Clear is clicked', async () => {
+  const { drop, spies } = createMockDropWithSpies({
+    phase: 'ready',
+    files: [createMockProcessedFile('index.html')],
+  });
+
+  render(<MyDropzone drop={drop} />);
+  await userEvent.click(screen.getByText('Clear'));
+
+  expect(spies.reset.toHaveBeenCalled()).toBe(true);
+});
+```
+
+### Available Utilities
+
+| Function | Purpose |
+|----------|---------|
+| `createMockDrop(options?)` | Mock `DropReturn` for rendering tests |
+| `createMockDropWithSpies(options?)` | Mock with call tracking for interaction tests |
+| `createMockProcessedFile(name, options?)` | Mock `ProcessedFile` |
+| `createMockFile(name, content?, type?)` | Mock `File` object |
+| `createMockFileWithPath(name, path, ...)` | Mock `File` with `webkitRelativePath` |
+| `createMockErrorStatus(title?, details?, errors?)` | Mock error status |
+| `createMockProcessingStatus(title?, details?)` | Mock processing status |
+| `createMockReadyStatus(count)` | Mock ready status |
+
 ## Requirements
 
 - React 18+ or 19+
