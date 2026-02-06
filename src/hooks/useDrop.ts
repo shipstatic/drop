@@ -238,9 +238,33 @@ export function useDrop(options: DropOptions): DropReturn {
       // Step 5: Strip common prefix if requested
       const finalFiles = stripPrefix ? stripCommonPrefix(processedFiles) : processedFiles;
 
+      // Step 5.5: Drop-only exception - treat application/octet-stream as text/plain
+      // This allows extensionless files like LICENSE, README, Makefile, etc. to pass validation
+      // Server will still validate properly, this is just for client-side UX
+      const filesForValidation = finalFiles.map(f => {
+        if (f.file.type === 'application/octet-stream') {
+          // Create a new File object with text/plain MIME type
+          const textFile = new File([f.file], f.file.name, {
+            type: 'text/plain',
+            lastModified: f.file.lastModified,
+          });
+          // Preserve webkitRelativePath if it exists
+          if ((f.file as FileWithPath).webkitRelativePath) {
+            Object.defineProperty(textFile, 'webkitRelativePath', {
+              value: (f.file as FileWithPath).webkitRelativePath,
+              writable: false,
+              configurable: true,
+            });
+          }
+          // Return new ProcessedFile with updated File object
+          return { ...f, file: textFile };
+        }
+        return f;
+      });
+
       // Step 6: Validate all files using Ship SDK's config
       const config = await ship.getConfig();
-      const validation = validateFiles(finalFiles, config);
+      const validation = validateFiles(filesForValidation, config);
 
       if (validation.error) {
         // Transition to error state
