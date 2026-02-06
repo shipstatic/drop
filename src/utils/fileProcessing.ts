@@ -41,7 +41,9 @@ export function createProcessedFile(
   // Determine MIME type
   // Prioritize mime-db lookup over browser detection for accuracy
   // Browsers often return incorrect MIME types (e.g., text/plain for .map, .scss files)
-  const type = getMimeType(path) || file.type;
+  const mimeFromDb = getMimeType(path);
+  const mimeFromBrowser = file.type;
+  const type = mimeFromDb || mimeFromBrowser;
 
   return {
     // ProcessedFile properties
