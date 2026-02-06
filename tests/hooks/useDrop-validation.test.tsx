@@ -207,4 +207,31 @@ describe('useDrop - Validation', () => {
     expect(result.current.status?.title).toBe('Empty File');
     expect(result.current.files[0].status).toBe(FILE_STATUSES.EMPTY_FILE);
   });
+
+  it('should accept application/octet-stream files (drop-only exception)', async () => {
+    const ship = createMockShip();
+
+    const { result } = renderHook(() => useDrop({ ship }));
+
+    // Create a file with application/octet-stream MIME type (like extensionless LICENSE)
+    const file = createMockFile('LICENSE', 'MIT License...', 'application/octet-stream');
+
+    await act(async () => {
+      await result.current.processFiles([file]);
+    });
+
+    await waitFor(() => {
+      expect(result.current.isProcessing).toBe(false);
+    });
+
+    // Should transition to ready state (file accepted)
+    expect(result.current.phase).toBe('ready');
+    expect(result.current.files).toHaveLength(1);
+    expect(result.current.files[0].status).toBe(FILE_STATUSES.READY);
+
+    // Verify that validateFiles was called with text/plain type (the override)
+    const validateCall = mockValidateFiles.mock.calls[0];
+    const filesPassedToValidate = validateCall[0];
+    expect(filesPassedToValidate[0].file.type).toBe('text/plain');
+  });
 });
