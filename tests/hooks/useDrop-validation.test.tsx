@@ -232,6 +232,6 @@ describe('useDrop - Validation', () => {
     // Verify that validateFiles was called with text/plain type (the override)
     const validateCall = mockValidateFiles.mock.calls[0];
     const filesPassedToValidate = validateCall[0];
-    expect(filesPassedToValidate[0].file.type).toBe('text/plain');
+    expect(filesPassedToValidate[0].type).toBe('text/plain');
   });
 });

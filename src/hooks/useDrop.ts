@@ -238,11 +238,14 @@ export function useDrop(options: DropOptions): DropReturn {
       // Step 5: Strip common prefix if requested
       const finalFiles = stripPrefix ? stripCommonPrefix(processedFiles) : processedFiles;
 
-      // Step 5.5: Drop-only exception - treat application/octet-stream as text/plain
+      // Step 5.5: Drop-only exception - treat unknown MIME types as text/plain
       // This allows extensionless files like LICENSE, README, Makefile, etc. to pass validation
       // Server will still validate properly, this is just for client-side UX
+      // Browsers may return empty string "" or "application/octet-stream" for unknown files
       const filesForValidation = finalFiles.map(f => {
-        if (f.file.type === 'application/octet-stream') {
+        const isUnknownType = !f.file.type || f.file.type === 'application/octet-stream';
+
+        if (isUnknownType) {
           // Create a new File object with text/plain MIME type
           const textFile = new File([f.file], f.file.name, {
             type: 'text/plain',
@@ -262,15 +265,33 @@ export function useDrop(options: DropOptions): DropReturn {
         return f;
       });
 
-      // Step 6: Validate all files using Ship SDK's config
+      // Step 6: Map ProcessedFile to ValidatableFile format
+      // validateFiles expects { name, type, size }, not { file: File }
+      const validatableFiles = filesForValidation.map(f => ({
+        name: f.file.name,
+        type: f.file.type,
+        size: f.file.size,
+        status: f.status,
+        statusMessage: f.statusMessage
+      }));
+
+      // Step 7: Validate all files using Ship SDK's config
       const config = await ship.getConfig();
-      const validation = validateFiles(filesForValidation, config);
+      const validation = validateFiles(validatableFiles, config);
+
+      // Map validation results back to ProcessedFile format
+      // validation.files has ValidatableFile with status, we need ProcessedFile with updated status
+      const filesWithStatus = filesForValidation.map((processedFile, idx) => ({
+        ...processedFile,
+        status: validation.files[idx]?.status || processedFile.status,
+        statusMessage: validation.files[idx]?.statusMessage || processedFile.statusMessage
+      }));
 
       if (validation.error) {
         // Transition to error state
         setState({
           value: 'error',
-          files: validation.files,
+          files: filesWithStatus,
           sourceName: detectedSourceName,
           status: {
             title: validation.error.error,
@@ -283,11 +304,11 @@ export function useDrop(options: DropOptions): DropReturn {
         // Transition to ready state
         setState({
           value: 'ready',
-          files: validation.files,
+          files: filesWithStatus,
           sourceName: detectedSourceName,
           status: { title: 'Ready', details: `${validation.validFiles.length} file(s) are ready.` },
         });
-        onFilesReady?.(validation.validFiles);
+        onFilesReady?.(filesWithStatus.filter((f, idx) => validation.files[idx]?.status === 'ready'));
       } else {
         // Handle case where no valid files were found
         const noValidError: ClientError = {
@@ -298,7 +319,7 @@ export function useDrop(options: DropOptions): DropReturn {
         };
         setState({
           value: 'error',
-          files: validation.files,
+          files: filesWithStatus,
           sourceName: detectedSourceName,
           status: { title: noValidError.error, details: noValidError.details },
         });
