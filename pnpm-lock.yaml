@@ -16,11 +16,11 @@ importers:
         version: 1.54.0
     devDependencies:
       '@shipstatic/ship':
-        specifier: ^0.4.20
-        version: 0.4.20(typescript@5.9.3)
-      '@shipstatic/types':
         specifier: ^0.4.21
-        version: 0.4.21
+        version: 0.4.21(typescript@5.9.3)
+      '@shipstatic/types':
+        specifier: ^0.4.22
+        version: 0.4.22
       '@testing-library/jest-dom':
         specifier: ^6.9.1
         version: 6.9.1
@@ -472,13 +472,13 @@ packages:
     cpu: [x64]
     os: [win32]
 
-  '@shipstatic/ship@0.4.20':
-    resolution: {integrity: sha512-QI7zOHMKWr+ajRKVBMAwHJIx0vtidf3V3Ug+0uR0zpeIYMKdoHW4yBnsLAEge2TQ1vkLbd/K8SDo7H2l+MI44g==}
+  '@shipstatic/ship@0.4.21':
+    resolution: {integrity: sha512-M9TF2qZ8XIc0U8WZpKrAv9vIyU0qvRoPoednFtjRiG1jQO+AywTCKsIXFdywPnFxBcbDygKKylFTxV2flwV1cw==}
     engines: {node: '>=20.0.0'}
     hasBin: true
 
-  '@shipstatic/types@0.4.21':
-    resolution: {integrity: sha512-vSR9e6eOQAHtx6P74P8gydOKrVnPClmgU4r4j8SYR+dcWZeDxf1Bfy9ixCztwYDq/xW5Iu7Fs1h8gNVIV9exag==}
+  '@shipstatic/types@0.4.22':
+    resolution: {integrity: sha512-5/NQDW3oNx+M14LFLhTlioxIuFRhirNBh/pSw0ACxkfKlelWILzvHWaV/eWeDoTQuk0HRWgtIWui7BZy0kQjEQ==}
     engines: {node: '>=20.0.0'}
 
   '@testing-library/dom@10.4.1':
@@ -1730,7 +1730,7 @@ snapshots:
   '@rollup/rollup-win32-x64-msvc@4.57.1':
     optional: true
 
-  '@shipstatic/ship@0.4.20(typescript@5.9.3)':
+  '@shipstatic/ship@0.4.21(typescript@5.9.3)':
     dependencies:
       columnify: 1.6.0
       commander: 12.1.0
@@ -1746,7 +1746,7 @@ snapshots:
     transitivePeerDependencies:
       - typescript
 
-  '@shipstatic/types@0.4.21': {}
+  '@shipstatic/types@0.4.22': {}
 
   '@testing-library/dom@10.4.1':
     dependencies:
