@@ -271,8 +271,9 @@ export function useDrop(options: DropOptions): DropReturn {
 
       // Step 6: Map ProcessedFile to ValidatableFile format
       // validateFiles expects { name, type, size }, not { file: File }
+      // IMPORTANT: Use f.path (full path) not f.file.name (filename only) to match server validation
       const validatableFiles = filesForValidation.map(f => ({
-        name: f.file.name,
+        name: f.path,  // Use full path to match server-side validation
         type: f.type,  // Use corrected MIME type from mime-db, not browser's File.type
         size: f.file.size,
         status: f.status,
