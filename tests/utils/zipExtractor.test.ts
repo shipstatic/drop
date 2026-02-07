@@ -139,7 +139,7 @@ describe('zipExtractor', () => {
 
       expect(result.files[0].type).toBe('image/png');
       expect(result.files[1].type).toBe('application/pdf');
-      expect(result.files[2].type).toBe('application/octet-stream');
+      expect(result.files[2].type).toBe(''); // Unknown extension returns empty string
     });
 
     it('should preserve file modification dates', async () => {

@@ -19,10 +19,11 @@ for (const type in mimeDb) {
 
 /**
  * Get MIME type from file path (browser-compatible, no Node.js dependencies)
+ * Returns empty string if extension not found, allowing fallback to browser detection
  */
 export function getMimeType(path: string): string {
   const extension = path.includes('.')
     ? path.substring(path.lastIndexOf('.') + 1).toLowerCase()
     : '';
-  return extensionToMimeMap[extension] || 'application/octet-stream';
+  return extensionToMimeMap[extension] || '';
 }

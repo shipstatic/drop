@@ -38,7 +38,7 @@ describe('getMimeType', () => {
       // Note: mime-db maps .ts to video/mp2t (MPEG transport stream)
       // and doesn't have .tsx registered, so it returns the fallback
       expect(getMimeType('app.ts')).toBe('video/mp2t');
-      expect(getMimeType('component.tsx')).toBe('application/octet-stream');
+      expect(getMimeType('component.tsx')).toBe('');
     });
 
     it('should return correct MIME type for Markdown files', () => {
@@ -77,15 +77,15 @@ describe('getMimeType', () => {
     });
 
     it('should handle files with no extension', () => {
-      expect(getMimeType('README')).toBe('application/octet-stream');
-      expect(getMimeType('Makefile')).toBe('application/octet-stream');
-      expect(getMimeType('file')).toBe('application/octet-stream');
+      expect(getMimeType('README')).toBe('');
+      expect(getMimeType('Makefile')).toBe('');
+      expect(getMimeType('file')).toBe('');
     });
 
     it('should handle files with unknown extensions', () => {
       // Note: .xyz is actually registered in mime-db as chemical/x-xyz
       expect(getMimeType('file.xyz')).toBe('chemical/x-xyz');
-      expect(getMimeType('document.unknownext')).toBe('application/octet-stream');
+      expect(getMimeType('document.unknownext')).toBe('');
     });
 
     it('should be case-insensitive for extensions', () => {
@@ -96,17 +96,17 @@ describe('getMimeType', () => {
     });
 
     it('should handle nested paths', () => {
-      expect(getMimeType('src/components/App.tsx')).toBe('application/octet-stream');
+      expect(getMimeType('src/components/App.tsx')).toBe('');
       expect(getMimeType('public/assets/images/logo.png')).toBe('image/png');
       expect(getMimeType('a/b/c/d/e/file.json')).toBe('application/json');
     });
 
     it('should handle paths with trailing slashes (as file names)', () => {
-      expect(getMimeType('weird/')).toBe('application/octet-stream');
+      expect(getMimeType('weird/')).toBe('');
     });
 
     it('should handle empty paths', () => {
-      expect(getMimeType('')).toBe('application/octet-stream');
+      expect(getMimeType('')).toBe('');
     });
 
     it('should handle paths with only extension', () => {
@@ -115,7 +115,7 @@ describe('getMimeType', () => {
     });
 
     it('should handle hidden files', () => {
-      expect(getMimeType('.gitignore')).toBe('application/octet-stream');
+      expect(getMimeType('.gitignore')).toBe('');
       expect(getMimeType('.eslintrc.json')).toBe('application/json');
       expect(getMimeType('folder/.hidden.js')).toBe('application/javascript');
     });
@@ -143,7 +143,7 @@ describe('getMimeType', () => {
       expect(getMimeType('package.json')).toBe('application/json');
       expect(getMimeType('tsconfig.json')).toBe('application/json');
       expect(getMimeType('vite.config.ts')).toBe('video/mp2t');
-      expect(getMimeType('App.tsx')).toBe('application/octet-stream');
+      expect(getMimeType('App.tsx')).toBe('');
       expect(getMimeType('styles.css')).toBe('text/css');
       expect(getMimeType('index.html')).toBe('text/html');
     });
