@@ -69,11 +69,12 @@ describe('fileProcessing', () => {
       expect(processed.type).toBe('application/pdf');
     });
 
-    it('should fall back to application/octet-stream for unknown types', () => {
+    it('should return empty string for unknown MIME types (delegating to useDrop conversion)', () => {
       const file = createMockFile('unknown.unknownext', 'content', '');
       const processed = createProcessedFile(file);
 
-      expect(processed.type).toBe('application/octet-stream');
+      // Empty string allows useDrop.ts to convert to text/plain later
+      expect(processed.type).toBe('');
     });
   });
 
