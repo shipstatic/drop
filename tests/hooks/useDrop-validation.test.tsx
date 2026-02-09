@@ -40,11 +40,13 @@ describe('useDrop - Validation', () => {
   beforeEach(() => {
     mockGetConfig.mockResolvedValue(DEFAULT_TEST_CONFIG);
 
-    // Default mock validation (all files valid)
+    // Default mock validation (all files valid) - NEW API structure
     mockValidateFiles.mockImplementation((files) => ({
       files: files.map((f: any) => ({ ...f, status: FILE_STATUSES.READY, statusMessage: 'Ready for upload' })),
       validFiles: files.map((f: any) => ({ ...f, status: FILE_STATUSES.READY, statusMessage: 'Ready for upload' })),
-      error: null,
+      errors: [],      // NEW: No errors
+      warnings: [],    // NEW: No warnings
+      canDeploy: true, // NEW: Can deploy
     }));
   });
 
@@ -65,12 +67,14 @@ describe('useDrop - Validation', () => {
         { name: 'file3.txt', status: FILE_STATUSES.VALIDATION_FAILED, statusMessage: 'File count exceeded' },
       ],
       validFiles: [],
-      error: {
-        error: 'File Count Exceeded',
-        details: 'Number of files (3) exceeds the limit of 2.',
-        errors: ['File count exceeded'],
-        isClientError: true,
-      },
+      errors: [{
+        file: '(3 files)',
+        severity: 'error',
+        type: 'file_count_exceeded',
+        message: 'File count (3) exceeds limit of 2'
+      }],
+      warnings: [],
+      canDeploy: false,
     });
 
     const { result } = renderHook(() =>
@@ -91,7 +95,7 @@ describe('useDrop - Validation', () => {
       expect(result.current.isProcessing).toBe(false);
     });
 
-    expect(result.current.status?.title).toBe('File Count Exceeded');
+    expect(result.current.status?.title).toBe('Validation Failed');
     expect(onValidationError).toHaveBeenCalled();
     expect(result.current.files).toHaveLength(3);
     result.current.files.forEach(file => {
@@ -109,12 +113,14 @@ describe('useDrop - Validation', () => {
         { name: 'huge.txt', status: FILE_STATUSES.VALIDATION_FAILED, statusMessage: 'File size exceeds limit' },
       ],
       validFiles: [],
-      error: {
-        error: 'File Too Large',
-        details: 'File size exceeds limit',
-        errors: ['File size exceeds limit'],
-        isClientError: true,
-      },
+      errors: [{
+        file: 'huge.txt',
+        severity: 'error',
+        type: 'file_too_large',
+        message: 'File size exceeds limit'
+      }],
+      warnings: [],
+      canDeploy: false,
     });
 
     const { result } = renderHook(() =>
@@ -131,7 +137,7 @@ describe('useDrop - Validation', () => {
       expect(result.current.isProcessing).toBe(false);
     });
 
-    expect(result.current.status?.title).toBe('File Too Large');
+    expect(result.current.status?.title).toBe('Validation Failed');
     expect(onValidationError).toHaveBeenCalled();
   });
 
@@ -146,12 +152,14 @@ describe('useDrop - Validation', () => {
         { name: 'file2.txt', status: FILE_STATUSES.VALIDATION_FAILED, statusMessage: 'Total size exceeded' },
       ],
       validFiles: [],
-      error: {
-        error: 'Total Size Exceeded',
-        details: 'Total size exceeds limit',
-        errors: ['Total size exceeds limit'],
-        isClientError: true,
-      },
+      errors: [{
+        file: 'file2.txt',
+        severity: 'error',
+        type: 'total_size_exceeded',
+        message: 'Total size exceeds limit'
+      }],
+      warnings: [],
+      canDeploy: false,
     });
 
     const { result } = renderHook(() =>
@@ -171,25 +179,27 @@ describe('useDrop - Validation', () => {
       expect(result.current.isProcessing).toBe(false);
     });
 
-    expect(result.current.status?.title).toBe('Total Size Exceeded');
+    expect(result.current.status?.title).toBe('Validation Failed');
     expect(onValidationError).toHaveBeenCalled();
   });
 
-  it('should reject empty files (0 bytes)', async () => {
+  it('should exclude empty files (0 bytes) with warnings', async () => {
     const ship = createMockShip();
 
-    // Mock validation to fail with empty file error
+    // Mock validation: empty files are warnings (not errors) but result in no valid files
     mockValidateFiles.mockReturnValueOnce({
       files: [
-        { name: 'empty.txt', status: FILE_STATUSES.EMPTY_FILE, statusMessage: 'File is empty (0 bytes)' },
+        { name: 'empty.txt', status: FILE_STATUSES.EXCLUDED, statusMessage: 'File is empty (0 bytes) and cannot be deployed due to storage limitations' },
       ],
       validFiles: [],
-      error: {
-        error: 'Empty File',
-        details: 'File is empty (0 bytes)',
-        errors: ['File is empty (0 bytes)'],
-        isClientError: true,
-      },
+      errors: [],  // No errors (empty files are warnings)
+      warnings: [   // Empty files generate warnings
+        {
+          file: 'empty.txt',
+          message: 'File is empty (0 bytes) and cannot be deployed due to storage limitations'
+        }
+      ],
+      canDeploy: true,  // No errors, but no valid files either
     });
 
     const { result } = renderHook(() => useDrop({ ship }));
@@ -204,8 +214,14 @@ describe('useDrop - Validation', () => {
       expect(result.current.isProcessing).toBe(false);
     });
 
-    expect(result.current.status?.title).toBe('Empty File');
-    expect(result.current.files[0].status).toBe(FILE_STATUSES.EMPTY_FILE);
+    // Should stay in ready state (not error) because only warnings, no errors
+    expect(result.current.phase).toBe('ready');
+    expect(result.current.status?.title).toBe('All files excluded');
+    expect(result.current.status?.warnings).toBeDefined();
+    expect(result.current.status?.warnings?.length).toBeGreaterThan(0);
+    expect(result.current.files[0].status).toBe(FILE_STATUSES.EXCLUDED);
+    // validFiles.length === 0 will naturally disable deploy button in UI
+    expect(result.current.validFiles).toHaveLength(0);
   });
 
   it('should accept application/octet-stream files (drop-only exception)', async () => {
@@ -245,12 +261,14 @@ describe('useDrop - Validation', () => {
         { name: 'app/page/[slug]/page.js', status: FILE_STATUSES.VALIDATION_FAILED, statusMessage: 'File name contains unsafe characters' },
       ],
       validFiles: [],
-      error: {
-        error: 'Invalid File Name',
-        details: 'app/page/[slug]/page.js: File name contains unsafe characters',
-        errors: ['app/page/[slug]/page.js: File name contains unsafe characters'],
-        isClientError: true,
-      },
+      errors: [{
+        file: 'app/page/[slug]/page.js',
+        severity: 'error',
+        type: 'invalid_filename',
+        message: 'File name contains unsafe characters'
+      }],
+      warnings: [],
+      canDeploy: false,
     });
 
     const { result } = renderHook(() =>
@@ -274,7 +292,7 @@ describe('useDrop - Validation', () => {
     });
 
     expect(result.current.phase).toBe('error');
-    expect(result.current.status?.title).toBe('Invalid File Name');
+    expect(result.current.status?.title).toBe('Validation Failed');
     expect(onValidationError).toHaveBeenCalled();
     expect(result.current.files[0].status).toBe(FILE_STATUSES.VALIDATION_FAILED);
 

@@ -37,7 +37,9 @@ describe('useDrop - prop getters', () => {
     mockValidateFiles.mockImplementation((files) => ({
       files: files.map((f: any) => ({ ...f, status: FILE_STATUSES.READY, statusMessage: 'Ready for upload' })),
       validFiles: files.map((f: any) => ({ ...f, status: FILE_STATUSES.READY, statusMessage: 'Ready for upload' })),
-      error: null,
+      errors: [],
+      warnings: [],
+      canDeploy: true,
     }));
   });
 
