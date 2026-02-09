@@ -44,7 +44,9 @@ describe('Ship SDK Contract', () => {
 
       expect(result).toHaveProperty('files');
       expect(result).toHaveProperty('validFiles');
-      expect(result).toHaveProperty('error');
+      expect(result).toHaveProperty('errors');
+      expect(result).toHaveProperty('warnings');
+      expect(result).toHaveProperty('canDeploy');
       expect(result.files).toHaveLength(1);
       expect(result.files[0]).toHaveProperty('status');
       expect(result.files[0]).toHaveProperty('statusMessage');
@@ -140,8 +142,9 @@ describe('Ship SDK Contract', () => {
 
       const result = validateFiles([processed], PRODUCTION_CONFIG);
 
-      expect(result.error).not.toBeNull();
-      expect(result.error?.error).toBe('Invalid File Type');
+      expect(result.canDeploy).toBe(false);
+      expect(result.errors).toHaveLength(1);
+      expect(result.errors[0].message).toContain('not allowed');
       expect(result.validFiles).toHaveLength(0);
       expect(result.files[0].status).toBe('validation_failed');
     });
@@ -157,7 +160,8 @@ describe('Ship SDK Contract', () => {
 
       const result = validateFiles(processed, PRODUCTION_CONFIG);
 
-      expect(result.error).toBeNull();
+      expect(result.canDeploy).toBe(true);
+      expect(result.errors).toHaveLength(0);
       expect(result.validFiles).toHaveLength(2);
     });
 
@@ -169,7 +173,8 @@ describe('Ship SDK Contract', () => {
 
       const result = validateFiles([processed], PRODUCTION_CONFIG);
 
-      expect(result.error).toBeNull();
+      expect(result.canDeploy).toBe(true);
+      expect(result.errors).toHaveLength(0);
       expect(result.validFiles).toHaveLength(1);
     });
 
@@ -179,10 +184,13 @@ describe('Ship SDK Contract', () => {
 
       const result = validateFiles([processed], PRODUCTION_CONFIG);
 
-      expect(result.error).not.toBeNull();
-      expect(result.error?.error).toBe('Empty File');
-      // Atomic validation marks all files as validation_failed
-      expect(result.files[0].status).toBe('validation_failed');
+      expect(result.canDeploy).toBe(true); // No errors, but no valid files
+      expect(result.errors).toHaveLength(0);
+      expect(result.warnings).toHaveLength(1); // Empty files generate warnings
+      expect(result.warnings[0].message).toContain('empty');
+      expect(result.validFiles).toHaveLength(0); // No valid files to deploy
+      // Empty files are marked as excluded, not validation_failed
+      expect(result.files[0].status).toBe('excluded');
     });
 
     it('should reject files exceeding size limit', async () => {
@@ -196,11 +204,13 @@ describe('Ship SDK Contract', () => {
 
       const result = validateFiles([processed], tinyConfig);
 
-      expect(result.error).not.toBeNull();
-      expect(result.error?.error).toBe('File Too Large');
+      expect(result.canDeploy).toBe(false);
+      expect(result.errors).toHaveLength(1);
+      expect(result.errors[0].message).toContain('exceeds limit');
     });
 
     it('should handle atomic validation (all fail if one fails)', async () => {
+      // Atomic validation: if ANY file fails, ALL files marked as failed
       const tinyConfig: ConfigResponse = {
         ...PRODUCTION_CONFIG,
         maxFileSize: 100,
@@ -214,7 +224,9 @@ describe('Ship SDK Contract', () => {
       const processed = await Promise.all(files.map(f => createProcessedFile(f)));
       const result = validateFiles(processed, tinyConfig);
 
-      // Atomic: all files should be marked as failed
+      // Atomic: all files should be marked as failed when any error occurs
+      expect(result.canDeploy).toBe(false);
+      expect(result.errors).toHaveLength(1);
       expect(result.validFiles).toHaveLength(0);
       expect(result.files.every(f => f.status === 'validation_failed')).toBe(true);
     });
@@ -226,7 +238,7 @@ describe('Ship SDK Contract', () => {
       expect(FILE_STATUSES.READY).toBe('ready');
       expect(FILE_STATUSES.PENDING).toBe('pending');
       expect(FILE_STATUSES.VALIDATION_FAILED).toBe('validation_failed');
-      expect(FILE_STATUSES.EMPTY_FILE).toBe('empty_file');
+      expect(FILE_STATUSES.EXCLUDED).toBe('excluded'); // Changed from EMPTY_FILE
       expect(FILE_STATUSES.PROCESSING_ERROR).toBe('processing_error');
     });
   });

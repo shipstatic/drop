@@ -143,7 +143,9 @@ export const createPassingValidation = () => {
       status: FILE_STATUSES.READY,
       statusMessage: 'Ready for upload',
     })),
-    error: null,
+    errors: [],
+    warnings: [],
+    canDeploy: true,
   }));
 };
 
@@ -160,11 +162,14 @@ export const createFailingValidation = (
       statusMessage: error.details,
     })),
     validFiles: [],
-    error: {
-      ...error,
-      errors: [error.details],
-      isClientError: true,
-    },
+    errors: files.map((f: any) => ({
+      file: f.name || f.path || 'unknown',
+      severity: 'error' as const,
+      type: 'validation_failed' as const,
+      message: error.details,
+    })),
+    warnings: [],
+    canDeploy: false,
   }));
 };
 

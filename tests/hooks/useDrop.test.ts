@@ -46,7 +46,9 @@ describe('useDrop', () => {
     mockValidateFiles.mockImplementation((files) => ({
       files: files.map((f: any) => ({ ...f, status: FILE_STATUSES.READY, statusMessage: 'Ready for upload' })),
       validFiles: files.map((f: any) => ({ ...f, status: FILE_STATUSES.READY, statusMessage: 'Ready for upload' })),
-      error: null,
+      errors: [],
+      warnings: [],
+      canDeploy: true,
     }));
   });
 
@@ -250,21 +252,20 @@ describe('useDrop', () => {
     it('should get only valid files', async () => {
       const ship = createMockShip();
 
-      // Mock validation to have one valid and one invalid file
+      // Mock validation with all files valid and one excluded (warnings only)
       mockValidateFiles.mockReturnValueOnce({
         files: [
-          { name: 'small.txt', status: FILE_STATUSES.READY, statusMessage: 'Ready for upload' },
-          { name: 'huge.txt', status: FILE_STATUSES.VALIDATION_FAILED, statusMessage: 'File size exceeds limit' },
+          { name: 'file1.txt', status: FILE_STATUSES.READY, statusMessage: 'Ready for upload' },
+          { name: 'empty.txt', status: FILE_STATUSES.EXCLUDED, statusMessage: 'File is empty' },
         ],
         validFiles: [
-          { name: 'small.txt', status: FILE_STATUSES.READY, statusMessage: 'Ready for upload' },
+          { name: 'file1.txt', status: FILE_STATUSES.READY, statusMessage: 'Ready for upload' },
         ],
-        error: {
-          error: 'File Too Large',
-          details: 'File size exceeds limit',
-          errors: ['huge.txt: File size exceeds limit'],
-          isClientError: true,
-        },
+        errors: [],
+        warnings: [
+          { file: 'empty.txt', severity: 'warning' as const, type: 'empty_file' as const, message: 'File is empty' },
+        ],
+        canDeploy: true,
       });
 
       const { result } = renderHook(() =>
@@ -272,8 +273,8 @@ describe('useDrop', () => {
       );
 
       const files = [
-        createMockFile('small.txt', 'x'),
-        createMockFile('huge.txt', 'x'.repeat(100)),
+        createMockFile('file1.txt', 'content'),
+        createMockFile('empty.txt', ''),
       ];
 
       await act(async () => {
@@ -284,9 +285,10 @@ describe('useDrop', () => {
         expect(result.current.isProcessing).toBe(false);
       });
 
+      // Should only get files with 'ready' status, excluding warnings/excluded files
       const validFiles = result.current.validFiles;
       expect(validFiles).toHaveLength(1);
-      expect(validFiles[0].name).toBe('small.txt');
+      expect(validFiles[0].name).toBe('file1.txt');
       expect(validFiles[0].status).toBe(FILE_STATUSES.READY);
     });
   });
@@ -458,12 +460,11 @@ describe('useDrop', () => {
           { name: 'huge.txt', status: FILE_STATUSES.VALIDATION_FAILED, statusMessage: 'File size exceeds limit' },
         ],
         validFiles: [],
-        error: {
-          error: 'File Too Large',
-          details: 'File size exceeds limit',
-          errors: ['File size exceeds limit'],
-          isClientError: true,
-        },
+        errors: [
+          { file: 'huge.txt', severity: 'error' as const, type: 'file_too_large' as const, message: 'File size exceeds limit' },
+        ],
+        warnings: [],
+        canDeploy: false,
       });
 
       const { result } = renderHook(() =>
@@ -480,7 +481,7 @@ describe('useDrop', () => {
         expect(result.current.isProcessing).toBe(false);
       });
 
-      expect(result.current.status?.title).toBe('File Too Large');
+      expect(result.current.status?.title).toBe('Validation Failed');
       expect(result.current.files).toHaveLength(1);
       expect(result.current.validFiles).toHaveLength(0);
     });

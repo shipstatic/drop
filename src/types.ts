@@ -80,6 +80,7 @@ export interface DropStatus {
   title: string;
   details: string;
   errors?: string[];
+  warnings?: string[];  // Non-blocking issues (e.g., excluded empty files)
 }
 
 /**

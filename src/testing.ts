@@ -175,7 +175,7 @@ export function createMockProcessedFile(
     path?: string;
     content?: string;
     type?: string;
-    status?: 'ready' | 'validation_failed' | 'processing_error' | 'empty_file';
+    status?: 'ready' | 'validation_failed' | 'processing_error' | 'excluded';
     statusMessage?: string;
   } = {}
 ): ProcessedFile {

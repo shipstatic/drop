@@ -90,7 +90,9 @@ describe('useDrop - Mixed File/Folder Drop Regression', () => {
         mockValidateFiles.mockImplementation((files) => ({
             files: files.map((f: any) => ({ ...f, status: FILE_STATUSES.READY })),
             validFiles: files.map((f: any) => ({ ...f, status: FILE_STATUSES.READY })),
-            error: null,
+            errors: [],
+            warnings: [],
+            canDeploy: true,
         }));
     });
 

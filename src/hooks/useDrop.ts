@@ -229,6 +229,8 @@ export function useDrop(options: DropOptions): DropReturn {
       const cleanFiles = allFiles.filter(f => validPaths.has(getFilePath(f)));
 
       // Step 4: Convert all Files to ProcessedFiles
+      // NOTE: We no longer filter empty files here - validation will handle them
+      // Empty files will be marked as EXCLUDED with warnings (not errors)
       setState(prev => ({
         ...prev,
         status: { title: 'Processing...', details: 'Processing files...' },
@@ -292,43 +294,91 @@ export function useDrop(options: DropOptions): DropReturn {
         statusMessage: validation.files[idx]?.statusMessage || processedFile.statusMessage
       }));
 
-      if (validation.error) {
-        // Transition to error state
+      // Check canDeploy instead of error (atomic validation)
+      if (!validation.canDeploy) {
+        // Format error messages from structured errors
+        const errorMessages = validation.errors.map(err =>
+          `${err.file}: ${err.message}`
+        );
+
         setState({
           value: 'error',
           files: filesWithStatus,
           sourceName: detectedSourceName,
           status: {
-            title: validation.error.error,
-            details: validation.error.details,
-            errors: validation.error.errors
+            title: 'Validation Failed',
+            details: `${validation.errors.length} file(s) failed validation`,
+            errors: errorMessages
           },
         });
-        onValidationError?.(validation.error as ClientError);
+
+        // Call error callback with structured errors (backward compatible format)
+        onValidationError?.({
+          error: 'Validation Failed',
+          details: `${validation.errors.length} error(s)`,
+          errors: errorMessages,
+          isClientError: true
+        });
+
       } else if (validation.validFiles.length > 0) {
-        // Transition to ready state
+        // Files are ready - show count with excluded files if any
+        let details = `${validation.validFiles.length} file(s) ready`;
+
+        // Add warning info if empty files were excluded
+        if (validation.warnings.length > 0) {
+          details += ` (${validation.warnings.length} empty file(s) excluded)`;
+        }
+
         setState({
           value: 'ready',
           files: filesWithStatus,
           sourceName: detectedSourceName,
-          status: { title: 'Ready', details: `${validation.validFiles.length} file(s) are ready.` },
+          status: {
+            title: 'Ready',
+            details,
+            warnings: validation.warnings.length > 0
+              ? validation.warnings.map(w => `${w.file}: ${w.message}`)
+              : undefined
+          },
         });
-        onFilesReady?.(filesWithStatus.filter((f, idx) => validation.files[idx]?.status === 'ready'));
+
+        onFilesReady?.(filesWithStatus.filter((f, idx) =>
+          validation.files[idx]?.status === 'ready'
+        ));
+
       } else {
-        // Handle case where no valid files were found
-        const noValidError: ClientError = {
-          error: 'No Valid Files',
-          details: 'None of the provided files could be processed.',
-          errors: [],
-          isClientError: true,
-        };
-        setState({
-          value: 'error',
-          files: filesWithStatus,
-          sourceName: detectedSourceName,
-          status: { title: noValidError.error, details: noValidError.details },
-        });
-        onValidationError?.(noValidError);
+        // No valid files - check if all were excluded (warnings) or failed (errors)
+        const hasOnlyWarnings = validation.errors.length === 0 && validation.warnings.length > 0;
+
+        if (hasOnlyWarnings) {
+          // All files excluded as warnings (e.g., empty files) - stay in ready state
+          setState({
+            value: 'ready',
+            files: filesWithStatus,
+            sourceName: detectedSourceName,
+            status: {
+              title: 'All files excluded',
+              details: `${validation.warnings.length} file(s) excluded (empty files cannot be deployed)`,
+              warnings: validation.warnings.map(w => `${w.file}: ${w.message}`)
+            },
+          });
+          // Note: validFiles.length === 0 will naturally disable deploy button in UI
+        } else {
+          // No valid files due to errors or processing failures
+          const noValidError: ClientError = {
+            error: 'No Valid Files',
+            details: 'None of the provided files could be processed.',
+            errors: [],
+            isClientError: true,
+          };
+          setState({
+            value: 'error',
+            files: filesWithStatus,
+            sourceName: detectedSourceName,
+            status: { title: noValidError.error, details: noValidError.details },
+          });
+          onValidationError?.(noValidError);
+        }
       }
     } catch (error) {
       // Transition to error state on exception
@@ -382,7 +432,6 @@ export function useDrop(options: DropOptions): DropReturn {
       const errorStatuses: FileStatus[] = [
         FILE_STATUSES.VALIDATION_FAILED,
         FILE_STATUSES.PROCESSING_ERROR,
-        FILE_STATUSES.EMPTY_FILE,
         FILE_STATUSES.ERROR,
       ];
       const hasErrors = prev.files.some(f => errorStatuses.includes(f.status));

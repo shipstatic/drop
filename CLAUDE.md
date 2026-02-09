@@ -128,7 +128,7 @@ idle → dragging → processing → ready (success)
 |--------|--------|---------|
 | `ready` | Ship SDK | Passed validation |
 | `validation_failed` | Ship SDK | Failed validation |
-| `empty_file` | Ship SDK | 0 bytes |
+| `excluded` | Ship SDK | Excluded (empty files, 0 bytes) |
 | `processing_error` | Drop | ZIP/processing failed |
 | `uploading` | Drop | Upload in progress |
 | `complete` | Drop | Upload done |
@@ -137,7 +137,9 @@ Statuses from `@shipstatic/types` are extended with Drop-specific UI states.
 
 ### Atomic Validation
 
-If ANY file fails, ALL are marked `validation_failed`. Use `drop.reset()` to clear and retry. This matches Ship SDK's all-or-nothing deployment philosophy.
+**Atomic Deployments:** If ANY file fails validation, ALL non-excluded files are marked `validation_failed`. Empty files (0 bytes) are marked `excluded` with warnings (not errors) and don't trigger atomic failure. Use `drop.reset()` to clear and retry.
+
+This matches Ship SDK's all-or-nothing deployment philosophy - deployments are atomic transactions that either succeed completely or fail completely.
 
 ## Design Decisions
 
@@ -183,20 +185,30 @@ If a file can't be read during folder drag-and-drop (permissions, etc.), it's lo
 
 ### Package Tests
 
-318 tests with 99%+ coverage across:
+344 tests with 98%+ coverage across:
 
 | Test Suite | Focus |
 |------------|-------|
-| `useDrop.test.ts` | Core hook behavior, state transitions |
+| `useDrop.test.ts` | Core hook behavior |
+| `useDrop-state-machine.test.tsx` | Comprehensive state machine transitions |
 | `useDrop-props.test.tsx` | Prop getters, clickable option |
 | `useDrop-zip.test.tsx` | ZIP extraction integration |
 | `useDrop-validation.test.tsx` | Ship SDK validation integration |
 | `useDrop-branches.test.tsx` | Edge cases, error paths |
+| `useDrop-fallback.test.tsx` | MIME type fallback handling |
 | `zipExtractor.test.ts` | ZIP extraction utility |
 | `fileProcessing.test.ts` | Path normalization, folder traversal |
 | `commonPrefix.test.ts` | Directory prefix stripping |
+| `pathNormalization.test.ts` | Path normalization edge cases |
+| `unicode-filenames.test.ts` | Unicode character handling |
+| `mimeType.test.ts` | MIME type detection |
 | `testing.test.ts` | Test utilities themselves |
 | `ship-sdk-contract.test.ts` | Contract with Ship SDK |
+| `folder-structure.test.ts` | Folder traversal handling |
+| `folder-drop.test.ts` | Folder drag-and-drop |
+| `webkitRelativePath.test.ts` | Path preservation |
+| `real-zip-extraction.test.ts` | Real ZIP file integration |
+| `mixed-drop-handling.test.ts` | Mixed file/folder drops |
 
 ```bash
 pnpm test --run              # Run all tests
