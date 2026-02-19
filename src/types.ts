@@ -4,7 +4,6 @@
  * and defines drop-specific types
  */
 
-import type { ValidationError } from '@shipstatic/types';
 import { FileValidationStatus } from '@shipstatic/types';
 
 /**
@@ -29,9 +28,13 @@ export type FileStatus = (typeof FILE_STATUSES)[keyof typeof FILE_STATUSES];
 
 /**
  * Client-side error structure
- * Matches ValidationError from @shipstatic/ship for consistency
  */
-export type ClientError = ValidationError;
+export interface ClientError {
+  error: string;
+  details: string;
+  errors: string[];
+  isClientError: true;
+}
 
 /**
  * Processed file entry ready for upload
