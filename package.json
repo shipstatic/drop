@@ -57,7 +57,7 @@
     "react-dom": "^18.0.0 || ^19.0.0"
   },
   "dependencies": {
-    "@shipstatic/ship": "^0.5.3",
+    "@shipstatic/ship": "^0.5.4",
     "jszip": "^3.10.1",
     "mime-db": "^1.54.0"
   },

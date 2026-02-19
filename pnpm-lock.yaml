@@ -9,8 +9,8 @@ importers:
   .:
     dependencies:
       '@shipstatic/ship':
-        specifier: ^0.5.3
-        version: 0.5.3(typescript@5.9.3)
+        specifier: ^0.5.4
+        version: 0.5.4(typescript@5.9.3)
       jszip:
         specifier: ^3.10.1
         version: 3.10.1
@@ -472,8 +472,8 @@ packages:
     cpu: [x64]
     os: [win32]
 
-  '@shipstatic/ship@0.5.3':
-    resolution: {integrity: sha512-UojzK/ZFD9KKrEEzR8qR37zM5E3XJ+GHLXN8Cwc+pW2m3nFfE2IeAzVbi00po3PU4dZu5btlq+a3KPvsCbdrGA==}
+  '@shipstatic/ship@0.5.4':
+    resolution: {integrity: sha512-NHDdiwhPfJGlS5PNmHQZCTXdEa8wSznaD4sbkvNAbboxcq7Vtt+CO15NifRCVDuK/XGT5+69UvoK4pmQ44r3QQ==}
     engines: {node: '>=20.0.0'}
     hasBin: true
 
@@ -1730,7 +1730,7 @@ snapshots:
   '@rollup/rollup-win32-x64-msvc@4.57.1':
     optional: true
 
-  '@shipstatic/ship@0.5.3(typescript@5.9.3)':
+  '@shipstatic/ship@0.5.4(typescript@5.9.3)':
     dependencies:
       columnify: 1.6.0
       commander: 12.1.0
