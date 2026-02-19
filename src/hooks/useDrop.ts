@@ -27,7 +27,8 @@ import {
   traverseFileTree,
 } from '../utils/fileProcessing';
 import type { Ship } from '@shipstatic/ship';
-import { validateFiles, filterJunk, getValidFiles } from '@shipstatic/ship';
+import type { ValidatableFile } from '@shipstatic/types';
+import { validateFiles, filterJunk } from '@shipstatic/ship';
 
 export interface DropOptions {
   /** Ship SDK instance (required for validation) */
@@ -145,8 +146,8 @@ export function useDrop(options: DropOptions): DropReturn {
   );
   const hasError = useMemo(() => state.value === 'error', [state.value]);
 
-  // Computed valid files
-  const validFiles = useMemo(() => getValidFiles<ProcessedFile>(state.files), [state.files]);
+  // Computed valid files — inline filter since ProcessedFile has wider status type than ValidatableFile
+  const validFiles = useMemo(() => state.files.filter(f => f.status === 'ready'), [state.files]);
 
   // Get raw File objects for Ship SDK upload
   const getFilesForUpload = useCallback(() => {
@@ -274,12 +275,10 @@ export function useDrop(options: DropOptions): DropReturn {
       // Step 6: Map ProcessedFile to ValidatableFile format
       // validateFiles expects { name, type, size }, not { file: File }
       // IMPORTANT: Use f.path (full path) not f.file.name (filename only) to match server validation
-      const validatableFiles = filesForValidation.map(f => ({
+      const validatableFiles: ValidatableFile[] = filesForValidation.map(f => ({
         name: f.path,  // Use full path to match server-side validation
         type: f.type,  // Use corrected MIME type from mime-db, not browser's File.type
         size: f.file.size,
-        status: f.status,
-        statusMessage: f.statusMessage
       }));
 
       // Step 7: Validate all files using Ship SDK's config
