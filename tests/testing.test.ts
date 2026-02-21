@@ -223,11 +223,11 @@ describe('createMockProcessedFile', () => {
   it('accepts custom status', () => {
     const file = createMockProcessedFile('bad.exe', {
       status: 'validation_failed',
-      statusMessage: 'File type not allowed',
+      statusMessage: 'File extension not allowed',
     });
 
     expect(file.status).toBe('validation_failed');
-    expect(file.statusMessage).toBe('File type not allowed');
+    expect(file.statusMessage).toBe('File extension not allowed');
   });
 
   it('generates unique ids', () => {
