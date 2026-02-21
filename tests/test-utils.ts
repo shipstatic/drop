@@ -107,7 +107,6 @@ export const DEFAULT_TEST_CONFIG = {
   maxFileSize: 100 * 1024 * 1024,     // 100MB
   maxFilesCount: 10000,
   maxTotalSize: 500 * 1024 * 1024,    // 500MB
-  allowedMimeTypes: ['text/', 'image/', 'audio/', 'video/', 'font/', 'model/', 'application/'],
 };
 
 /**

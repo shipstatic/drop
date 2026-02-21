@@ -84,7 +84,6 @@ describe('useDrop - Mixed File/Folder Drop Regression', () => {
             maxFileSize: 100 * 1024 * 1024,
             maxTotalSize: 500 * 1024 * 1024,
             maxFilesCount: 10000,
-            allowedMimeTypes: ['text/', 'image/', 'audio/', 'video/', 'font/', 'model/', 'application/'],
         });
 
         mockValidateFiles.mockImplementation((files) => ({

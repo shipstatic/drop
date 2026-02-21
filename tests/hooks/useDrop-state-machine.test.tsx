@@ -52,7 +52,6 @@ describe('State Machine - Comprehensive Transition Tests', () => {
       maxFileSize: 100 * 1024 * 1024,
       maxTotalSize: 500 * 1024 * 1024,
       maxFilesCount: 10000,
-      allowedMimeTypes: ['text/', 'image/', 'application/'],
     });
 
     mockValidateFiles.mockImplementation((files) => ({
@@ -226,12 +225,12 @@ describe('State Machine - Comprehensive Transition Tests', () => {
           files: files.map((f: any) => ({
             ...f,
             status: FILE_STATUSES.VALIDATION_FAILED,
-            statusMessage: 'Invalid MIME type',
+            statusMessage: 'File extension not allowed',
           })),
           validFiles: [],
           errors: [{
             file: 'bad.exe',
-            message: 'Invalid MIME type',
+            message: 'File extension not allowed',
           }],
           warnings: [],
           canDeploy: false,
@@ -535,7 +534,6 @@ describe('State Machine - Comprehensive Transition Tests', () => {
             maxFileSize: 100 * 1024 * 1024,
             maxTotalSize: 500 * 1024 * 1024,
             maxFilesCount: 10000,
-            allowedMimeTypes: ['text/', 'image/', 'application/'],
           }))
         );
 

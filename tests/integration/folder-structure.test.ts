@@ -42,7 +42,6 @@ describe('Folder Structure Preservation', () => {
       maxFileSize: 100 * 1024 * 1024,
       maxTotalSize: 500 * 1024 * 1024,
       maxFilesCount: 10000,
-      allowedMimeTypes: ['text/', 'image/', 'audio/', 'video/', 'font/', 'model/', 'application/'],
     });
 
     // Default mock validation (all files valid)

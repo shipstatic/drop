@@ -29,10 +29,8 @@ describe('Ship SDK Contract', () => {
       // Runtime checks for required properties
       expect(validatable).toHaveProperty('name');
       expect(validatable).toHaveProperty('size');
-      expect(validatable).toHaveProperty('type');
       expect(typeof validatable.name).toBe('string');
       expect(typeof validatable.size).toBe('number');
-      expect(typeof validatable.type).toBe('string');
     });
 
     it('should work with real validateFiles function', async () => {
@@ -134,10 +132,8 @@ describe('Ship SDK Contract', () => {
   });
 
   describe('Validation error handling', () => {
-    it('should reject files with disallowed MIME types', async () => {
-      // Use a MIME type that's NOT in the allowed categories
-      // chemical/ is a valid mime-db category but not allowed for static hosting
-      const file = new File(['molecule data'], 'molecule.xyz', { type: 'chemical/x-xyz' });
+    it('should reject files with blocked extensions', async () => {
+      const file = new File(['malicious'], 'payload.exe', { type: 'application/octet-stream' });
       const processed = createProcessedFile(file);
 
       const result = validateFiles([processed], PRODUCTION_CONFIG);
@@ -149,33 +145,20 @@ describe('Ship SDK Contract', () => {
       expect(result.files[0].status).toBe('validation_failed');
     });
 
-    it('should accept audio and video files', async () => {
-      const audioFile = new File(['audio content'], 'song.mp3', { type: 'audio/mpeg' });
-      const videoFile = new File(['video content'], 'clip.mp4', { type: 'video/mp4' });
+    it('should accept any non-blocked extension', async () => {
+      const files = [
+        new File(['audio content'], 'song.mp3'),
+        new File(['video content'], 'clip.mp4'),
+        new File(['molecule data'], 'molecule.xyz'),
+        new File(['const x = 1;'], 'app.ts'),
+      ];
 
-      const processed = await Promise.all([
-        createProcessedFile(audioFile),
-        createProcessedFile(videoFile),
-      ]);
-
+      const processed = files.map(f => createProcessedFile(f));
       const result = validateFiles(processed, PRODUCTION_CONFIG);
 
       expect(result.canDeploy).toBe(true);
       expect(result.errors).toHaveLength(0);
-      expect(result.validFiles).toHaveLength(2);
-    });
-
-    it('should accept TypeScript files with video/mp2t MIME type', async () => {
-      // This is the key test: .ts files get video/mp2t from mime-db
-      // but should still be accepted because video/ is allowed
-      const tsFile = new File(['const x = 1;'], 'app.ts', { type: 'video/mp2t' });
-      const processed = createProcessedFile(tsFile);
-
-      const result = validateFiles([processed], PRODUCTION_CONFIG);
-
-      expect(result.canDeploy).toBe(true);
-      expect(result.errors).toHaveLength(0);
-      expect(result.validFiles).toHaveLength(1);
+      expect(result.validFiles).toHaveLength(4);
     });
 
     it('should reject empty files', async () => {

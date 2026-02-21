@@ -25,7 +25,6 @@ const mockShip = {
     maxFileSize: 100 * 1024 * 1024,
     maxFilesCount: 10000,
     maxTotalSize: 500 * 1024 * 1024,
-    allowedMimeTypes: ['text/', 'image/', 'audio/', 'video/', 'font/', 'model/', 'application/'],
   }),
 } as unknown as Ship;
 

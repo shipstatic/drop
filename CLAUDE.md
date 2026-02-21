@@ -291,7 +291,7 @@ const fileWithPath = createMockFileWithPath(
 const error = createMockErrorStatus(
   'Validation Failed',
   'Some files could not be processed',
-  ['virus.exe: File type not allowed']
+  ['virus.exe: File extension not allowed']
 );
 
 const processing = createMockProcessingStatus(

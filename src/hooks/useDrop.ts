@@ -241,43 +241,12 @@ export function useDrop(options: DropOptions): DropReturn {
       // Step 5: Strip common prefix if requested
       const finalFiles = stripPrefix ? stripCommonPrefix(processedFiles) : processedFiles;
 
-      // Step 5.5: Drop-only exception - treat unknown MIME types as text/plain
-      // This allows extensionless files like LICENSE, README, Makefile, etc. to pass validation
-      // Server will still validate properly, this is just for client-side UX
-      // Browsers may return empty string "" or "application/octet-stream" for unknown files
-      // BUT: Only do this if mime-db ALSO didn't find a match (mime-db takes priority)
-      const filesForValidation = finalFiles.map(f => {
-        // Check if BOTH browser AND mime-db returned unknown type
-        const browserUnknown = !f.file.type || f.file.type === 'application/octet-stream';
-        const mimeDbUnknown = !f.type || f.type === 'application/octet-stream';
-        const isUnknownType = browserUnknown && mimeDbUnknown;
-
-        if (isUnknownType) {
-          // Create a new File object with text/plain MIME type
-          const textFile = new File([f.file], f.file.name, {
-            type: 'text/plain',
-            lastModified: f.file.lastModified,
-          });
-          // Preserve webkitRelativePath if it exists
-          if ((f.file as FileWithPath).webkitRelativePath) {
-            Object.defineProperty(textFile, 'webkitRelativePath', {
-              value: (f.file as FileWithPath).webkitRelativePath,
-              writable: false,
-              configurable: true,
-            });
-          }
-          // Return new ProcessedFile with updated File object AND type
-          return { ...f, file: textFile, type: 'text/plain' };
-        }
-        return f;
-      });
-
       // Step 6: Map ProcessedFile to ValidatableFile format
-      // validateFiles expects { name, type, size }, not { file: File }
+      // validateFiles expects { name, size }, not { file: File }
       // IMPORTANT: Use f.path (full path) not f.file.name (filename only) to match server validation
+      const filesForValidation = finalFiles;
       const validatableFiles: ValidatableFile[] = filesForValidation.map(f => ({
         name: f.path,  // Use full path to match server-side validation
-        type: f.type,  // Use corrected MIME type from mime-db, not browser's File.type
         size: f.file.size,
       }));
 

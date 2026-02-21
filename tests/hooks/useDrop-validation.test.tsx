@@ -224,7 +224,7 @@ describe('useDrop - Validation', () => {
     expect(result.current.validFiles).toHaveLength(0);
   });
 
-  it('should accept application/octet-stream files (drop-only exception)', async () => {
+  it('should accept files with any MIME type (extension blocklist only)', async () => {
     const ship = createMockShip();
 
     const { result } = renderHook(() => useDrop({ ship }));
@@ -240,15 +240,16 @@ describe('useDrop - Validation', () => {
       expect(result.current.isProcessing).toBe(false);
     });
 
-    // Should transition to ready state (file accepted)
+    // Should transition to ready state (file accepted — no MIME type validation)
     expect(result.current.phase).toBe('ready');
     expect(result.current.files).toHaveLength(1);
     expect(result.current.files[0].status).toBe(FILE_STATUSES.READY);
 
-    // Verify that validateFiles was called with text/plain type (the override)
+    // ValidatableFile no longer includes type — only name and size
     const validateCall = mockValidateFiles.mock.calls[0];
     const filesPassedToValidate = validateCall[0];
-    expect(filesPassedToValidate[0].type).toBe('text/plain');
+    expect(filesPassedToValidate[0].name).toBe('LICENSE');
+    expect(filesPassedToValidate[0].size).toBeGreaterThan(0);
   });
 
   it('should reject files with square brackets in directory names', async () => {
