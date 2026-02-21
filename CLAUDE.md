@@ -50,7 +50,7 @@ import { validateFiles, filterJunk, getValidFiles } from '@shipstatic/ship';
 | Function | Purpose | Used In |
 |----------|---------|---------|
 | `validateFiles(files, config)` | Validate against server limits | After processing |
-| `filterJunk(paths)` | Filter .DS_Store, Thumbs.db, etc. | During processing |
+| `filterJunk(paths)` | Filter .DS_Store, Thumbs.db, dot files (`.well-known` at root allowed) | During processing |
 | `getValidFiles(files)` | Extract files with `status: 'ready'` | `validFiles` getter |
 
 ### The Integration Point
