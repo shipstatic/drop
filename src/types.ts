@@ -44,7 +44,7 @@ export interface ClientError {
 export interface ProcessedFile {
   /** Unique identifier for React keys and tracking */
   id: string;
-  /** The File object - pass this to ship.deployments.create() */
+  /** The File object - pass this to ship.deployments.upload() */
   file: File;
   /** Relative path for deployment (e.g., "images/photo.jpg") */
   path: string;

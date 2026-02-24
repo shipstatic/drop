@@ -29,7 +29,7 @@ The entire implementation is in [`src/App.tsx`](./src/App.tsx):
 - **Prop getters** - `getDropzoneProps()` and `getInputProps()` for zero-config integration
 - **Computed values** - `canDeploy` derived from `drop.state.value`
 - **File processing** - Automatic via `useDrop()` hook
-- **Deployment** - One-line `ship.deployments.create()`
+- **Deployment** - One-line `ship.deployments.upload()`
 - **Expandable file list** - Shows per-file status with visual indicators
 
 ## Running
@@ -148,7 +148,7 @@ No boolean soup - just check the state value:
 ```typescript
 const validFiles = drop.getValidFiles();
 const files = validFiles.map(f => f.file);
-const result = await ship.deployments.create(files);
+const result = await ship.deployments.upload(files);
 ```
 
 ## State Machine Flow
