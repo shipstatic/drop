@@ -21,7 +21,7 @@ function App() {
     try {
       const validFiles = drop.validFiles;
       const files = validFiles.map((f) => f.file);
-      const result = await ship.deployments.create(files);
+      const result = await ship.deployments.upload(files);
       setDeploymentUrl(result.url);
     } catch (err: any) {
       setDeployError(err.message || "Deployment failed");

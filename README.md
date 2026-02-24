@@ -23,7 +23,7 @@ function Uploader() {
 
   const handleUpload = async () => {
     const files = drop.getFilesForUpload();
-    await ship.deployments.create(files);
+    await ship.deployments.upload(files);
   };
 
   return (
@@ -155,7 +155,7 @@ Pass files to Ship SDK:
 
 ```tsx
 const files = drop.getFilesForUpload();
-await ship.deployments.create(files);
+await ship.deployments.upload(files);
 ```
 
 ## Testing

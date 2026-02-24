@@ -13,7 +13,7 @@ User drops files → Drop processes → Ship SDK deploys
      (ZIP, folders)    (validation)     (upload, MD5)
 ```
 
-**Drop's scope:** Everything BEFORE `ship.deployments.create()`. The SDK handles everything after.
+**Drop's scope:** Everything BEFORE `ship.deployments.upload()`. The SDK handles everything after.
 
 ## Architecture
 
@@ -63,7 +63,7 @@ const drop = useDrop({ ship });  // Pass Ship instance
 
 // When ready, get File objects for SDK:
 const files = drop.getFilesForUpload();
-await ship.deployments.create(files);
+await ship.deployments.upload(files);
 ```
 
 **Key detail:** Drop sets `webkitRelativePath` on each File object. Ship SDK reads this property to preserve folder structure during deployment.
