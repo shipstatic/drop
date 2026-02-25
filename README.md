@@ -112,7 +112,7 @@ interface DropReturn {
   files: ProcessedFile[];
   validFiles: ProcessedFile[];
   sourceName: string;
-  status: { title: string; details: string; errors?: string[] } | null;
+  status: { title: string; details: string; errors?: string[]; warnings?: string[] } | null;
 
   // Prop getters
   getDropzoneProps: (options?: { clickable?: boolean }) => {...};
@@ -220,7 +220,7 @@ it('calls reset when Clear is clicked', async () => {
 | `createMockFileWithPath(name, path, ...)` | Mock `File` with `webkitRelativePath` |
 | `createMockErrorStatus(title?, details?, errors?)` | Mock error status |
 | `createMockProcessingStatus(title?, details?)` | Mock processing status |
-| `createMockReadyStatus(count)` | Mock ready status |
+| `createMockReadyStatus(count)` | Mock ready status (`"N file(s) are ready."`) |
 
 ## Requirements
 
