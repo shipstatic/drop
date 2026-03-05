@@ -252,18 +252,18 @@ describe('useDrop - Validation', () => {
     expect(filesPassedToValidate[0].size).toBeGreaterThan(0);
   });
 
-  it('should reject files with square brackets in directory names', async () => {
+  it('should reject files with unsafe characters in directory names', async () => {
     const ship = createMockShip();
     const onValidationError = vi.fn();
 
     // Mock validation to fail with unsafe characters error (matches actual validation behavior)
     mockValidateFiles.mockReturnValueOnce({
       files: [
-        { name: 'app/page/[slug]/page.js', status: FILE_STATUSES.VALIDATION_FAILED, statusMessage: 'File name contains unsafe characters' },
+        { name: 'app/page/file?.js', status: FILE_STATUSES.VALIDATION_FAILED, statusMessage: 'File name contains unsafe characters' },
       ],
       validFiles: [],
       errors: [{
-        file: 'app/page/[slug]/page.js',
+        file: 'app/page/file?.js',
         severity: 'error',
         type: 'invalid_filename',
         message: 'File name contains unsafe characters'
@@ -276,10 +276,10 @@ describe('useDrop - Validation', () => {
       useDrop({ ship, onValidationError, stripPrefix: false })  // Disable prefix stripping to test full path validation
     );
 
-    // Create a file with square brackets in the path (Next.js dynamic route)
+    // Create a file with unsafe characters in the path
     const file = createMockFileWithPath(
-      'page.js',
-      'app/page/[slug]/page.js',
+      'file?.js',
+      'app/page/file?.js',
       'export default function Page() {}',
       'text/javascript'
     );
@@ -298,10 +298,10 @@ describe('useDrop - Validation', () => {
     expect(result.current.files[0].status).toBe(FILE_STATUSES.VALIDATION_FAILED);
 
     // Critical assertion: Verify that validateFiles was called with the FULL PATH, not just filename
-    // This is the bug fix - we now validate 'app/page/[slug]/page.js' not 'page.js'
+    // This ensures we validate 'app/page/file?.js' not 'file?.js'
     const validateCall = mockValidateFiles.mock.calls[0];
     const filesPassedToValidate = validateCall[0];
-    expect(filesPassedToValidate[0].name).toBe('app/page/[slug]/page.js');
+    expect(filesPassedToValidate[0].name).toBe('app/page/file?.js');
   });
 
   it('should reject files containing node_modules before junk filtering', async () => {
