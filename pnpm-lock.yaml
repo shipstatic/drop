@@ -9,8 +9,8 @@ importers:
   .:
     dependencies:
       '@shipstatic/ship':
-        specifier: ^0.7.5
-        version: 0.7.5(typescript@5.9.3)
+        specifier: ^0.7.7
+        version: 0.7.7(typescript@5.9.3)
       jszip:
         specifier: ^3.10.1
         version: 3.10.1
@@ -19,8 +19,8 @@ importers:
         version: 1.54.0
     devDependencies:
       '@shipstatic/types':
-        specifier: ^0.7.3
-        version: 0.7.3
+        specifier: ^0.7.4
+        version: 0.7.4
       '@testing-library/jest-dom':
         specifier: ^6.9.1
         version: 6.9.1
@@ -472,13 +472,13 @@ packages:
     cpu: [x64]
     os: [win32]
 
-  '@shipstatic/ship@0.7.5':
-    resolution: {integrity: sha512-ntOsP6QfWtUpNMO50tOT/ZTed6u+lFplIajleiLtis4w9HR9ZTA4S3i751wAOalAFGmx1jF9C25S9HuEtHhfCA==}
+  '@shipstatic/ship@0.7.7':
+    resolution: {integrity: sha512-2HoS0Wsf1w+id4R+Ft/tv8wEuwQQaafWqnMiJJUld59JL2QyT6M0EFFUg2uoK30lqPUa/sTghg/EMX3fSM8yGQ==}
     engines: {node: '>=20.0.0'}
     hasBin: true
 
-  '@shipstatic/types@0.7.3':
-    resolution: {integrity: sha512-PZxY7Znx47ReI65C1qAaibuogFETqV9Fnt1UarKgBWt4yA8+fjngepxeYV0Ia+DIw95UNg1YORLTtokegZUFig==}
+  '@shipstatic/types@0.7.4':
+    resolution: {integrity: sha512-qHcSIw7dCyUvlT/HVHV15GB+JOG8vj+4qxHuCtOrIydkn0Nn8wzYG4AvrpNfmBl7VTySKTjHc2L64KePmqswxw==}
     engines: {node: '>=20.0.0'}
 
   '@testing-library/dom@10.4.1':
@@ -724,8 +724,8 @@ packages:
     resolution: {integrity: sha512-uV2QOWP2nWzsy2aMp8aRibhi9dlzF5Hgh5SHaB9OiTGEyDTiJJyx0uy51QXdyWbtAHNua4XJzUKca3OzKUd3vA==}
     engines: {node: '>= 8'}
 
-  css-tree@3.1.0:
-    resolution: {integrity: sha512-0eW44TGN5SQXU1mWSkKwFstI/22X2bG1nYzZTYMAWjylYURhse752YgbE4Cx46AC+bAvI+/dYTPRk1LqSUnu6w==}
+  css-tree@3.2.0:
+    resolution: {integrity: sha512-t99A4LolkP0ZX9WUoaHz4YrPT1FKNlV8IDCeCPPpGaWyxegh64tt/BSUqN3u5necrYRon+ddZ6mPMjxIlfpobg==}
     engines: {node: ^10 || ^12.20.0 || ^14.13.0 || >=15.0.0}
 
   css.escape@1.5.1:
@@ -998,8 +998,8 @@ packages:
     resolution: {integrity: sha512-hXdUTZYIVOt1Ex//jAQi+wTZZpUpwBj/0QsOzqegb3rGMMeJiSEu5xLHnYfBrRV4RH2+OCSOO95Is/7x1WJ4bw==}
     engines: {node: '>=10'}
 
-  mdn-data@2.12.2:
-    resolution: {integrity: sha512-IEn+pegP1aManZuckezWCO+XZQDplx1366JoVhTpMpBB1sPey/SbveZQUosKiKiGYjg1wH4pMlNgXbCiYgihQA==}
+  mdn-data@2.27.1:
+    resolution: {integrity: sha512-9Yubnt3e8A0OKwxYSXyhLymGW4sCufcLG6VdiDdUGVkPhpqLxlvP5vl1983gQjJl3tqbrM731mjaZaP68AgosQ==}
 
   mime-db@1.54.0:
     resolution: {integrity: sha512-aU5EJuIN2WDemCcAp2vFBfp/m4EAhWJnUNSSw0ixs7/kXbd6Pg64EmwJkNdFhB8aWt1sH2CTXrLxo/iAGV3oPQ==}
@@ -1508,7 +1508,7 @@ snapshots:
     dependencies:
       '@asamuzakjp/nwsapi': 2.3.9
       bidi-js: 1.0.3
-      css-tree: 3.1.0
+      css-tree: 3.2.0
       is-potential-custom-element-name: 1.0.1
       lru-cache: 11.2.6
 
@@ -1742,7 +1742,7 @@ snapshots:
   '@rollup/rollup-win32-x64-msvc@4.59.0':
     optional: true
 
-  '@shipstatic/ship@0.7.5(typescript@5.9.3)':
+  '@shipstatic/ship@0.7.7(typescript@5.9.3)':
     dependencies:
       columnify: 1.6.0
       commander: 12.1.0
@@ -1757,7 +1757,7 @@ snapshots:
     transitivePeerDependencies:
       - typescript
 
-  '@shipstatic/types@0.7.3': {}
+  '@shipstatic/types@0.7.4': {}
 
   '@testing-library/dom@10.4.1':
     dependencies:
@@ -2003,9 +2003,9 @@ snapshots:
       shebang-command: 2.0.0
       which: 2.0.2
 
-  css-tree@3.1.0:
+  css-tree@3.2.0:
     dependencies:
-      mdn-data: 2.12.2
+      mdn-data: 2.27.1
       source-map-js: 1.2.1
 
   css.escape@1.5.1: {}
@@ -2014,7 +2014,7 @@ snapshots:
     dependencies:
       '@asamuzakjp/css-color': 4.1.2
       '@csstools/css-syntax-patches-for-csstree': 1.0.29
-      css-tree: 3.1.0
+      css-tree: 3.2.0
       lru-cache: 11.2.6
 
   csstype@3.2.3: {}
@@ -2297,7 +2297,7 @@ snapshots:
     dependencies:
       semver: 7.7.4
 
-  mdn-data@2.12.2: {}
+  mdn-data@2.27.1: {}
 
   mime-db@1.54.0: {}
 

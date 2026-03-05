@@ -303,4 +303,68 @@ describe('useDrop - Validation', () => {
     const filesPassedToValidate = validateCall[0];
     expect(filesPassedToValidate[0].name).toBe('app/page/[slug]/page.js');
   });
+
+  it('should reject files containing node_modules before junk filtering', async () => {
+    const ship = createMockShip();
+    const onValidationError = vi.fn();
+
+    const { result } = renderHook(() =>
+      useDrop({ ship, onValidationError })
+    );
+
+    // Simulate a project folder drop: build output + node_modules files
+    // In pnpm, most node_modules files live under .pnpm/ which filterJunk
+    // removes (dot-file filter). This test verifies the marker check runs
+    // BEFORE filterJunk so the node_modules directory is still detected.
+    const files = [
+      createMockFileWithPath('index.html', 'demo/dist/index.html', '<html></html>'),
+      createMockFileWithPath('app.js', 'demo/dist/assets/app.js', 'console.log("app")'),
+      createMockFileWithPath('.modules.yaml', 'demo/node_modules/.modules.yaml', 'yaml'),
+      createMockFileWithPath('index.js', 'demo/node_modules/.pnpm/react@19/node_modules/react/index.js', 'react'),
+    ];
+
+    await act(async () => {
+      await result.current.processFiles(files);
+    });
+
+    await waitFor(() => {
+      expect(result.current.isProcessing).toBe(false);
+    });
+
+    expect(result.current.phase).toBe('error');
+    expect(result.current.status?.title).toBe('Validation Failed');
+    expect(result.current.status?.errors?.[0]).toContain('Unbuilt project detected');
+    expect(onValidationError).toHaveBeenCalledWith(
+      expect.objectContaining({
+        error: 'Validation Failed',
+        isClientError: true,
+      })
+    );
+    // validateFiles should NOT have been called — early exit before filtering
+    expect(mockValidateFiles).not.toHaveBeenCalled();
+  });
+
+  it('should reject node_modules even when all files would be filtered by junk filter', async () => {
+    const ship = createMockShip();
+
+    const { result } = renderHook(() => useDrop({ ship }));
+
+    // All node_modules files are under .pnpm (dot directory) — filterJunk would
+    // remove them all, leaving no evidence. The marker check must catch this.
+    const files = [
+      createMockFileWithPath('index.html', 'demo/index.html', '<html></html>'),
+      createMockFileWithPath('index.js', 'demo/node_modules/.pnpm/lodash@4/node_modules/lodash/index.js', 'module.exports'),
+    ];
+
+    await act(async () => {
+      await result.current.processFiles(files);
+    });
+
+    await waitFor(() => {
+      expect(result.current.isProcessing).toBe(false);
+    });
+
+    expect(result.current.phase).toBe('error');
+    expect(result.current.status?.errors?.[0]).toContain('Unbuilt project detected');
+  });
 });

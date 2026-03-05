@@ -28,6 +28,7 @@ import {
 } from '../utils/fileProcessing';
 import type { Ship } from '@shipstatic/ship';
 import type { ValidatableFile } from '@shipstatic/types';
+import { isShipError } from '@shipstatic/types';
 import { validateFiles, filterJunk } from '@shipstatic/ship';
 
 export interface DropOptions {
@@ -174,10 +175,11 @@ export function useDrop(options: DropOptions): DropReturn {
       status: { title: 'Processing...', details: 'Validating and preparing files.' },
     });
 
+    let detectedSourceName = '';
+
     try {
       // Step 1: Detect source name from input
       // Priority: ZIP name > folder name (from webkitRelativePath) > first file name
-      let detectedSourceName = '';
 
       if (newFiles.length === 1 && isZipFile(newFiles[0])) {
         // Single ZIP: use ZIP filename without extension
@@ -217,7 +219,7 @@ export function useDrop(options: DropOptions): DropReturn {
         allFiles.push(...newFiles);
       }
 
-      // Step 3: Filter junk files (single point for both ZIP and direct drops)
+      // Step 3: Filter junk files (includes unbuilt project marker detection)
       // Extract paths: for ZIP files, name contains the full path; for direct drops, use webkitRelativePath or name
       const getFilePath = (f: File) => {
         const webkitPath = (f as FileWithPath).webkitRelativePath;
@@ -226,6 +228,8 @@ export function useDrop(options: DropOptions): DropReturn {
       };
 
       const filePaths = allFiles.map(getFilePath);
+
+      // filterJunk rejects unbuilt projects (throws) before dot-file filter runs
       const validPaths = new Set(filterJunk(filePaths));
       const cleanFiles = allFiles.filter(f => validPaths.has(getFilePath(f)));
 
@@ -349,19 +353,27 @@ export function useDrop(options: DropOptions): DropReturn {
         }
       }
     } catch (error) {
-      // Transition to error state on exception
-      const processingError: ClientError = {
-        error: 'Processing Failed',
-        details: `Failed to process files: ${error instanceof Error ? error.message : String(error)}`,
-        errors: [],
+      // ShipError = validation rejection (e.g. unbuilt project from filterJunk)
+      // Other errors = unexpected processing failures
+      const message = error instanceof Error ? error.message : String(error);
+      const isValidation = isShipError(error);
+      const clientError: ClientError = {
+        error: isValidation ? 'Validation Failed' : 'Processing Failed',
+        details: isValidation ? message : `Failed to process files: ${message}`,
+        errors: isValidation ? [message] : [],
         isClientError: true,
       };
-      setState(prev => ({
-        ...prev,
+      setState({
         value: 'error',
-        status: { title: processingError.error, details: processingError.details },
-      }));
-      onValidationError?.(processingError);
+        files: [],
+        sourceName: detectedSourceName,
+        status: {
+          title: clientError.error,
+          details: clientError.details,
+          ...(clientError.errors.length > 0 && { errors: clientError.errors }),
+        },
+      });
+      onValidationError?.(clientError);
     } finally {
       // Always clear processing ref, even on error
       isProcessingRef.current = false;

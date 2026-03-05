@@ -121,6 +121,31 @@ describe('Ship SDK Contract', () => {
     });
   });
 
+  describe('filterJunk rejects unbuilt projects', () => {
+    it('should throw on paths containing node_modules/', () => {
+      expect(() => filterJunk([
+        'index.html',
+        'node_modules/react/index.js',
+      ])).toThrow('Unbuilt project detected');
+    });
+
+    it('should throw on paths containing package.json', () => {
+      expect(() => filterJunk([
+        'index.html',
+        'package.json',
+      ])).toThrow('Unbuilt project detected');
+    });
+
+    it('should throw even when node_modules files are under .pnpm (pnpm)', () => {
+      // This is the contract Drop relies on: filterJunk catches markers
+      // BEFORE the dot-file filter strips node_modules/.pnpm/ paths
+      expect(() => filterJunk([
+        'demo/index.html',
+        'demo/node_modules/.pnpm/lodash@4/node_modules/lodash/index.js',
+      ])).toThrow('Unbuilt project detected');
+    });
+  });
+
   describe('formatFileSize integration', () => {
     it('should format file sizes correctly', () => {
       // Verify drop can use ship's formatFileSize
