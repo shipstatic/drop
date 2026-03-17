@@ -63,7 +63,6 @@ describe('useDrop', () => {
       expect(result.current.files).toEqual([]);
       expect(result.current.status).toBeNull();
       expect(result.current.phase).toBe('idle');
-      // expect(result.current.state.value).not.toBe('error'); // Internal state not exposed
     });
 
     it('should accept callback options', () => {
@@ -75,7 +74,6 @@ describe('useDrop', () => {
         useDrop({ ship, onValidationError, onFilesReady })
       );
 
-      expect(result.current.files).toEqual([]);
       expect(result.current.files).toEqual([]);
       expect(result.current.sourceName).toBe('');
       expect(result.current.status).toBeNull();
@@ -101,7 +99,6 @@ describe('useDrop', () => {
       expect(result.current.files[0].name).toBe('test.txt');
       expect(result.current.phase).toBe('ready');
       expect(result.current.files[0].status).toBe(FILE_STATUSES.READY);
-      // expect(result.current.state.value).not.toBe('error');
       expect(result.current.sourceName).toBe('test.txt');
       expect(mockGetConfig).toHaveBeenCalled();
       expect(mockValidateFiles).toHaveBeenCalled();
@@ -799,8 +796,7 @@ describe('useDrop', () => {
 
       // All files filtered out - should have validation error
       expect(result.current.files).toHaveLength(0);
-      expect(result.current.status?.title).toBe('No Valid Files'); // Assuming specific error handling logic or default
-      // expect(result.current.value).toBe('error'); // value is removed
+      expect(result.current.status?.title).toBe('No Valid Files');
       expect(onValidationError).toHaveBeenCalled();
     });
 

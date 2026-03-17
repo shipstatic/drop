@@ -18,7 +18,7 @@
  * ```
  */
 import { useState, useCallback, useRef, useMemo } from 'react';
-import type { ProcessedFile, ClientError, DropState, DropStateValue, FileWithPath, FileStatus } from '../types';
+import type { ProcessedFile, ClientError, DropState, DropStatus, DropStateValue, FileWithPath, FileStatus } from '../types';
 import { FILE_STATUSES } from '../types';
 import { extractZipToFiles, isZipFile } from '../utils/zipExtractor';
 import {
@@ -65,7 +65,7 @@ export interface DropReturn {
   /** Flattened access to source name */
   sourceName: string;
   /** Flattened access to status */
-  status: { title: string; details: string; errors?: string[] } | null;
+  status: DropStatus | null;
 
   // Primary API: Prop getters for easy integration
   /** Get props to spread on dropzone element (handles drag & drop, optionally click) */
@@ -115,6 +115,13 @@ export interface DropReturn {
  * );
  * ```
  */
+const initialState: DropState = {
+  value: 'idle',
+  files: [],
+  sourceName: '',
+  status: null,
+};
+
 export function useDrop(options: DropOptions): DropReturn {
   const {
     ship,
@@ -122,14 +129,6 @@ export function useDrop(options: DropOptions): DropReturn {
     onFilesReady,
     stripPrefix = true,
   } = options;
-
-  // Initial state
-  const initialState: DropState = {
-    value: 'idle',
-    files: [],
-    sourceName: '',
-    status: null,
-  };
 
   // State machine
   const [state, setState] = useState<DropState>(initialState);
@@ -139,13 +138,10 @@ export function useDrop(options: DropOptions): DropReturn {
   const inputRef = useRef<HTMLInputElement>(null);
 
   // Computed convenience getters
-  const isProcessing = useMemo(() => state.value === 'processing', [state.value]);
-  const isDragging = useMemo(() => state.value === 'dragging', [state.value]);
-  const isInteractive = useMemo(() =>
-    state.value === 'idle' || state.value === 'dragging' || state.value === 'ready',
-    [state.value]
-  );
-  const hasError = useMemo(() => state.value === 'error', [state.value]);
+  const isProcessing = state.value === 'processing';
+  const isDragging = state.value === 'dragging';
+  const isInteractive = state.value === 'idle' || state.value === 'dragging' || state.value === 'ready';
+  const hasError = state.value === 'error';
 
   // Computed valid files — inline filter since ProcessedFile has wider status type than ValidatableFile
   const validFiles = useMemo(() => state.files.filter(f => f.status === 'ready'), [state.files]);
@@ -248,8 +244,7 @@ export function useDrop(options: DropOptions): DropReturn {
       // Step 6: Map ProcessedFile to ValidatableFile format
       // validateFiles expects { name, size }, not { file: File }
       // IMPORTANT: Use f.path (full path) not f.file.name (filename only) to match server validation
-      const filesForValidation = finalFiles;
-      const validatableFiles: ValidatableFile[] = filesForValidation.map(f => ({
+      const validatableFiles: ValidatableFile[] = finalFiles.map(f => ({
         name: f.path,  // Use full path to match server-side validation
         size: f.file.size,
       }));
@@ -260,7 +255,7 @@ export function useDrop(options: DropOptions): DropReturn {
 
       // Map validation results back to ProcessedFile format
       // validation.files has ValidatableFile with status, we need ProcessedFile with updated status
-      const filesWithStatus = filesForValidation.map((processedFile, idx) => ({
+      const filesWithStatus = finalFiles.map((processedFile, idx) => ({
         ...processedFile,
         status: validation.files[idx]?.status || processedFile.status,
         statusMessage: validation.files[idx]?.statusMessage || processedFile.statusMessage

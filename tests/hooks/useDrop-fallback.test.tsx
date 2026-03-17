@@ -148,8 +148,6 @@ describe('useDrop - Mixed File/Folder Drop Regression', () => {
         const files = result.current.files;
         const paths = files.map(f => f.path).sort();
 
-        console.log('Resulting paths:', paths);
-
         expect(paths).toEqual([
             'assets/style.css',
             'index.html',
@@ -208,8 +206,6 @@ describe('useDrop - Mixed File/Folder Drop Regression', () => {
 
         const files = result.current.files;
         const paths = files.map(f => f.path).sort();
-
-        console.log('Resulting paths:', paths);
 
         expect(paths).toEqual([
             'assets/images/logo.png',
