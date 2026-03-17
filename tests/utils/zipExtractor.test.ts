@@ -24,8 +24,11 @@ describe('zipExtractor', () => {
       expect(result.files).toHaveLength(2);
       expect(result.errors).toHaveLength(0);
 
+      // file.name is the bare filename; webkitRelativePath holds the full path
       expect(result.files[0].name).toBe('file1.txt');
-      expect(result.files[1].name).toBe('folder/file2.txt');
+      expect(result.files[0].webkitRelativePath).toBe('file1.txt');
+      expect(result.files[1].name).toBe('file2.txt');
+      expect(result.files[1].webkitRelativePath).toBe('folder/file2.txt');
     });
 
     it('should skip directories', async () => {
@@ -54,8 +57,8 @@ describe('zipExtractor', () => {
       const result = await extractZipToFiles(zipFile);
 
       expect(result.files).toHaveLength(5);
-      const fileNames = result.files.map(f => f.name).sort();
-      expect(fileNames).toEqual([
+      const filePaths = result.files.map(f => f.webkitRelativePath).sort();
+      expect(filePaths).toEqual([
         '.DS_Store',
         'Thumbs.db',
         '__MACOSX/file.txt',
@@ -118,8 +121,10 @@ describe('zipExtractor', () => {
         const result = await extractZipToFiles(zipFile);
 
         expect(result.files).toHaveLength(2);
-        expect(result.files[0].name).toBe('etc/passwd');
+        expect(result.files[0].name).toBe('passwd');
+        expect(result.files[0].webkitRelativePath).toBe('etc/passwd');
         expect(result.files[1].name).toBe('config.json');
+        expect(result.files[1].webkitRelativePath).toBe('config.json');
       });
 
       it('should handle complex path traversal patterns', async () => {
@@ -132,8 +137,10 @@ describe('zipExtractor', () => {
         const result = await extractZipToFiles(zipFile);
 
         expect(result.files).toHaveLength(2);
-        expect(result.files[0].name).toBe('foo/baz.txt');
-        expect(result.files[1].name).toBe('test/file.txt');
+        expect(result.files[0].name).toBe('baz.txt');
+        expect(result.files[0].webkitRelativePath).toBe('foo/baz.txt');
+        expect(result.files[1].name).toBe('file.txt');
+        expect(result.files[1].webkitRelativePath).toBe('test/file.txt');
       });
 
       it('should skip files that resolve to empty paths', async () => {
@@ -165,8 +172,10 @@ describe('zipExtractor', () => {
         const result = await extractZipToFiles(zipFile);
 
         expect(result.files).toHaveLength(2);
-        expect(result.files[0].name).toBe('etc/passwd');
-        expect(result.files[1].name).toBe('var/log/system.log');
+        expect(result.files[0].name).toBe('passwd');
+        expect(result.files[0].webkitRelativePath).toBe('etc/passwd');
+        expect(result.files[1].name).toBe('system.log');
+        expect(result.files[1].webkitRelativePath).toBe('var/log/system.log');
       });
 
       it('should handle mixed valid and malicious paths', async () => {
@@ -180,9 +189,9 @@ describe('zipExtractor', () => {
         const result = await extractZipToFiles(zipFile);
 
         expect(result.files).toHaveLength(3);
-        expect(result.files[0].name).toBe('normal/file.txt');
-        expect(result.files[1].name).toBe('malicious.txt'); // Sanitized
-        expect(result.files[2].name).toBe('another/normal.txt');
+        expect(result.files[0].webkitRelativePath).toBe('normal/file.txt');
+        expect(result.files[1].webkitRelativePath).toBe('malicious.txt'); // Sanitized
+        expect(result.files[2].webkitRelativePath).toBe('another/normal.txt');
       });
     });
   });

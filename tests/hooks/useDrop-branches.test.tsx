@@ -6,18 +6,11 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
 import { useDrop } from '@/hooks/useDrop';
 import { FILE_STATUSES } from '@/types';
-import { createMockFile } from '../test-utils';
-import type { Ship } from '@shipstatic/ship';
+import { createMockFile, createMockShip } from '../test-utils';
 
-// Mock Ship SDK - config matches ConfigResponse structure
-const mockShip = {
-  getConfig: vi.fn().mockResolvedValue({
-    maxFileSize: 100 * 1024 * 1024,
-    maxFilesCount: 10000,
-    maxTotalSize: 500 * 1024 * 1024,
-  }),
-} as unknown as Ship;
+const { ship: mockShip, mockGetConfig } = createMockShip();
 
+// Module-scoped mock functions (referenced by vi.mock — cannot be moved to shared utils)
 const mockValidateFiles = vi.fn((files: any[]) => ({
   files: files.map(f => ({ ...f, status: FILE_STATUSES.READY })),
   validFiles: files.map(f => ({ ...f, status: FILE_STATUSES.READY })),
@@ -26,7 +19,6 @@ const mockValidateFiles = vi.fn((files: any[]) => ({
   canDeploy: true,
 }));
 
-// Mock @shipstatic/ship
 vi.mock('@shipstatic/ship', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@shipstatic/ship')>();
   return {
@@ -207,7 +199,7 @@ describe('useDrop - branch coverage', () => {
       const badFile = new File(['content'], 'test.txt', { type: 'text/plain' });
 
       // Mock Ship SDK to throw error
-      (mockShip.getConfig as any).mockRejectedValueOnce(new Error('Network error'));
+      mockGetConfig.mockRejectedValueOnce(new Error('Network error'));
 
       await act(async () => {
         await result.current.processFiles([badFile]);
@@ -221,7 +213,7 @@ describe('useDrop - branch coverage', () => {
       const { result } = renderHook(() => useDrop({ ship: mockShip }));
 
       // Mock to throw error
-      (mockShip.getConfig as any).mockRejectedValueOnce(new Error('Error'));
+      mockGetConfig.mockRejectedValueOnce(new Error('Error'));
 
       const file = createMockFile('test.txt', 'content');
 
@@ -483,7 +475,7 @@ describe('useDrop - branch coverage', () => {
         resolveConfig = resolve;
       });
 
-      (mockShip.getConfig as any).mockImplementationOnce(() =>
+      mockGetConfig.mockImplementationOnce(() =>
         slowConfigPromise.then(() => ({
           maxFileSize: 100 * 1024 * 1024,
           maxFilesCount: 10000,

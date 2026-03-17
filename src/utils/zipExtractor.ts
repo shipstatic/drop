@@ -38,10 +38,20 @@ export async function extractZipToFiles(zipFile: File): Promise<ZipExtractionRes
       }
 
       const mimeType = getMimeType(sanitizedPath);
+      const filename = sanitizedPath.split('/').pop() || sanitizedPath;
 
       // Copy to own ArrayBuffer (fflate shares backing buffers across entries)
-      const file = new File([new Uint8Array(data)], sanitizedPath, {
+      const file = new File([new Uint8Array(data)], filename, {
         type: mimeType,
+      });
+
+      // Set webkitRelativePath to the full path — same contract as drag-and-drop files.
+      // This unifies the path mechanism: all file sources use webkitRelativePath for paths
+      // and file.name for the bare filename.
+      Object.defineProperty(file, 'webkitRelativePath', {
+        value: sanitizedPath,
+        writable: false,
+        configurable: true,
       });
 
       files.push(file);

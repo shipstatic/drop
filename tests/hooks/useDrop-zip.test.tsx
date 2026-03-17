@@ -15,11 +15,9 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { renderHook, act, waitFor } from '@testing-library/react';
 import { useDrop } from '@/hooks/useDrop';
 import { FILE_STATUSES } from '@/types';
-import { createMockFile, DEFAULT_TEST_CONFIG } from '../test-utils';
-import type { Ship } from '@shipstatic/ship';
+import { createMockFile, createMockFileWithPath, createMockShip } from '../test-utils';
 
-// Mock @shipstatic/ship
-const mockGetConfig = vi.fn();
+// Module-scoped mock functions (referenced by vi.mock — cannot be moved to shared utils)
 const mockValidateFiles = vi.fn();
 
 vi.mock('@shipstatic/ship', async (importOriginal) => {
@@ -35,15 +33,8 @@ vi.mock('@shipstatic/ship', async (importOriginal) => {
 
 vi.mock('fflate');
 
-// Helper to create mock Ship instance
-const createMockShip = (): Ship => ({
-  getConfig: mockGetConfig,
-} as any);
-
 describe('useDrop - ZIP File Handling', () => {
   beforeEach(() => {
-    mockGetConfig.mockResolvedValue(DEFAULT_TEST_CONFIG);
-
     // Default mock validation (all files valid)
     mockValidateFiles.mockImplementation((files) => ({
       files: files.map((f: any) => ({ ...f, status: FILE_STATUSES.READY, statusMessage: 'Ready for upload' })),
@@ -60,7 +51,7 @@ describe('useDrop - ZIP File Handling', () => {
   });
 
   it('should extract ZIP when single ZIP file is dropped', async () => {
-    const ship = createMockShip();
+    const { ship } = createMockShip();
     const { result } = renderHook(() => useDrop({ ship }));
 
     // Create a spy to track if extractZipToFiles was called
@@ -84,7 +75,7 @@ describe('useDrop - ZIP File Handling', () => {
   });
 
   it('should NOT extract ZIP when multiple files including ZIP are dropped', async () => {
-    const ship = createMockShip();
+    const { ship } = createMockShip();
     const { result } = renderHook(() => useDrop({ ship }));
 
     // Create a spy to track if extractZipToFiles was NOT called
@@ -116,7 +107,7 @@ describe('useDrop - ZIP File Handling', () => {
   });
 
   it('should NOT extract ZIP when multiple ZIPs are dropped', async () => {
-    const ship = createMockShip();
+    const { ship } = createMockShip();
     const { result } = renderHook(() => useDrop({ ship }));
 
     // Create a spy to track if extractZipToFiles was NOT called
@@ -158,16 +149,17 @@ describe('useDrop - ZIP File Handling', () => {
      *   assets/app.js
      *   assets/style.css
      */
-    const ship = createMockShip();
+    const { ship } = createMockShip();
     const { result } = renderHook(() => useDrop({ ship })); // stripPrefix=true by default
 
-    // Mock extractZipToFiles to return files with dist/ prefix
+    // Mock extractZipToFiles to return files matching the real contract:
+    // name = bare filename, webkitRelativePath = full path
     const extractSpy = vi.spyOn(await import('@/utils/zipExtractor'), 'extractZipToFiles');
     extractSpy.mockResolvedValue({
       files: [
-        new File(['html'], 'dist/index.html', { type: 'text/html' }),
-        new File(['js'], 'dist/assets/app.js', { type: 'application/javascript' }),
-        new File(['css'], 'dist/assets/style.css', { type: 'text/css' }),
+        createMockFileWithPath('index.html', 'dist/index.html', 'html', 'text/html'),
+        createMockFileWithPath('app.js', 'dist/assets/app.js', 'js', 'application/javascript'),
+        createMockFileWithPath('style.css', 'dist/assets/style.css', 'css', 'text/css'),
       ],
       errors: [],
     });
@@ -204,15 +196,16 @@ describe('useDrop - ZIP File Handling', () => {
     /**
      * Verify that stripPrefix=false preserves the original folder structure
      */
-    const ship = createMockShip();
+    const { ship } = createMockShip();
     const { result } = renderHook(() => useDrop({ ship, stripPrefix: false }));
 
-    // Mock extractZipToFiles to return files with dist/ prefix
+    // Mock extractZipToFiles to return files matching the real contract:
+    // name = bare filename, webkitRelativePath = full path
     const extractSpy = vi.spyOn(await import('@/utils/zipExtractor'), 'extractZipToFiles');
     extractSpy.mockResolvedValue({
       files: [
-        new File(['html'], 'dist/index.html', { type: 'text/html' }),
-        new File(['js'], 'dist/assets/app.js', { type: 'application/javascript' }),
+        createMockFileWithPath('index.html', 'dist/index.html', 'html', 'text/html'),
+        createMockFileWithPath('app.js', 'dist/assets/app.js', 'js', 'application/javascript'),
       ],
       errors: [],
     });
