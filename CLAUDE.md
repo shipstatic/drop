@@ -21,7 +21,7 @@ src/
 │   └── useDrop.ts        # Main hook (state machine, processing, prop getters)
 └── utils/
     ├── fileProcessing.ts # Folder traversal, path normalization
-    ├── zipExtractor.ts   # ZIP extraction (JSZip)
+    ├── zipExtractor.ts   # ZIP extraction (fflate)
     └── mimeType.ts       # MIME detection
 ```
 
@@ -116,7 +116,7 @@ If ANY file fails validation, ALL non-excluded files are marked `validation_fail
 
 - **No MD5 calculation** — Ship SDK calculates MD5 during deployment; duplicate calculation wastes cycles.
 - **No individual file removal** — Atomic validation means removing one file requires re-validating all. Call `reset()` and re-drop.
-- **Why Drop exists** — Ship SDK handles deployment but lacks ZIP extraction (browser-specific, JSZip), React state management, drag & drop with `webkitGetAsEntry` folder traversal, and UI-friendly file status tracking.
+- **Why Drop exists** — Ship SDK handles deployment but lacks ZIP extraction (browser-specific), React state management, drag & drop with `webkitGetAsEntry` folder traversal, and UI-friendly file status tracking.
 
 ## Key Gotchas
 

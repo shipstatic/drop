@@ -33,8 +33,7 @@ vi.mock('@shipstatic/ship', async (importOriginal) => {
   };
 });
 
-// Mock JSZip for unit tests
-vi.mock('jszip');
+vi.mock('fflate');
 
 // Helper to create mock Ship instance
 const createMockShip = (): Ship => ({

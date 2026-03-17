@@ -1,11 +1,10 @@
 /**
  * Real ZIP Extraction Integration Tests
  *
- * These tests use actual ZIP files (not mocked JSZip) to verify
- * that ZIP extraction works correctly end-to-end.
+ * These tests use actual ZIP files to verify that ZIP extraction
+ * works correctly end-to-end.
  *
  * This catches issues that mocked tests might miss:
- * - JSZip API changes
  * - Real ZIP file format edge cases
  * - Binary data handling
  *
@@ -16,9 +15,6 @@ import { describe, it, expect, beforeEach, beforeAll } from 'vitest';
 import { extractZipToFiles, isZipFile } from '@/utils/zipExtractor';
 import * as fs from 'fs';
 import * as path from 'path';
-
-// DON'T mock JSZip - we want to test real extraction
-// vi.mock('jszip'); // Intentionally commented out
 
 describe('Real ZIP Extraction', () => {
   // Load the test fixture

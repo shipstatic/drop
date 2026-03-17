@@ -21,8 +21,7 @@ vi.mock('@shipstatic/ship', async (importOriginal) => {
   };
 });
 
-// Mock JSZip
-vi.mock('jszip');
+vi.mock('fflate');
 
 // Helper to create mock Ship instance
 const createMockShip = (): Ship => ({

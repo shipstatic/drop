@@ -1,6 +1,6 @@
 {
   "name": "@shipstatic/drop",
-  "version": "0.2.29",
+  "version": "0.3.0",
   "description": "Headless React hook for file dropping, processing, ZIP extraction, and validation - purpose-built for Ship SDK",
   "type": "module",
   "main": "./dist/index.cjs",
@@ -58,7 +58,7 @@
   },
   "dependencies": {
     "@shipstatic/ship": "^0.7.13",
-    "jszip": "^3.10.1",
+    "fflate": "^0.8.2",
     "mime-db": "^1.54.0"
   },
   "devDependencies": {
