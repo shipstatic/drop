@@ -215,7 +215,6 @@ describe('useDrop - branch coverage', () => {
 
       // Should have error state
       expect(result.current.status?.title).toBe('Processing Failed');
-      // expect(result.current.state.value).toBe('error'); // value is removed
     });
 
     it('should clear processing flag on error', async () => {
@@ -299,7 +298,6 @@ describe('useDrop - branch coverage', () => {
       expect(result.current.files).toEqual([]);
       expect(result.current.sourceName).toBe('');
       expect(result.current.status).toBeNull();
-      // expect(result.current.value).not.toBe('error');
     });
   });
 
