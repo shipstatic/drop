@@ -6,9 +6,9 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { renderHook, act, waitFor } from '@testing-library/react';
 import { useDrop } from '@/hooks/useDrop';
 import { FILE_STATUSES } from '@/types';
-import type { Ship } from '@shipstatic/ship';
+import { createMockShip } from '../test-utils';
 
-// Mock validateFiles from Ship SDK
+// Module-scoped mock functions (referenced by vi.mock — cannot be moved to shared utils)
 const mockValidateFiles = vi.fn();
 
 vi.mock('@shipstatic/ship', async (importOriginal) => {
@@ -19,14 +19,7 @@ vi.mock('@shipstatic/ship', async (importOriginal) => {
   };
 });
 
-// Mock Ship SDK - config matches ConfigResponse structure
-const mockShip = {
-  getConfig: vi.fn().mockResolvedValue({
-    maxFileSize: 100 * 1024 * 1024,
-    maxFilesCount: 10000,
-    maxTotalSize: 500 * 1024 * 1024,
-  }),
-} as unknown as Ship;
+const { ship: mockShip } = createMockShip();
 
 describe('useDrop - prop getters', () => {
   beforeEach(() => {

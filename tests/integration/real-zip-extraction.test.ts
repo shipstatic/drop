@@ -51,18 +51,24 @@ describe('Real ZIP Extraction', () => {
       // Should extract all files (not directories)
       expect(result.files.length).toBeGreaterThanOrEqual(3);
 
-      // Check for expected files (with test-site/ prefix from the fixture)
+      // webkitRelativePath holds the full path (including test-site/ prefix from the fixture)
+      const filePaths = result.files.map(f => f.webkitRelativePath).sort();
+      expect(filePaths).toContain(PREFIX + 'index.html');
+      expect(filePaths).toContain(PREFIX + 'style.css');
+      expect(filePaths).toContain(PREFIX + 'assets/app.js');
+
+      // file.name is just the bare filename
       const fileNames = result.files.map(f => f.name).sort();
-      expect(fileNames).toContain(PREFIX + 'index.html');
-      expect(fileNames).toContain(PREFIX + 'style.css');
-      expect(fileNames).toContain(PREFIX + 'assets/app.js');
+      expect(fileNames).toContain('index.html');
+      expect(fileNames).toContain('style.css');
+      expect(fileNames).toContain('app.js');
     });
 
     it('should preserve file content from real ZIP', async () => {
       const result = await extractZipToFiles(zipFile);
 
-      // Find index.html and verify content
-      const indexFile = result.files.find(f => f.name === PREFIX + 'index.html');
+      // Find index.html by path and verify content
+      const indexFile = result.files.find(f => f.webkitRelativePath === PREFIX + 'index.html');
       expect(indexFile).toBeDefined();
 
       const content = await indexFile!.text();
@@ -73,9 +79,9 @@ describe('Real ZIP Extraction', () => {
     it('should set correct MIME types for extracted files', async () => {
       const result = await extractZipToFiles(zipFile);
 
-      const indexFile = result.files.find(f => f.name === PREFIX + 'index.html');
-      const cssFile = result.files.find(f => f.name === PREFIX + 'style.css');
-      const jsFile = result.files.find(f => f.name === PREFIX + 'assets/app.js');
+      const indexFile = result.files.find(f => f.webkitRelativePath === PREFIX + 'index.html');
+      const cssFile = result.files.find(f => f.webkitRelativePath === PREFIX + 'style.css');
+      const jsFile = result.files.find(f => f.webkitRelativePath === PREFIX + 'assets/app.js');
 
       expect(indexFile?.type).toBe('text/html');
       expect(cssFile?.type).toBe('text/css');
@@ -90,11 +96,11 @@ describe('Real ZIP Extraction', () => {
       const result = await extractZipToFiles(zipFile);
 
       // Should have files in nested directories
-      const nestedFiles = result.files.filter(f => f.name.includes('/'));
+      const nestedFiles = result.files.filter(f => f.webkitRelativePath.includes('/'));
       expect(nestedFiles.length).toBeGreaterThan(0);
 
       // Nested file should have correct path
-      const appJs = result.files.find(f => f.name === PREFIX + 'assets/app.js');
+      const appJs = result.files.find(f => f.webkitRelativePath === PREFIX + 'assets/app.js');
       expect(appJs).toBeDefined();
     });
   });

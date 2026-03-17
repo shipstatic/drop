@@ -23,11 +23,9 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { renderHook, act, waitFor } from '@testing-library/react';
 import { useDrop } from '@/hooks/useDrop';
 import { FILE_STATUSES } from '@/types';
-import { createMockFile } from '../test-utils';
-import type { Ship } from '@shipstatic/ship';
+import { createMockFile, createMockShip } from '../test-utils';
 
-// Mock @shipstatic/ship
-const mockGetConfig = vi.fn();
+// Module-scoped mock functions (referenced by vi.mock — cannot be moved to shared utils)
 const mockValidateFiles = vi.fn();
 
 vi.mock('@shipstatic/ship', async (importOriginal) => {
@@ -40,20 +38,8 @@ vi.mock('@shipstatic/ship', async (importOriginal) => {
   };
 });
 
-vi.mock('fflate');
-
-const createMockShip = (): Ship => ({
-  getConfig: mockGetConfig,
-} as any);
-
 describe('State Machine - Comprehensive Transition Tests', () => {
   beforeEach(() => {
-    mockGetConfig.mockResolvedValue({
-      maxFileSize: 100 * 1024 * 1024,
-      maxTotalSize: 500 * 1024 * 1024,
-      maxFilesCount: 10000,
-    });
-
     mockValidateFiles.mockImplementation((files) => ({
       files: files.map((f: any) => ({
         ...f,
@@ -74,7 +60,7 @@ describe('State Machine - Comprehensive Transition Tests', () => {
   describe('Valid State Transitions', () => {
     describe('idle → dragging → idle', () => {
       it('should transition from idle to dragging on drag over', () => {
-        const ship = createMockShip();
+        const { ship } = createMockShip();
         const { result } = renderHook(() => useDrop({ ship }));
 
         expect(result.current.phase).toBe('idle');
@@ -90,7 +76,7 @@ describe('State Machine - Comprehensive Transition Tests', () => {
       });
 
       it('should transition from dragging back to idle on drag leave', () => {
-        const ship = createMockShip();
+        const { ship } = createMockShip();
         const { result } = renderHook(() => useDrop({ ship }));
 
         const props = result.current.getDropzoneProps();
@@ -110,7 +96,7 @@ describe('State Machine - Comprehensive Transition Tests', () => {
       });
 
       it('should remain in dragging state on multiple drag over events', () => {
-        const ship = createMockShip();
+        const { ship } = createMockShip();
         const { result } = renderHook(() => useDrop({ ship }));
 
         const props = result.current.getDropzoneProps();
@@ -129,7 +115,7 @@ describe('State Machine - Comprehensive Transition Tests', () => {
 
     describe('idle → processing → ready', () => {
       it('should transition from idle to processing when files are added', async () => {
-        const ship = createMockShip();
+        const { ship } = createMockShip();
         const { result } = renderHook(() => useDrop({ ship }));
 
         expect(result.current.phase).toBe('idle');
@@ -147,7 +133,7 @@ describe('State Machine - Comprehensive Transition Tests', () => {
       });
 
       it('should transition from processing to ready on successful validation', async () => {
-        const ship = createMockShip();
+        const { ship } = createMockShip();
         const { result } = renderHook(() => useDrop({ ship }));
 
         const file = createMockFile('test.txt', 'content');
@@ -166,7 +152,7 @@ describe('State Machine - Comprehensive Transition Tests', () => {
       });
 
       it('should set status message during processing state', async () => {
-        const ship = createMockShip();
+        const { ship } = createMockShip();
         const { result } = renderHook(() => useDrop({ ship }));
 
         const file = createMockFile('test.txt', 'content');
@@ -183,7 +169,7 @@ describe('State Machine - Comprehensive Transition Tests', () => {
 
     describe('idle → processing → error', () => {
       it('should transition from processing to error on validation failure', async () => {
-        const ship = createMockShip();
+        const { ship } = createMockShip();
 
         // Mock validation failure
         mockValidateFiles.mockImplementationOnce((files) => ({
@@ -219,7 +205,7 @@ describe('State Machine - Comprehensive Transition Tests', () => {
       });
 
       it('should set error status with details on validation failure', async () => {
-        const ship = createMockShip();
+        const { ship } = createMockShip();
 
         mockValidateFiles.mockImplementationOnce((files) => ({
           files: files.map((f: any) => ({
@@ -255,7 +241,7 @@ describe('State Machine - Comprehensive Transition Tests', () => {
 
     describe('ready → dragging → ready', () => {
       it('should allow dragging from ready state', async () => {
-        const ship = createMockShip();
+        const { ship } = createMockShip();
         const { result } = renderHook(() => useDrop({ ship }));
 
         // Get to ready state
@@ -279,7 +265,7 @@ describe('State Machine - Comprehensive Transition Tests', () => {
       });
 
       it('should return to ready state after drag leave', async () => {
-        const ship = createMockShip();
+        const { ship } = createMockShip();
         const { result } = renderHook(() => useDrop({ ship }));
 
         // Get to ready state
@@ -307,7 +293,7 @@ describe('State Machine - Comprehensive Transition Tests', () => {
 
     describe('error → dragging → error', () => {
       it('should allow dragging from error state', async () => {
-        const ship = createMockShip();
+        const { ship } = createMockShip();
 
         mockValidateFiles.mockImplementationOnce((files) => ({
           files: files.map((f: any) => ({
@@ -342,7 +328,7 @@ describe('State Machine - Comprehensive Transition Tests', () => {
       });
 
       it('should return to error state after drag leave', async () => {
-        const ship = createMockShip();
+        const { ship } = createMockShip();
 
         mockValidateFiles.mockImplementationOnce((files) => ({
           files: files.map((f: any) => ({
@@ -382,7 +368,7 @@ describe('State Machine - Comprehensive Transition Tests', () => {
 
     describe('any state → idle (via reset)', () => {
       it('should reset from ready state to idle', async () => {
-        const ship = createMockShip();
+        const { ship } = createMockShip();
         const { result } = renderHook(() => useDrop({ ship }));
 
         // Get to ready state
@@ -405,7 +391,7 @@ describe('State Machine - Comprehensive Transition Tests', () => {
       });
 
       it('should reset from error state to idle', async () => {
-        const ship = createMockShip();
+        const { ship } = createMockShip();
 
         mockValidateFiles.mockImplementationOnce((files) => ({
           files: files.map((f: any) => ({
@@ -441,7 +427,7 @@ describe('State Machine - Comprehensive Transition Tests', () => {
       });
 
       it('should reset from dragging state to idle', () => {
-        const ship = createMockShip();
+        const { ship } = createMockShip();
         const { result } = renderHook(() => useDrop({ ship }));
 
         // Enter dragging
@@ -465,7 +451,7 @@ describe('State Machine - Comprehensive Transition Tests', () => {
   describe('Invalid/Blocked State Transitions', () => {
     describe('Concurrent processing guard', () => {
       it('should block concurrent processFiles calls', async () => {
-        const ship = createMockShip();
+        const { ship } = createMockShip();
         const { result } = renderHook(() => useDrop({ ship }));
 
         const consoleWarn = vi.spyOn(console, 'warn').mockImplementation(() => {});
@@ -494,7 +480,7 @@ describe('State Machine - Comprehensive Transition Tests', () => {
       });
 
       it('should allow processing after first process completes', async () => {
-        const ship = createMockShip();
+        const { ship } = createMockShip();
         const { result } = renderHook(() => useDrop({ ship }));
 
         // First process
@@ -529,6 +515,7 @@ describe('State Machine - Comprehensive Transition Tests', () => {
           resolveConfig = resolve;
         });
 
+        const { ship, mockGetConfig } = createMockShip();
         mockGetConfig.mockImplementationOnce(() =>
           slowConfig.then(() => ({
             maxFileSize: 100 * 1024 * 1024,
@@ -536,8 +523,6 @@ describe('State Machine - Comprehensive Transition Tests', () => {
             maxFilesCount: 10000,
           }))
         );
-
-        const ship = createMockShip();
         const { result } = renderHook(() => useDrop({ ship }));
 
         const file = createMockFile('test.txt', 'content');
@@ -569,7 +554,7 @@ describe('State Machine - Comprehensive Transition Tests', () => {
 
     describe('State preservation during drag', () => {
       it('should preserve files when dragging from ready state', async () => {
-        const ship = createMockShip();
+        const { ship } = createMockShip();
         const { result } = renderHook(() => useDrop({ ship }));
 
         // Process files to ready state
@@ -608,7 +593,7 @@ describe('State Machine - Comprehensive Transition Tests', () => {
       });
 
       it('should preserve error state when dragging from error', async () => {
-        const ship = createMockShip();
+        const { ship } = createMockShip();
 
         mockValidateFiles.mockImplementationOnce((files) => ({
           files: files.map((f: any) => ({
@@ -650,7 +635,7 @@ describe('State Machine - Comprehensive Transition Tests', () => {
 
   describe('Convenience Booleans Consistency', () => {
     it('should have consistent isProcessing boolean', async () => {
-      const ship = createMockShip();
+      const { ship } = createMockShip();
       const { result } = renderHook(() => useDrop({ ship }));
 
       expect(result.current.isProcessing).toBe(false);
@@ -671,7 +656,7 @@ describe('State Machine - Comprehensive Transition Tests', () => {
     });
 
     it('should have consistent isDragging boolean', () => {
-      const ship = createMockShip();
+      const { ship } = createMockShip();
       const { result } = renderHook(() => useDrop({ ship }));
 
       expect(result.current.isDragging).toBe(false);
@@ -692,7 +677,7 @@ describe('State Machine - Comprehensive Transition Tests', () => {
     });
 
     it('should have consistent hasError boolean', async () => {
-      const ship = createMockShip();
+      const { ship } = createMockShip();
 
       mockValidateFiles.mockImplementationOnce((files) => ({
         files: files.map((f: any) => ({
@@ -728,7 +713,7 @@ describe('State Machine - Comprehensive Transition Tests', () => {
     });
 
     it('should have consistent isInteractive boolean', async () => {
-      const ship = createMockShip();
+      const { ship } = createMockShip();
       const { result } = renderHook(() => useDrop({ ship }));
 
       // Idle - interactive

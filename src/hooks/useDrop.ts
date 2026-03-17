@@ -216,10 +216,8 @@ export function useDrop(options: DropOptions): DropReturn {
       }
 
       // Step 3: Filter junk files (includes unbuilt project marker detection)
-      // Extract paths: for ZIP files, name contains the full path; for direct drops, use webkitRelativePath or name
       const getFilePath = (f: File) => {
         const webkitPath = (f as FileWithPath).webkitRelativePath;
-        // Handle both undefined and empty string as falsy
         return (webkitPath && webkitPath.trim()) ? webkitPath : f.name;
       };
 

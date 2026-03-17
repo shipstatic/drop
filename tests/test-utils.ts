@@ -67,14 +67,12 @@ export const createMockFileWithPath = (
  * Use this standard pattern for consistency:
  *
  * ```typescript
- * import { vi, describe, it, expect, beforeEach, afterEach } from 'vitest';
- * import { createMockShip, createPassingValidation, DEFAULT_TEST_CONFIG } from '../test-utils';
+ * import { vi, describe, it, expect, beforeEach } from 'vitest';
+ * import { createMockShip, createPassingValidation } from '../test-utils';
  *
- * // Module-scoped mock functions (referenced by vi.mock)
- * const mockGetConfig = vi.fn();
+ * // Module-scoped mock functions (referenced by vi.mock — cannot be moved to shared utils)
  * const mockValidateFiles = vi.fn();
  *
- * // Mock the Ship SDK module
  * vi.mock('@shipstatic/ship', async (importOriginal) => {
  *   const actual = await importOriginal<typeof import('@shipstatic/ship')>();
  *   return {
@@ -83,20 +81,22 @@ export const createMockFileWithPath = (
  *   };
  * });
  *
- * // Create Ship instance
- * const createTestShip = () => ({ getConfig: mockGetConfig } as any);
- *
  * beforeEach(() => {
- *   mockGetConfig.mockResolvedValue(DEFAULT_TEST_CONFIG);
  *   mockValidateFiles.mockImplementation(createPassingValidation());
  * });
  *
- * afterEach(() => {
- *   vi.clearAllMocks();
+ * it('test', async () => {
+ *   const { ship } = createMockShip();
+ *   // For tests needing config mock access:
+ *   // const { ship, mockGetConfig } = createMockShip();
+ *   // For custom config limits:
+ *   // const { ship } = createMockShip({ maxFileSize: 1024 });
  * });
  * ```
  *
- * Use createPassingValidation() and createFailingValidation() for mock implementations.
+ * Each createMockShip() call creates an isolated Ship with its own pre-configured
+ * mockGetConfig (resolved with DEFAULT_TEST_CONFIG). Use createPassingValidation()
+ * and createFailingValidation() for mockValidateFiles implementations.
  */
 
 /**

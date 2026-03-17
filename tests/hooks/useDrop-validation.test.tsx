@@ -13,11 +13,9 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { renderHook, act, waitFor } from '@testing-library/react';
 import { useDrop } from '@/hooks/useDrop';
 import { FILE_STATUSES } from '@/types';
-import { createMockFile, createMockFileWithPath, DEFAULT_TEST_CONFIG } from '../test-utils';
-import type { Ship } from '@shipstatic/ship';
+import { createMockFile, createMockFileWithPath, createMockShip } from '../test-utils';
 
-// Mock @shipstatic/ship
-const mockGetConfig = vi.fn();
+// Module-scoped mock functions (referenced by vi.mock — cannot be moved to shared utils)
 const mockValidateFiles = vi.fn();
 
 vi.mock('@shipstatic/ship', async (importOriginal) => {
@@ -31,15 +29,8 @@ vi.mock('@shipstatic/ship', async (importOriginal) => {
   };
 });
 
-// Helper to create mock Ship instance
-const createMockShip = (): Ship => ({
-  getConfig: mockGetConfig,
-} as any);
-
 describe('useDrop - Validation', () => {
   beforeEach(() => {
-    mockGetConfig.mockResolvedValue(DEFAULT_TEST_CONFIG);
-
     // Default mock validation (all files valid) - NEW API structure
     mockValidateFiles.mockImplementation((files) => ({
       files: files.map((f: any) => ({ ...f, status: FILE_STATUSES.READY, statusMessage: 'Ready for upload' })),
@@ -56,7 +47,7 @@ describe('useDrop - Validation', () => {
   });
 
   it('should reject files exceeding count limit', async () => {
-    const ship = createMockShip();
+    const { ship } = createMockShip();
     const onValidationError = vi.fn();
 
     // Mock validation to fail with count error
@@ -104,7 +95,7 @@ describe('useDrop - Validation', () => {
   });
 
   it('should reject files exceeding individual file size limit', async () => {
-    const ship = createMockShip();
+    const { ship } = createMockShip();
     const onValidationError = vi.fn();
 
     // Mock validation to fail with file size error
@@ -142,7 +133,7 @@ describe('useDrop - Validation', () => {
   });
 
   it('should reject files when total size exceeds limit', async () => {
-    const ship = createMockShip();
+    const { ship } = createMockShip();
     const onValidationError = vi.fn();
 
     // Mock validation to fail with total size error
@@ -184,7 +175,7 @@ describe('useDrop - Validation', () => {
   });
 
   it('should exclude empty files (0 bytes) with warnings', async () => {
-    const ship = createMockShip();
+    const { ship } = createMockShip();
 
     // Mock validation: empty files are warnings (not errors) but result in no valid files
     mockValidateFiles.mockReturnValueOnce({
@@ -225,7 +216,7 @@ describe('useDrop - Validation', () => {
   });
 
   it('should accept files with any MIME type (extension blocklist only)', async () => {
-    const ship = createMockShip();
+    const { ship } = createMockShip();
 
     const { result } = renderHook(() => useDrop({ ship }));
 
@@ -253,7 +244,7 @@ describe('useDrop - Validation', () => {
   });
 
   it('should reject files with unsafe characters in directory names', async () => {
-    const ship = createMockShip();
+    const { ship } = createMockShip();
     const onValidationError = vi.fn();
 
     // Mock validation to fail with unsafe characters error (matches actual validation behavior)
@@ -305,7 +296,7 @@ describe('useDrop - Validation', () => {
   });
 
   it('should reject files containing node_modules before junk filtering', async () => {
-    const ship = createMockShip();
+    const { ship } = createMockShip();
     const onValidationError = vi.fn();
 
     const { result } = renderHook(() =>
@@ -345,7 +336,7 @@ describe('useDrop - Validation', () => {
   });
 
   it('should reject node_modules even when all files would be filtered by junk filter', async () => {
-    const ship = createMockShip();
+    const { ship } = createMockShip();
 
     const { result } = renderHook(() => useDrop({ ship }));
 

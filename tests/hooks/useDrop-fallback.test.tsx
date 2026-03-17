@@ -7,14 +7,18 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { renderHook, act, waitFor } from '@testing-library/react';
 import { useDrop } from '@/hooks/useDrop';
-import { FILE_STATUSES } from '@/types';
-import type { Ship } from '@shipstatic/ship';
+import {
+    createMockShip,
+    createPassingValidation,
+    createMockFileEntry,
+    createMockDirectoryEntry,
+    createMockDataTransferItem,
+    createMockDragEvent,
+} from '../test-utils';
 
-// Mock @shipstatic/ship
-const mockGetConfig = vi.fn();
+// Module-scoped mock functions (referenced by vi.mock — cannot be moved to shared utils)
 const mockValidateFiles = vi.fn();
 
-// Mock @shipstatic/ship
 vi.mock('@shipstatic/ship', async (importOriginal) => {
     const actual = await importOriginal<typeof import('@shipstatic/ship')>();
     return {
@@ -25,46 +29,6 @@ vi.mock('@shipstatic/ship', async (importOriginal) => {
         filterJunk: actual.filterJunk,
     };
 });
-
-// Helper to create mock Ship instance
-const createMockShip = (): Ship => ({
-    getConfig: mockGetConfig,
-} as any);
-
-// Mock FileSystemEntry and related interfaces
-interface MockEntry {
-    isFile: boolean;
-    isDirectory: boolean;
-    name: string;
-    file?: (success: (f: File) => void) => void;
-    createReader?: () => { readEntries: (success: (entries: MockEntry[]) => void) => void };
-}
-
-const createMockFileEntry = (name: string, content: string = ''): MockEntry => ({
-    isFile: true,
-    isDirectory: false,
-    name,
-    file: (success) => success(new File([content], name)),
-});
-
-const createMockDirectoryEntry = (name: string, children: MockEntry[]): MockEntry => {
-    let called = false;
-    return {
-        isFile: false,
-        isDirectory: true,
-        name,
-        createReader: () => ({
-            readEntries: (success) => {
-                if (!called) {
-                    called = true;
-                    success(children);
-                } else {
-                    success([]);
-                }
-            },
-        }),
-    };
-};
 
 /**
  * Regression: Mixed file and folder drag-and-drop
@@ -80,19 +44,7 @@ const createMockDirectoryEntry = (name: string, children: MockEntry[]): MockEntr
  */
 describe('useDrop - Mixed File/Folder Drop Regression', () => {
     beforeEach(() => {
-        mockGetConfig.mockResolvedValue({
-            maxFileSize: 100 * 1024 * 1024,
-            maxTotalSize: 500 * 1024 * 1024,
-            maxFilesCount: 10000,
-        });
-
-        mockValidateFiles.mockImplementation((files) => ({
-            files: files.map((f: any) => ({ ...f, status: FILE_STATUSES.READY })),
-            validFiles: files.map((f: any) => ({ ...f, status: FILE_STATUSES.READY })),
-            errors: [],
-            warnings: [],
-            canDeploy: true,
-        }));
+        mockValidateFiles.mockImplementation(createPassingValidation());
     });
 
     afterEach(() => {
@@ -100,7 +52,7 @@ describe('useDrop - Mixed File/Folder Drop Regression', () => {
     });
 
     it('should handle mixed files and folders drop correctly', async () => {
-        const ship = createMockShip();
+        const { ship } = createMockShip();
         const { result } = renderHook(() => useDrop({ ship }));
 
         // Simulate dropping: index.html, robots.txt, assets/ (containing style.css)
@@ -109,44 +61,25 @@ describe('useDrop - Mixed File/Folder Drop Regression', () => {
         const styleEntry = createMockFileEntry('style.css');
         const assetsEntry = createMockDirectoryEntry('assets', [styleEntry]);
 
-        const mockDataTransferItems = [
-            {
-                kind: 'file',
-                webkitGetAsEntry: () => indexEntry,
-                getAsFile: () => new File([''], 'index.html')
-            },
-            {
-                kind: 'file',
-                webkitGetAsEntry: () => robotsEntry,
-                getAsFile: () => new File([''], 'robots.txt')
-            },
-            {
-                kind: 'file',
-                webkitGetAsEntry: () => assetsEntry,
-                getAsFile: () => null // Directory
-            },
-        ];
-
-        const mockEvent = {
-            preventDefault: vi.fn(),
-            dataTransfer: {
-                items: mockDataTransferItems,
-                files: [], // Fallback not used when items are present
-            },
-        };
+        const mockEvent = createMockDragEvent({
+            items: [
+                createMockDataTransferItem(indexEntry, new File([''], 'index.html')),
+                createMockDataTransferItem(robotsEntry, new File([''], 'robots.txt')),
+                createMockDataTransferItem(assetsEntry, null),
+            ],
+        });
 
         const { onDrop } = result.current.getDropzoneProps();
 
         await act(async () => {
-            await onDrop(mockEvent as any);
+            await onDrop(mockEvent);
         });
 
         await waitFor(() => {
             expect(result.current.isProcessing).toBe(false);
         });
 
-        const files = result.current.files;
-        const paths = files.map(f => f.path).sort();
+        const paths = result.current.files.map(f => f.path).sort();
 
         expect(paths).toEqual([
             'assets/style.css',
@@ -156,7 +89,7 @@ describe('useDrop - Mixed File/Folder Drop Regression', () => {
     });
 
     it('should handle mixed files and folders drop correctly with nested structures', async () => {
-        const ship = createMockShip();
+        const { ship } = createMockShip();
         const { result } = renderHook(() => useDrop({ ship }));
 
         // Simulate dropping:
@@ -173,39 +106,24 @@ describe('useDrop - Mixed File/Folder Drop Regression', () => {
         const imagesEntry = createMockDirectoryEntry('images', [logoEntry]);
         const assetsEntry = createMockDirectoryEntry('assets', [styleEntry, imagesEntry]);
 
-        const mockDataTransferItems = [
-            {
-                kind: 'file',
-                webkitGetAsEntry: () => indexEntry,
-                getAsFile: () => new File([''], 'index.html')
-            },
-            {
-                kind: 'file',
-                webkitGetAsEntry: () => assetsEntry,
-                getAsFile: () => null
-            },
-        ];
-
-        const mockEvent = {
-            preventDefault: vi.fn(),
-            dataTransfer: {
-                items: mockDataTransferItems,
-                files: [],
-            },
-        };
+        const mockEvent = createMockDragEvent({
+            items: [
+                createMockDataTransferItem(indexEntry, new File([''], 'index.html')),
+                createMockDataTransferItem(assetsEntry, null),
+            ],
+        });
 
         const { onDrop } = result.current.getDropzoneProps();
 
         await act(async () => {
-            await onDrop(mockEvent as any);
+            await onDrop(mockEvent);
         });
 
         await waitFor(() => {
             expect(result.current.isProcessing).toBe(false);
         });
 
-        const files = result.current.files;
-        const paths = files.map(f => f.path).sort();
+        const paths = result.current.files.map(f => f.path).sort();
 
         expect(paths).toEqual([
             'assets/images/logo.png',
@@ -222,7 +140,7 @@ describe('useDrop - Mixed File/Folder Drop Regression', () => {
      * This can happen with certain file types, browser extensions, or security policies.
      */
     it('should fallback to getAsFile when webkitGetAsEntry returns null', async () => {
-        const ship = createMockShip();
+        const { ship } = createMockShip();
         const { result } = renderHook(() => useDrop({ ship }));
 
         // Simulate dropping:
@@ -232,41 +150,24 @@ describe('useDrop - Mixed File/Folder Drop Regression', () => {
         const regularEntry = createMockFileEntry('regular-file.txt');
         const problemFile = new File(['content'], 'problem-file.txt');
 
-        const mockDataTransferItems = [
-            {
-                kind: 'file',
-                webkitGetAsEntry: () => regularEntry,
-                getAsFile: () => new File(['content'], 'regular-file.txt')
-            },
-            {
-                kind: 'file',
-                webkitGetAsEntry: () => null, // Simulate failure
-                getAsFile: () => problemFile  // Fallback should use this
-            },
-        ];
-
-        const mockEvent = {
-            preventDefault: vi.fn(),
-            dataTransfer: {
-                items: mockDataTransferItems,
-                files: [],
-            },
-        };
+        const mockEvent = createMockDragEvent({
+            items: [
+                createMockDataTransferItem(regularEntry, new File(['content'], 'regular-file.txt')),
+                createMockDataTransferItem(null, problemFile),
+            ],
+        });
 
         const { onDrop } = result.current.getDropzoneProps();
 
         await act(async () => {
-            await onDrop(mockEvent as any);
+            await onDrop(mockEvent);
         });
 
         await waitFor(() => {
             expect(result.current.isProcessing).toBe(false);
         });
 
-        const files = result.current.files;
-        const paths = files.map(f => f.path).sort();
-
-        console.log('Resulting paths:', paths);
+        const paths = result.current.files.map(f => f.path).sort();
 
         expect(paths).toEqual([
             'problem-file.txt',

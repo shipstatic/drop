@@ -2,11 +2,9 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { renderHook, act, waitFor } from '@testing-library/react';
 import { useDrop } from '@/hooks/useDrop';
 import { FILE_STATUSES } from '@/types';
-import { createMockFile, createMockFileWithPath } from '../test-utils';
-import type { Ship } from '@shipstatic/ship';
+import { createMockFile, createMockFileWithPath, createMockShip } from '../test-utils';
 
-// Mock @shipstatic/ship
-const mockGetConfig = vi.fn();
+// Module-scoped mock functions (referenced by vi.mock — cannot be moved to shared utils)
 const mockValidateFiles = vi.fn();
 
 vi.mock('@shipstatic/ship', async (importOriginal) => {
@@ -14,31 +12,15 @@ vi.mock('@shipstatic/ship', async (importOriginal) => {
   return {
     ...actual,
     validateFiles: (...args: any[]) => mockValidateFiles(...args),
-    // Explicitly keep getValidFiles from actual if possible, or use the real one if it's pure
     getValidFiles: actual.getValidFiles,
     formatFileSize: actual.formatFileSize,
     filterJunk: actual.filterJunk,
   };
 });
 
-vi.mock('fflate');
-
-// Helper to create mock Ship instance
-const createMockShip = (): Ship => ({
-  getConfig: mockGetConfig,
-} as any);
-
 describe('useDrop', () => {
   beforeEach(() => {
     // Console mocking is handled globally in setup.ts
-
-    // Default mock config - uses relaxed limits for unit tests
-    // MIME types match production to avoid false negatives with video/audio files
-    mockGetConfig.mockResolvedValue({
-      maxFileSize: 100 * 1024 * 1024,
-      maxTotalSize: 500 * 1024 * 1024,
-      maxFilesCount: 10000,
-    });
 
     // Default mock validation (all files valid)
     mockValidateFiles.mockImplementation((files) => ({
@@ -57,7 +39,7 @@ describe('useDrop', () => {
 
   describe('Initial state', () => {
     it('should initialize with empty state', () => {
-      const ship = createMockShip();
+      const { ship } = createMockShip();
       const { result } = renderHook(() => useDrop({ ship }));
 
       expect(result.current.files).toEqual([]);
@@ -66,7 +48,7 @@ describe('useDrop', () => {
     });
 
     it('should accept callback options', () => {
-      const ship = createMockShip();
+      const { ship } = createMockShip();
       const onValidationError = vi.fn();
       const onFilesReady = vi.fn();
 
@@ -82,7 +64,7 @@ describe('useDrop', () => {
 
   describe('processFiles - basic functionality', () => {
     it('should process single file successfully', async () => {
-      const ship = createMockShip();
+      const { ship, mockGetConfig } = createMockShip();
       const { result } = renderHook(() => useDrop({ ship }));
 
       const file = createMockFile('test.txt', 'hello world');
@@ -105,7 +87,7 @@ describe('useDrop', () => {
     });
 
     it('should process multiple files successfully', async () => {
-      const ship = createMockShip();
+      const { ship } = createMockShip();
       const { result } = renderHook(() => useDrop({ ship }));
 
       const files = [
@@ -130,7 +112,7 @@ describe('useDrop', () => {
     });
 
     it('should handle empty files array', async () => {
-      const ship = createMockShip();
+      const { ship } = createMockShip();
       const { result } = renderHook(() => useDrop({ ship }));
 
       await act(async () => {
@@ -142,7 +124,7 @@ describe('useDrop', () => {
     });
 
     it('should call onFilesReady callback when files are valid', async () => {
-      const ship = createMockShip();
+      const { ship } = createMockShip();
       const onFilesReady = vi.fn();
       const { result } = renderHook(() =>
         useDrop({ ship, onFilesReady })
@@ -170,7 +152,7 @@ describe('useDrop', () => {
 
   describe('File management', () => {
     it('should clear all files', async () => {
-      const ship = createMockShip();
+      const { ship } = createMockShip();
       const { result } = renderHook(() => useDrop({ ship }));
 
       const files = [
@@ -203,7 +185,7 @@ describe('useDrop', () => {
        * To add files incrementally, users should use reset() first or we'd need
        * an explicit "append" mode (which we don't have).
        */
-      const ship = createMockShip();
+      const { ship } = createMockShip();
       const { result } = renderHook(() => useDrop({ ship }));
 
       // First drop: 2 files
@@ -245,7 +227,7 @@ describe('useDrop', () => {
     });
 
     it('should get only valid files', async () => {
-      const ship = createMockShip();
+      const { ship } = createMockShip();
 
       // Mock validation with all files valid and one excluded (warnings only)
       mockValidateFiles.mockReturnValueOnce({
@@ -290,7 +272,7 @@ describe('useDrop', () => {
 
   describe('getFilesForUpload', () => {
     it('should return raw File objects from valid files', async () => {
-      const ship = createMockShip();
+      const { ship } = createMockShip();
       const { result } = renderHook(() => useDrop({ ship }));
 
       const file1 = createMockFile('test1.txt', 'content1');
@@ -313,7 +295,7 @@ describe('useDrop', () => {
     });
 
     it('should return empty array when no valid files', async () => {
-      const ship = createMockShip();
+      const { ship } = createMockShip();
       const { result } = renderHook(() => useDrop({ ship }));
 
       const filesForUpload = result.current.getFilesForUpload();
@@ -323,7 +305,7 @@ describe('useDrop', () => {
 
   describe('isInteractive and hasError', () => {
     it('should be interactive in idle state', () => {
-      const ship = createMockShip();
+      const { ship } = createMockShip();
       const { result } = renderHook(() => useDrop({ ship }));
 
       expect(result.current.isInteractive).toBe(true);
@@ -331,7 +313,7 @@ describe('useDrop', () => {
     });
 
     it('should be interactive in ready state', async () => {
-      const ship = createMockShip();
+      const { ship } = createMockShip();
       const { result } = renderHook(() => useDrop({ ship }));
 
       await act(async () => {
@@ -347,7 +329,7 @@ describe('useDrop', () => {
     });
 
     it('should have error in error state', async () => {
-      const ship = createMockShip();
+      const { ship, mockGetConfig } = createMockShip();
       const { result } = renderHook(() => useDrop({ ship }));
 
       mockGetConfig.mockRejectedValueOnce(new Error('Network error'));
@@ -367,6 +349,7 @@ describe('useDrop', () => {
         resolveConfig = resolve;
       });
 
+      const { ship, mockGetConfig } = createMockShip();
       mockGetConfig.mockImplementationOnce(() =>
         slowConfigPromise.then(() => ({
           maxFileSize: 100 * 1024 * 1024,
@@ -375,7 +358,6 @@ describe('useDrop', () => {
         }))
       );
 
-      const ship = createMockShip();
       const { result } = renderHook(() => useDrop({ ship }));
 
       let processPromise: Promise<void>;
@@ -396,7 +378,7 @@ describe('useDrop', () => {
 
   describe('stripPrefix option', () => {
     it('should strip common prefix when stripPrefix=true (default)', async () => {
-      const ship = createMockShip();
+      const { ship } = createMockShip();
       const { result } = renderHook(() => useDrop({ ship }));
 
       // Use createMockFileWithPath to properly simulate folder drag-and-drop
@@ -419,7 +401,7 @@ describe('useDrop', () => {
     });
 
     it('should not strip prefix when stripPrefix=false', async () => {
-      const ship = createMockShip();
+      const { ship } = createMockShip();
       const { result } = renderHook(() => useDrop({ ship, stripPrefix: false }));
 
       // Use createMockFileWithPath to properly simulate folder drag-and-drop
@@ -445,7 +427,7 @@ describe('useDrop', () => {
 
   describe('Edge cases and error handling', () => {
     it('should handle case when no valid files after processing', async () => {
-      const ship = createMockShip();
+      const { ship } = createMockShip();
       const onValidationError = vi.fn();
 
       // Mock validation to fail all files
@@ -481,7 +463,7 @@ describe('useDrop', () => {
     });
 
     it('should reset state when processFiles is called again', async () => {
-      const ship = createMockShip();
+      const { ship } = createMockShip();
       const { result } = renderHook(() => useDrop({ ship }));
 
       // First batch
@@ -508,7 +490,7 @@ describe('useDrop', () => {
 
   describe('Concurrency protection', () => {
     it('should ignore concurrent processFiles calls', async () => {
-      const ship = createMockShip();
+      const { ship } = createMockShip();
       const { result } = renderHook(() => useDrop({ ship }));
       const consoleWarnSpy = vi.spyOn(console, 'warn').mockImplementation(() => { });
 
@@ -545,7 +527,7 @@ describe('useDrop', () => {
     });
 
     it('should allow processFiles after previous call completes', async () => {
-      const ship = createMockShip();
+      const { ship } = createMockShip();
       const { result } = renderHook(() => useDrop({ ship }));
 
       // First call
@@ -574,7 +556,7 @@ describe('useDrop', () => {
     });
 
     it('should clear processing flag on error', async () => {
-      const ship = createMockShip();
+      const { ship, mockGetConfig } = createMockShip();
       const { result } = renderHook(() => useDrop({ ship }));
 
       // Make getConfig fail to simulate processing error
@@ -589,7 +571,7 @@ describe('useDrop', () => {
     });
 
     it('should allow processing valid files after an error', async () => {
-      const ship = createMockShip();
+      const { ship, mockGetConfig } = createMockShip();
       const { result } = renderHook(() => useDrop({ ship }));
 
       // 1. Simulate an error first
@@ -601,14 +583,6 @@ describe('useDrop', () => {
       // Should have error state
       expect(result.current.phase).toBe('error');
       expect(result.current.status?.title).toBe('Processing Failed');
-
-      // 2. Now simulate success
-      // Reset mock to working state
-      mockGetConfig.mockResolvedValue({
-        maxFileSize: 100 * 1024 * 1024,
-        maxTotalSize: 500 * 1024 * 1024,
-        maxFilesCount: 10000,
-      });
 
       await act(async () => {
         await result.current.processFiles([createMockFile('good.txt')]);
@@ -625,7 +599,7 @@ describe('useDrop', () => {
 
   describe('Source name detection', () => {
     it('should detect source name from single file', async () => {
-      const ship = createMockShip();
+      const { ship } = createMockShip();
       const { result } = renderHook(() => useDrop({ ship }));
 
       const file = createMockFile('document.pdf', 'content');
@@ -642,7 +616,7 @@ describe('useDrop', () => {
     });
 
     it('should detect source name from folder (webkitRelativePath)', async () => {
-      const ship = createMockShip();
+      const { ship } = createMockShip();
       const { result } = renderHook(() => useDrop({ ship }));
 
       const files = [
@@ -662,7 +636,7 @@ describe('useDrop', () => {
     });
 
     it('should detect source name from ZIP file (without extension)', async () => {
-      const ship = createMockShip();
+      const { ship } = createMockShip();
       const { result } = renderHook(() => useDrop({ ship }));
 
       const zipFile = createMockFile('website.zip', 'zip content', 'application/zip');
@@ -679,7 +653,7 @@ describe('useDrop', () => {
     });
 
     it('should clear source name when reset is called', async () => {
-      const ship = createMockShip();
+      const { ship } = createMockShip();
       const { result } = renderHook(() => useDrop({ ship }));
 
       const file = createMockFile('test.txt');
@@ -702,7 +676,7 @@ describe('useDrop', () => {
 
   describe('Junk file filtering', () => {
     it('should filter out .DS_Store files', async () => {
-      const ship = createMockShip();
+      const { ship } = createMockShip();
       const { result } = renderHook(() => useDrop({ ship }));
 
       const files = [
@@ -727,7 +701,7 @@ describe('useDrop', () => {
     });
 
     it('should filter out Thumbs.db and desktop.ini', async () => {
-      const ship = createMockShip();
+      const { ship } = createMockShip();
       const { result } = renderHook(() => useDrop({ ship }));
 
       const files = [
@@ -751,7 +725,7 @@ describe('useDrop', () => {
     });
 
     it('should filter out files in __MACOSX directory', async () => {
-      const ship = createMockShip();
+      const { ship } = createMockShip();
       const { result } = renderHook(() => useDrop({ ship }));
 
       const files = [
@@ -776,7 +750,7 @@ describe('useDrop', () => {
     });
 
     it('should handle all junk files being filtered out', async () => {
-      const ship = createMockShip();
+      const { ship } = createMockShip();
       const onValidationError = vi.fn();
       const { result } = renderHook(() => useDrop({ ship, onValidationError }));
 
@@ -801,7 +775,7 @@ describe('useDrop', () => {
     });
 
     it('should work correctly with mixed valid and junk files from folder drop', async () => {
-      const ship = createMockShip();
+      const { ship } = createMockShip();
       const { result } = renderHook(() => useDrop({ ship }));
 
       const files = [
