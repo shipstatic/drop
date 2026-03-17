@@ -40,7 +40,7 @@ vi.mock('@shipstatic/ship', async (importOriginal) => {
   };
 });
 
-vi.mock('jszip');
+vi.mock('fflate');
 
 const createMockShip = (): Ship => ({
   getConfig: mockGetConfig,

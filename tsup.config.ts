@@ -10,7 +10,7 @@ export default defineConfig({
   platform: 'browser',
   target: 'es2020',
   external: ['react', 'react-dom'],
-  noExternal: ['mime-db', 'jszip'],
+  noExternal: ['mime-db', 'fflate'],
   treeshake: true,
   minify: false,
 });

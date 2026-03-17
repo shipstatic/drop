@@ -2,7 +2,7 @@
  * Simple ZIP extraction utility
  * Extracts ZIP files and returns regular File objects
  */
-import JSZip from 'jszip';
+import { unzipSync } from 'fflate';
 import { getMimeType } from './mimeType';
 
 export interface ZipExtractionResult {
@@ -17,16 +17,16 @@ export interface ZipExtractionResult {
  * Returns regular File objects that can be processed like any other file
  */
 export async function extractZipToFiles(zipFile: File): Promise<ZipExtractionResult> {
-  const files: File[] = [];
-  const errors: string[] = [];
-
   try {
     const arrayBuffer = await zipFile.arrayBuffer();
-    const zip = await JSZip.loadAsync(arrayBuffer);
+    const entries = unzipSync(new Uint8Array(arrayBuffer));
 
-    for (const [path, entry] of Object.entries(zip.files)) {
+    const files: File[] = [];
+    const errors: string[] = [];
+
+    for (const [path, data] of Object.entries(entries)) {
       // Skip directories
-      if (entry.dir) continue;
+      if (path.endsWith('/') && data.length === 0) continue;
 
       // Sanitize path to prevent directory traversal attacks
       const sanitizedPath = normalizePath(path);
@@ -37,20 +37,14 @@ export async function extractZipToFiles(zipFile: File): Promise<ZipExtractionRes
         continue;
       }
 
-      try {
-        const content = await entry.async('blob');
-        const mimeType = getMimeType(sanitizedPath);
+      const mimeType = getMimeType(sanitizedPath);
 
-        // Create a regular File object with the sanitized path as the name
-        const file = new File([content], sanitizedPath, {
-          type: mimeType,
-          lastModified: entry.date?.getTime() || Date.now(),
-        });
+      // Copy to own ArrayBuffer (fflate shares backing buffers across entries)
+      const file = new File([new Uint8Array(data)], sanitizedPath, {
+        type: mimeType,
+      });
 
-        files.push(file);
-      } catch (error) {
-        errors.push(`Failed to extract ${sanitizedPath}: ${error instanceof Error ? error.message : String(error)}`);
-      }
+      files.push(file);
     }
 
     return { files, errors };
