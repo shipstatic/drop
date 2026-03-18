@@ -196,7 +196,7 @@ describe('useDrop - branch coverage', () => {
       );
 
       // Create a file that will cause an error
-      const badFile = new File(['content'], 'test.txt', { type: 'text/plain' });
+      const badFile = new File(['content'], 'index.html', { type: 'text/html' });
 
       // Mock Ship SDK to throw error
       mockGetConfig.mockRejectedValueOnce(new Error('Network error'));
@@ -298,7 +298,7 @@ describe('useDrop - branch coverage', () => {
       const consoleWarn = vi.spyOn(console, 'warn').mockImplementation(() => { });
       const { result } = renderHook(() => useDrop({ ship: mockShip }));
 
-      const file = createMockFile('test.txt', 'content');
+      const file = createMockFile('index.html', 'content');
 
       // Start both calls within act to properly handle state updates
       await act(async () => {
@@ -333,7 +333,7 @@ describe('useDrop - branch coverage', () => {
         })),
         validFiles: [],
         errors: [{
-          file: 'big.txt',
+          file: 'index.html',
           severity: 'error' as const,
           type: 'file_too_large' as const,
           message: 'File too large',
@@ -343,7 +343,7 @@ describe('useDrop - branch coverage', () => {
       }));
 
       // First, process files that will fail validation
-      const file = createMockFile('big.txt', 'content');
+      const file = createMockFile('index.html', 'content');
       await act(async () => {
         await result.current.processFiles([file]);
       });
@@ -373,7 +373,7 @@ describe('useDrop - branch coverage', () => {
       const { result } = renderHook(() => useDrop({ ship: mockShip }));
 
       // Process valid files
-      const file = createMockFile('good.txt', 'content');
+      const file = createMockFile('index.html', 'content');
       await act(async () => {
         await result.current.processFiles([file]);
       });
@@ -408,7 +408,7 @@ describe('useDrop - branch coverage', () => {
         })),
         validFiles: [],
         errors: [{
-          file: 'corrupt.txt',
+          file: 'index.html',
           severity: 'error' as const,
           type: 'processing_error' as const,
           message: 'Failed to process file',
@@ -417,7 +417,7 @@ describe('useDrop - branch coverage', () => {
         canDeploy: false,
       }));
 
-      const file = createMockFile('corrupt.txt', 'content');
+      const file = createMockFile('index.html', 'content');
       await act(async () => {
         await result.current.processFiles([file]);
       });
@@ -441,7 +441,7 @@ describe('useDrop - branch coverage', () => {
       const { result } = renderHook(() => useDrop({ ship: mockShip }));
 
       // Create empty file (0 bytes) - will be marked as EXCLUDED by validation
-      const file = createMockFile('empty.txt', '');
+      const file = createMockFile('index.html', '');
 
       await act(async () => {
         await result.current.processFiles([file]);
@@ -486,7 +486,7 @@ describe('useDrop - branch coverage', () => {
       const { result } = renderHook(() => useDrop({ ship: mockShip }));
       const props = result.current.getDropzoneProps();
 
-      const file = createMockFile('test.txt', 'content');
+      const file = createMockFile('index.html', 'content');
 
       // Start processing (don't await)
       let processPromise: Promise<void>;

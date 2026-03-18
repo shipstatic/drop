@@ -120,7 +120,7 @@ describe('State Machine - Comprehensive Transition Tests', () => {
 
         expect(result.current.phase).toBe('idle');
 
-        const file = createMockFile('test.txt', 'content');
+        const file = createMockFile('index.html', 'content');
 
         // Start processing
         act(() => {
@@ -136,7 +136,7 @@ describe('State Machine - Comprehensive Transition Tests', () => {
         const { ship } = createMockShip();
         const { result } = renderHook(() => useDrop({ ship }));
 
-        const file = createMockFile('test.txt', 'content');
+        const file = createMockFile('index.html', 'content');
 
         await act(async () => {
           await result.current.processFiles([file]);
@@ -155,7 +155,7 @@ describe('State Machine - Comprehensive Transition Tests', () => {
         const { ship } = createMockShip();
         const { result } = renderHook(() => useDrop({ ship }));
 
-        const file = createMockFile('test.txt', 'content');
+        const file = createMockFile('index.html', 'content');
 
         act(() => {
           result.current.processFiles([file]);
@@ -180,7 +180,7 @@ describe('State Machine - Comprehensive Transition Tests', () => {
           })),
           validFiles: [],
           errors: [{
-            file: 'big.txt',
+            file: 'index.html',
             message: 'File too large',
           }],
           warnings: [],
@@ -189,7 +189,7 @@ describe('State Machine - Comprehensive Transition Tests', () => {
 
         const { result } = renderHook(() => useDrop({ ship }));
 
-        const file = createMockFile('big.txt', 'huge content');
+        const file = createMockFile('index.html', 'huge content');
 
         await act(async () => {
           await result.current.processFiles([file]);
@@ -215,7 +215,7 @@ describe('State Machine - Comprehensive Transition Tests', () => {
           })),
           validFiles: [],
           errors: [{
-            file: 'bad.exe',
+            file: 'index.html',
             message: 'File extension not allowed',
           }],
           warnings: [],
@@ -225,7 +225,7 @@ describe('State Machine - Comprehensive Transition Tests', () => {
         const { result } = renderHook(() => useDrop({ ship }));
 
         await act(async () => {
-          await result.current.processFiles([createMockFile('bad.exe', 'content')]);
+          await result.current.processFiles([createMockFile('index.html', 'content')]);
         });
 
         await waitFor(() => {
@@ -246,7 +246,7 @@ describe('State Machine - Comprehensive Transition Tests', () => {
 
         // Get to ready state
         await act(async () => {
-          await result.current.processFiles([createMockFile('test.txt', 'content')]);
+          await result.current.processFiles([createMockFile('index.html', 'content')]);
         });
 
         await waitFor(() => {
@@ -270,7 +270,7 @@ describe('State Machine - Comprehensive Transition Tests', () => {
 
         // Get to ready state
         await act(async () => {
-          await result.current.processFiles([createMockFile('test.txt', 'content')]);
+          await result.current.processFiles([createMockFile('index.html', 'content')]);
         });
 
         await waitFor(() => {
@@ -301,7 +301,7 @@ describe('State Machine - Comprehensive Transition Tests', () => {
             status: FILE_STATUSES.VALIDATION_FAILED,
           })),
           validFiles: [],
-          errors: [{ file: 'bad.txt', message: 'Error' }],
+          errors: [{ file: 'index.html', message: 'Error' }],
           warnings: [],
           canDeploy: false,
         }));
@@ -310,7 +310,7 @@ describe('State Machine - Comprehensive Transition Tests', () => {
 
         // Get to error state
         await act(async () => {
-          await result.current.processFiles([createMockFile('bad.txt', 'content')]);
+          await result.current.processFiles([createMockFile('index.html', 'content')]);
         });
 
         await waitFor(() => {
@@ -336,7 +336,7 @@ describe('State Machine - Comprehensive Transition Tests', () => {
             status: FILE_STATUSES.VALIDATION_FAILED,
           })),
           validFiles: [],
-          errors: [{ file: 'bad.txt', message: 'Error' }],
+          errors: [{ file: 'index.html', message: 'Error' }],
           warnings: [],
           canDeploy: false,
         }));
@@ -345,7 +345,7 @@ describe('State Machine - Comprehensive Transition Tests', () => {
 
         // Get to error state
         await act(async () => {
-          await result.current.processFiles([createMockFile('bad.txt', 'content')]);
+          await result.current.processFiles([createMockFile('index.html', 'content')]);
         });
 
         await waitFor(() => {
@@ -373,7 +373,7 @@ describe('State Machine - Comprehensive Transition Tests', () => {
 
         // Get to ready state
         await act(async () => {
-          await result.current.processFiles([createMockFile('test.txt', 'content')]);
+          await result.current.processFiles([createMockFile('index.html', 'content')]);
         });
 
         await waitFor(() => {
@@ -399,7 +399,7 @@ describe('State Machine - Comprehensive Transition Tests', () => {
             status: FILE_STATUSES.VALIDATION_FAILED,
           })),
           validFiles: [],
-          errors: [{ file: 'bad.txt', message: 'Error' }],
+          errors: [{ file: 'index.html', message: 'Error' }],
           warnings: [],
           canDeploy: false,
         }));
@@ -408,7 +408,7 @@ describe('State Machine - Comprehensive Transition Tests', () => {
 
         // Get to error state
         await act(async () => {
-          await result.current.processFiles([createMockFile('bad.txt', 'content')]);
+          await result.current.processFiles([createMockFile('index.html', 'content')]);
         });
 
         await waitFor(() => {
@@ -456,8 +456,8 @@ describe('State Machine - Comprehensive Transition Tests', () => {
 
         const consoleWarn = vi.spyOn(console, 'warn').mockImplementation(() => {});
 
-        const file1 = createMockFile('file1.txt', 'content1');
-        const file2 = createMockFile('file2.txt', 'content2');
+        const file1 = createMockFile('index.html', 'content1');
+        const file2 = createMockFile('index.html', 'content2');
 
         // Start first process (don't await)
         act(() => {
@@ -485,7 +485,7 @@ describe('State Machine - Comprehensive Transition Tests', () => {
 
         // First process
         await act(async () => {
-          await result.current.processFiles([createMockFile('file1.txt', 'content1')]);
+          await result.current.processFiles([createMockFile('index.html', 'content1')]);
         });
 
         await waitFor(() => {
@@ -496,7 +496,7 @@ describe('State Machine - Comprehensive Transition Tests', () => {
 
         // Second process (should work now)
         await act(async () => {
-          await result.current.processFiles([createMockFile('file2.txt', 'content2')]);
+          await result.current.processFiles([createMockFile('index.html', 'content2')]);
         });
 
         await waitFor(() => {
@@ -504,7 +504,7 @@ describe('State Machine - Comprehensive Transition Tests', () => {
         });
 
         expect(result.current.files).toHaveLength(1); // Replaced, not added
-        expect(result.current.files[0].name).toBe('file2.txt');
+        expect(result.current.files[0].name).toBe('index.html');
       });
     });
 
@@ -525,7 +525,7 @@ describe('State Machine - Comprehensive Transition Tests', () => {
         );
         const { result } = renderHook(() => useDrop({ ship }));
 
-        const file = createMockFile('test.txt', 'content');
+        const file = createMockFile('index.html', 'content');
 
         // Start processing (slow)
         act(() => {
@@ -560,7 +560,7 @@ describe('State Machine - Comprehensive Transition Tests', () => {
         // Process files to ready state
         await act(async () => {
           await result.current.processFiles([
-            createMockFile('file1.txt', 'content1'),
+            createMockFile('index.html', 'content1'),
             createMockFile('file2.txt', 'content2'),
           ]);
         });
@@ -601,7 +601,7 @@ describe('State Machine - Comprehensive Transition Tests', () => {
             status: FILE_STATUSES.VALIDATION_FAILED,
           })),
           validFiles: [],
-          errors: [{ file: 'bad.txt', message: 'Error' }],
+          errors: [{ file: 'index.html', message: 'Error' }],
           warnings: [],
           canDeploy: false,
         }));
@@ -610,7 +610,7 @@ describe('State Machine - Comprehensive Transition Tests', () => {
 
         // Get to error state
         await act(async () => {
-          await result.current.processFiles([createMockFile('bad.txt', 'content')]);
+          await result.current.processFiles([createMockFile('index.html', 'content')]);
         });
 
         await waitFor(() => {
@@ -642,7 +642,7 @@ describe('State Machine - Comprehensive Transition Tests', () => {
       expect(result.current.phase).toBe('idle');
 
       act(() => {
-        result.current.processFiles([createMockFile('test.txt', 'content')]);
+        result.current.processFiles([createMockFile('index.html', 'content')]);
       });
 
       expect(result.current.isProcessing).toBe(true);
@@ -685,7 +685,7 @@ describe('State Machine - Comprehensive Transition Tests', () => {
           status: FILE_STATUSES.VALIDATION_FAILED,
         })),
         validFiles: [],
-        errors: [{ file: 'bad.txt', message: 'Error' }],
+        errors: [{ file: 'index.html', message: 'Error' }],
         warnings: [],
         canDeploy: false,
       }));
@@ -695,7 +695,7 @@ describe('State Machine - Comprehensive Transition Tests', () => {
       expect(result.current.hasError).toBe(false);
 
       await act(async () => {
-        await result.current.processFiles([createMockFile('bad.txt', 'content')]);
+        await result.current.processFiles([createMockFile('index.html', 'content')]);
       });
 
       await waitFor(() => {
@@ -735,7 +735,7 @@ describe('State Machine - Comprehensive Transition Tests', () => {
 
       // Processing - NOT interactive
       act(() => {
-        result.current.processFiles([createMockFile('test.txt', 'content')]);
+        result.current.processFiles([createMockFile('index.html', 'content')]);
       });
       expect(result.current.isInteractive).toBe(false);
       expect(result.current.phase).toBe('processing');

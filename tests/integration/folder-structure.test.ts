@@ -71,24 +71,27 @@ describe('Folder Structure Preservation', () => {
       );
 
       await act(async () => {
-        await result.current.processFiles([file]);
+        await result.current.processFiles([
+          createMockFileWithPath('index.html', 'index.html', '<html></html>'),
+          file,
+        ]);
       });
 
       await waitFor(() => {
         expect(result.current.isProcessing).toBe(false);
       });
 
-      expect(result.current.files).toHaveLength(1);
-      expect(result.current.files[0].path).toBe('mysite/src/app.js');
-      expect(result.current.files[0].name).toBe('app.js');
-      expect(result.current.files[0].status).toBe(FILE_STATUSES.READY);
+      expect(result.current.files).toHaveLength(2);
+      expect(result.current.files[1].path).toBe('mysite/src/app.js');
+      expect(result.current.files[1].name).toBe('app.js');
+      expect(result.current.files[1].status).toBe(FILE_STATUSES.READY);
     });
 
     it('should use file.name when webkitRelativePath is empty', async () => {
       const ship = createMockShip();
       const { result } = renderHook(() => useDrop({ ship }));
 
-      const file = createMockFile('standalone.js', 'content');
+      const file = createMockFile('index.html', 'content');
       // webkitRelativePath exists but is empty string (standard browser behavior)
       Object.defineProperty(file, 'webkitRelativePath', {
         value: '',
@@ -105,8 +108,8 @@ describe('Folder Structure Preservation', () => {
       });
 
       expect(result.current.files).toHaveLength(1);
-      expect(result.current.files[0].path).toBe('standalone.js');
-      expect(result.current.files[0].name).toBe('standalone.js');
+      expect(result.current.files[0].path).toBe('index.html');
+      expect(result.current.files[0].name).toBe('index.html');
     });
 
     it('should maintain folder structure for multiple files', async () => {
@@ -114,6 +117,7 @@ describe('Folder Structure Preservation', () => {
       const { result } = renderHook(() => useDrop({ ship, stripPrefix: false }));
 
       const files = [
+        createMockFileWithPath('index.html', 'index.html', '<html></html>'),
         createMockFileWithPath('index.html', 'mysite/index.html', '<!DOCTYPE html>'),
         createMockFileWithPath('app.js', 'mysite/src/app.js', 'console.log()'),
         createMockFileWithPath('style.css', 'mysite/css/style.css', 'body {}'),
@@ -127,13 +131,15 @@ describe('Folder Structure Preservation', () => {
         expect(result.current.isProcessing).toBe(false);
       });
 
-      expect(result.current.files).toHaveLength(3);
+      expect(result.current.files).toHaveLength(4);
       expect(result.current.files.map(f => f.path)).toEqual([
+        'index.html',
         'mysite/index.html',
         'mysite/src/app.js',
         'mysite/css/style.css',
       ]);
       expect(result.current.files.map(f => f.name)).toEqual([
+        'index.html',
         'index.html',
         'app.js',
         'style.css',
@@ -172,6 +178,7 @@ describe('Folder Structure Preservation', () => {
       const { result } = renderHook(() => useDrop({ ship, stripPrefix: false }));
 
       const files = [
+        createMockFileWithPath('index.html', 'index.html', '<html></html>'),
         createMockFileWithPath('index.js', 'project/src/components/Button/index.js'),
         createMockFileWithPath('styles.css', 'project/src/components/Button/styles.css'),
         createMockFileWithPath('test.js', 'project/src/components/Button/__tests__/test.js'),
@@ -185,10 +192,10 @@ describe('Folder Structure Preservation', () => {
         expect(result.current.isProcessing).toBe(false);
       });
 
-      expect(result.current.files).toHaveLength(3);
-      expect(result.current.files[0].path).toBe('project/src/components/Button/index.js');
-      expect(result.current.files[1].path).toBe('project/src/components/Button/styles.css');
-      expect(result.current.files[2].path).toBe('project/src/components/Button/__tests__/test.js');
+      expect(result.current.files).toHaveLength(4);
+      expect(result.current.files[1].path).toBe('project/src/components/Button/index.js');
+      expect(result.current.files[2].path).toBe('project/src/components/Button/styles.css');
+      expect(result.current.files[3].path).toBe('project/src/components/Button/__tests__/test.js');
     });
   });
 
@@ -198,6 +205,8 @@ describe('Folder Structure Preservation', () => {
       const { result } = renderHook(() => useDrop({ ship, stripPrefix: false }));
 
       const files = [
+        // Root index.html for validation
+        createMockFile('index.html', '<html></html>'),
         // File from folder drag (has webkitRelativePath)
         createMockFileWithPath('app.js', 'src/app.js', 'folder file'),
         // File from individual file picker (no webkitRelativePath)
@@ -212,9 +221,9 @@ describe('Folder Structure Preservation', () => {
         expect(result.current.isProcessing).toBe(false);
       });
 
-      expect(result.current.files).toHaveLength(2);
-      expect(result.current.files[0].path).toBe('src/app.js');
-      expect(result.current.files[1].path).toBe('standalone.txt');
+      expect(result.current.files).toHaveLength(3);
+      expect(result.current.files[1].path).toBe('src/app.js');
+      expect(result.current.files[2].path).toBe('standalone.txt');
     });
   });
 
@@ -256,6 +265,7 @@ describe('Folder Structure Preservation', () => {
       const { result } = renderHook(() => useDrop({ ship, stripPrefix: false }));
 
       const files = [
+        createMockFileWithPath('index.html', 'index.html', '<html></html>'),
         createMockFileWithPath('index.html', 'public/index.html'),
         createMockFileWithPath('404.html', 'public/404.html'),
         createMockFileWithPath('app.js', 'public/js/app.js'),
@@ -279,9 +289,10 @@ describe('Folder Structure Preservation', () => {
       }));
 
       // Verify Ship SDK would receive correct paths
-      expect(staticFiles[0].path).toBe('public/index.html');
-      expect(staticFiles[1].path).toBe('public/404.html');
-      expect(staticFiles[2].path).toBe('public/js/app.js');
+      expect(staticFiles[0].path).toBe('index.html');
+      expect(staticFiles[1].path).toBe('public/index.html');
+      expect(staticFiles[2].path).toBe('public/404.html');
+      expect(staticFiles[3].path).toBe('public/js/app.js');
     });
   });
 });
