@@ -28,7 +28,7 @@ import {
 } from '../utils/fileProcessing';
 import type { Ship } from '@shipstatic/ship';
 import type { ValidatableFile } from '@shipstatic/types';
-import { isShipError } from '@shipstatic/types';
+import { isShipError, hasUnbuiltMarker } from '@shipstatic/types';
 import { validateFiles, filterJunk } from '@shipstatic/ship';
 
 export interface DropOptions {
@@ -66,6 +66,8 @@ export interface DropReturn {
   sourceName: string;
   /** Flattened access to status */
   status: DropStatus | null;
+  /** Whether the dropped files need server-side building before deployment */
+  needsBuild: boolean;
 
   // Primary API: Prop getters for easy integration
   /** Get props to spread on dropzone element (handles drag & drop, optionally click) */
@@ -120,6 +122,7 @@ const initialState: DropState = {
   files: [],
   sourceName: '',
   status: null,
+  needsBuild: false,
 };
 
 export function useDrop(options: DropOptions): DropReturn {
@@ -169,6 +172,7 @@ export function useDrop(options: DropOptions): DropReturn {
       files: [],
       sourceName: '',
       status: { title: 'Processing...', details: 'Validating and preparing files.' },
+      needsBuild: false,
     });
 
     let detectedSourceName = '';
@@ -215,16 +219,29 @@ export function useDrop(options: DropOptions): DropReturn {
         allFiles.push(...newFiles);
       }
 
-      // Step 3: Filter junk files (includes unbuilt project marker detection)
+      // Step 3: Detect unbuilt project and filter junk files
       const getFilePath = (f: File) => {
         const webkitPath = (f as FileWithPath).webkitRelativePath;
         return (webkitPath && webkitPath.trim()) ? webkitPath : f.name;
       };
 
-      const filePaths = allFiles.map(getFilePath);
+      let filePaths = allFiles.map(getFilePath);
+      const needsBuild = filePaths.some(p => hasUnbuiltMarker(p));
 
-      // filterJunk rejects unbuilt projects (throws) before dot-file filter runs
-      const validPaths = new Set(filterJunk(filePaths));
+      // Strip node_modules files for build uploads (from webkitdirectory folder picker —
+      // drag-drop already skips via traverseFileTree)
+      if (needsBuild) {
+        const filtered = allFiles.filter(f => {
+          const segments = getFilePath(f).replace(/\\/g, '/').split('/');
+          return !segments.includes('node_modules');
+        });
+        allFiles.length = 0;
+        allFiles.push(...filtered);
+        filePaths = allFiles.map(getFilePath);
+      }
+
+      // filterJunk: allow unbuilt markers when server will build
+      const validPaths = new Set(filterJunk(filePaths, { allowUnbuilt: needsBuild }));
       const cleanFiles = allFiles.filter(f => validPaths.has(getFilePath(f)));
 
       // Step 4: Convert all Files to ProcessedFiles
@@ -238,6 +255,21 @@ export function useDrop(options: DropOptions): DropReturn {
 
       // Step 5: Strip common prefix if requested
       const finalFiles = stripPrefix ? stripCommonPrefix(processedFiles) : processedFiles;
+
+      // Step 5.5: Build uploads — skip deploy validation (build service produces the actual output)
+      if (needsBuild) {
+        const filesWithStatus = finalFiles.map(f => ({ ...f, status: 'ready' as FileStatus }));
+
+        setState({
+          value: 'ready',
+          files: filesWithStatus,
+          sourceName: detectedSourceName,
+          needsBuild: true,
+          status: { title: 'Ready', details: `${filesWithStatus.length} file(s) ready — project will be built` },
+        });
+        onFilesReady?.(filesWithStatus);
+        return;
+      }
 
       // Step 6: Map ProcessedFile to ValidatableFile format
       // validateFiles expects { name, size }, not { file: File }
@@ -270,6 +302,7 @@ export function useDrop(options: DropOptions): DropReturn {
           value: 'error',
           files: filesWithStatus,
           sourceName: detectedSourceName,
+          needsBuild: false,
           status: {
             title: 'Validation Failed',
             details: `${validation.errors.length} file(s) failed validation`,
@@ -298,6 +331,7 @@ export function useDrop(options: DropOptions): DropReturn {
           value: 'ready',
           files: filesWithStatus,
           sourceName: detectedSourceName,
+          needsBuild: false,
           status: {
             title: 'Ready',
             details,
@@ -321,6 +355,7 @@ export function useDrop(options: DropOptions): DropReturn {
             value: 'ready',
             files: filesWithStatus,
             sourceName: detectedSourceName,
+            needsBuild: false,
             status: {
               title: 'All files excluded',
               details: `${validation.warnings.length} file(s) excluded (empty files cannot be deployed)`,
@@ -340,6 +375,7 @@ export function useDrop(options: DropOptions): DropReturn {
             value: 'error',
             files: filesWithStatus,
             sourceName: detectedSourceName,
+            needsBuild: false,
             status: { title: noValidError.error, details: noValidError.details },
           });
           onValidationError?.(noValidError);
@@ -360,6 +396,7 @@ export function useDrop(options: DropOptions): DropReturn {
         value: 'error',
         files: [],
         sourceName: detectedSourceName,
+        needsBuild: false,
         status: {
           title: clientError.error,
           details: clientError.details,
@@ -525,6 +562,7 @@ export function useDrop(options: DropOptions): DropReturn {
     files: state.files,
     sourceName: state.sourceName,
     status: state.status,
+    needsBuild: state.needsBuild,
 
     // Primary API: Prop getters
     getDropzoneProps,

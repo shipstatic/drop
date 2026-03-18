@@ -148,6 +148,12 @@ export async function traverseFileTree(
       await readEntriesBatch();
 
       for (const childEntry of allEntries) {
+        // Skip node_modules entirely — never part of a valid deployment,
+        // and traversing it wastes time/memory for large projects (50K+ files)
+        if (childEntry.isDirectory && childEntry.name === 'node_modules') {
+          continue;
+        }
+
         // For directories: include directory name in path (we're entering it)
         // For files: don't include filename (it will be appended when processing the file)
         const entryPath = childEntry.isDirectory

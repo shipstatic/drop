@@ -23,6 +23,7 @@ export interface MockDropOptions {
   files?: ProcessedFile[];
   sourceName?: string;
   status?: DropStatus | null;
+  needsBuild?: boolean;
 }
 
 /**
@@ -49,6 +50,7 @@ export function createMockDrop(options: MockDropOptions = {}): DropReturn {
     files = [],
     sourceName = '',
     status = null,
+    needsBuild = false,
   } = options;
 
   const validFiles = files.filter(f => f.status === 'ready');
@@ -64,6 +66,7 @@ export function createMockDrop(options: MockDropOptions = {}): DropReturn {
     validFiles,
     sourceName,
     status,
+    needsBuild,
 
     // Prop getters - return minimal objects for spreading
     getDropzoneProps: (opts?: DropzonePropsOptions) => ({
