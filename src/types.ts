@@ -94,5 +94,6 @@ export interface DropState {
   files: ProcessedFile[];
   sourceName: string;
   status: DropStatus | null;
+  needsBuild: boolean;
 }
 
