@@ -67,7 +67,7 @@ describe('useDrop', () => {
       const { ship, mockGetConfig } = createMockShip();
       const { result } = renderHook(() => useDrop({ ship }));
 
-      const file = createMockFile('test.txt', 'hello world');
+      const file = createMockFile('index.html', 'hello world');
 
       await act(async () => {
         await result.current.processFiles([file]);
@@ -78,10 +78,10 @@ describe('useDrop', () => {
       });
 
       expect(result.current.files).toHaveLength(1);
-      expect(result.current.files[0].name).toBe('test.txt');
+      expect(result.current.files[0].name).toBe('index.html');
       expect(result.current.phase).toBe('ready');
       expect(result.current.files[0].status).toBe(FILE_STATUSES.READY);
-      expect(result.current.sourceName).toBe('test.txt');
+      expect(result.current.sourceName).toBe('index.html');
       expect(mockGetConfig).toHaveBeenCalled();
       expect(mockValidateFiles).toHaveBeenCalled();
     });
@@ -91,7 +91,7 @@ describe('useDrop', () => {
       const { result } = renderHook(() => useDrop({ ship }));
 
       const files = [
-        createMockFile('file1.txt', 'content1'),
+        createMockFile('index.html', 'content1'),
         createMockFile('file2.txt', 'content2'),
         createMockFile('file3.txt', 'content3'),
       ];
@@ -105,7 +105,7 @@ describe('useDrop', () => {
       });
 
       expect(result.current.files).toHaveLength(3);
-      expect(result.current.files.map(f => f.name)).toEqual(['file1.txt', 'file2.txt', 'file3.txt']);
+      expect(result.current.files.map(f => f.name)).toEqual(['index.html', 'file2.txt', 'file3.txt']);
       result.current.files.forEach(file => {
         expect(file.status).toBe(FILE_STATUSES.READY);
       });
@@ -130,7 +130,7 @@ describe('useDrop', () => {
         useDrop({ ship, onFilesReady })
       );
 
-      const file = createMockFile('test.txt', 'content');
+      const file = createMockFile('index.html', 'content');
 
       await act(async () => {
         await result.current.processFiles([file]);
@@ -142,7 +142,7 @@ describe('useDrop', () => {
 
       expect(onFilesReady).toHaveBeenCalledWith(
         expect.arrayContaining([
-          expect.objectContaining({ name: 'test.txt', status: FILE_STATUSES.READY })
+          expect.objectContaining({ name: 'index.html', status: FILE_STATUSES.READY })
         ])
       );
     });
@@ -156,7 +156,7 @@ describe('useDrop', () => {
       const { result } = renderHook(() => useDrop({ ship }));
 
       const files = [
-        createMockFile('file1.txt'),
+        createMockFile('index.html'),
         createMockFile('file2.txt'),
       ];
 
@@ -190,7 +190,7 @@ describe('useDrop', () => {
 
       // First drop: 2 files
       const firstBatch = [
-        createMockFile('file1.txt', 'content1'),
+        createMockFile('index.html', 'content1'),
         createMockFile('file2.txt', 'content2'),
       ];
 
@@ -203,11 +203,11 @@ describe('useDrop', () => {
       });
 
       expect(result.current.files).toHaveLength(2);
-      expect(result.current.files.map(f => f.name)).toEqual(['file1.txt', 'file2.txt']);
+      expect(result.current.files.map(f => f.name)).toEqual(['index.html', 'file2.txt']);
 
       // Second drop: 1 file - should REPLACE, not add
       const secondBatch = [
-        createMockFile('newfile.txt', 'new content'),
+        createMockFile('index.html', 'new content'),
       ];
 
       await act(async () => {
@@ -220,10 +220,10 @@ describe('useDrop', () => {
 
       // Should have only the new file, not 3 files
       expect(result.current.files).toHaveLength(1);
-      expect(result.current.files[0].name).toBe('newfile.txt');
+      expect(result.current.files[0].name).toBe('index.html');
 
       // Source name should also be updated to new file
-      expect(result.current.sourceName).toBe('newfile.txt');
+      expect(result.current.sourceName).toBe('index.html');
     });
 
     it('should get only valid files', async () => {
@@ -232,11 +232,11 @@ describe('useDrop', () => {
       // Mock validation with all files valid and one excluded (warnings only)
       mockValidateFiles.mockReturnValueOnce({
         files: [
-          { name: 'file1.txt', status: FILE_STATUSES.READY, statusMessage: 'Ready for upload' },
+          { name: 'index.html', status: FILE_STATUSES.READY, statusMessage: 'Ready for upload' },
           { name: 'empty.txt', status: FILE_STATUSES.EXCLUDED, statusMessage: 'File is empty' },
         ],
         validFiles: [
-          { name: 'file1.txt', status: FILE_STATUSES.READY, statusMessage: 'Ready for upload' },
+          { name: 'index.html', status: FILE_STATUSES.READY, statusMessage: 'Ready for upload' },
         ],
         errors: [],
         warnings: [
@@ -250,7 +250,7 @@ describe('useDrop', () => {
       );
 
       const files = [
-        createMockFile('file1.txt', 'content'),
+        createMockFile('index.html', 'content'),
         createMockFile('empty.txt', ''),
       ];
 
@@ -265,7 +265,7 @@ describe('useDrop', () => {
       // Should only get files with 'ready' status, excluding warnings/excluded files
       const validFiles = result.current.validFiles;
       expect(validFiles).toHaveLength(1);
-      expect(validFiles[0].name).toBe('file1.txt');
+      expect(validFiles[0].name).toBe('index.html');
       expect(validFiles[0].status).toBe(FILE_STATUSES.READY);
     });
   });
@@ -275,7 +275,7 @@ describe('useDrop', () => {
       const { ship } = createMockShip();
       const { result } = renderHook(() => useDrop({ ship }));
 
-      const file1 = createMockFile('test1.txt', 'content1');
+      const file1 = createMockFile('index.html', 'content1');
       const file2 = createMockFile('test2.txt', 'content2');
 
       await act(async () => {
@@ -290,7 +290,7 @@ describe('useDrop', () => {
       expect(filesForUpload).toHaveLength(2);
       expect(filesForUpload[0]).toBeInstanceOf(File);
       expect(filesForUpload[1]).toBeInstanceOf(File);
-      expect(filesForUpload[0].name).toBe('test1.txt');
+      expect(filesForUpload[0].name).toBe('index.html');
       expect(filesForUpload[1].name).toBe('test2.txt');
     });
 
@@ -317,7 +317,7 @@ describe('useDrop', () => {
       const { result } = renderHook(() => useDrop({ ship }));
 
       await act(async () => {
-        await result.current.processFiles([createMockFile('test.txt')]);
+        await result.current.processFiles([createMockFile('index.html')]);
       });
 
       await waitFor(() => {
@@ -335,7 +335,7 @@ describe('useDrop', () => {
       mockGetConfig.mockRejectedValueOnce(new Error('Network error'));
 
       await act(async () => {
-        await result.current.processFiles([createMockFile('test.txt')]);
+        await result.current.processFiles([createMockFile('index.html')]);
       });
 
       expect(result.current.phase).toBe('error');
@@ -362,7 +362,7 @@ describe('useDrop', () => {
 
       let processPromise: Promise<void>;
       act(() => {
-        processPromise = result.current.processFiles([createMockFile('test.txt')]);
+        processPromise = result.current.processFiles([createMockFile('index.html')]);
       });
 
       expect(result.current.phase).toBe('processing');
@@ -406,6 +406,7 @@ describe('useDrop', () => {
 
       // Use createMockFileWithPath to properly simulate folder drag-and-drop
       const files = [
+        createMockFile('index.html', '<html></html>'),
         createMockFileWithPath('index.html', 'myProject/index.html', 'html content'),
         createMockFileWithPath('app.js', 'myProject/src/app.js', 'js content'),
       ];
@@ -418,8 +419,8 @@ describe('useDrop', () => {
         expect(result.current.isProcessing).toBe(false);
       });
 
-      expect(result.current.files[0].path).toBe('myProject/index.html');
-      expect(result.current.files[1].path).toBe('myProject/src/app.js');
+      expect(result.current.files[1].path).toBe('myProject/index.html');
+      expect(result.current.files[2].path).toBe('myProject/src/app.js');
     });
   });
 
@@ -433,10 +434,12 @@ describe('useDrop', () => {
       // Mock validation to fail all files
       mockValidateFiles.mockReturnValueOnce({
         files: [
+          { name: 'index.html', status: FILE_STATUSES.VALIDATION_FAILED, statusMessage: 'File size exceeds limit' },
           { name: 'huge.txt', status: FILE_STATUSES.VALIDATION_FAILED, statusMessage: 'File size exceeds limit' },
         ],
         validFiles: [],
         errors: [
+          { file: 'index.html', severity: 'error' as const, type: 'file_too_large' as const, message: 'File size exceeds limit' },
           { file: 'huge.txt', severity: 'error' as const, type: 'file_too_large' as const, message: 'File size exceeds limit' },
         ],
         warnings: [],
@@ -447,10 +450,11 @@ describe('useDrop', () => {
         useDrop({ ship, onValidationError })
       );
 
+      const indexFile = createMockFile('index.html', '<html></html>');
       const file = createMockFile('huge.txt', 'x'.repeat(1000));
 
       await act(async () => {
-        await result.current.processFiles([file]);
+        await result.current.processFiles([indexFile, file]);
       });
 
       await waitFor(() => {
@@ -458,7 +462,7 @@ describe('useDrop', () => {
       });
 
       expect(result.current.status?.title).toBe('Validation Failed');
-      expect(result.current.files).toHaveLength(1);
+      expect(result.current.files).toHaveLength(2);
       expect(result.current.validFiles).toHaveLength(0);
     });
 
@@ -468,7 +472,7 @@ describe('useDrop', () => {
 
       // First batch
       await act(async () => {
-        await result.current.processFiles([createMockFile('file1.txt')]);
+        await result.current.processFiles([createMockFile('index.html')]);
       });
 
       await waitFor(() => {
@@ -477,14 +481,14 @@ describe('useDrop', () => {
 
       // Second batch should reset
       await act(async () => {
-        await result.current.processFiles([createMockFile('file2.txt')]);
+        await result.current.processFiles([createMockFile('index.html')]);
       });
 
       await waitFor(() => {
         expect(result.current.files).toHaveLength(1);
       });
 
-      expect(result.current.files[0].name).toBe('file2.txt');
+      expect(result.current.files[0].name).toBe('index.html');
     });
   });
 
@@ -494,8 +498,8 @@ describe('useDrop', () => {
       const { result } = renderHook(() => useDrop({ ship }));
       const consoleWarnSpy = vi.spyOn(console, 'warn').mockImplementation(() => { });
 
-      const file1 = createMockFile('file1.txt');
-      const file2 = createMockFile('file2.txt');
+      const file1 = createMockFile('index.html');
+      const file2 = createMockFile('index.html');
 
       // Start first processing (don't await yet)
       const promise1 = act(async () => {
@@ -521,7 +525,7 @@ describe('useDrop', () => {
 
       // Should only have files from first call
       expect(result.current.files).toHaveLength(1);
-      expect(result.current.files[0].name).toBe('file1.txt');
+      expect(result.current.files[0].name).toBe('index.html');
       expect(result.current.files[0].status).toBe(FILE_STATUSES.READY);
       consoleWarnSpy.mockRestore();
     });
@@ -532,7 +536,7 @@ describe('useDrop', () => {
 
       // First call
       await act(async () => {
-        await result.current.processFiles([createMockFile('file1.txt')]);
+        await result.current.processFiles([createMockFile('index.html')]);
       });
 
       await waitFor(() => {
@@ -540,11 +544,11 @@ describe('useDrop', () => {
       });
 
       expect(result.current.files).toHaveLength(1);
-      expect(result.current.files[0].name).toBe('file1.txt');
+      expect(result.current.files[0].name).toBe('index.html');
 
       // Second call should work fine
       await act(async () => {
-        await result.current.processFiles([createMockFile('file2.txt')]);
+        await result.current.processFiles([createMockFile('index.html')]);
       });
 
       await waitFor(() => {
@@ -552,7 +556,7 @@ describe('useDrop', () => {
       });
 
       expect(result.current.files).toHaveLength(1);
-      expect(result.current.files[0].name).toBe('file2.txt');
+      expect(result.current.files[0].name).toBe('index.html');
     });
 
     it('should clear processing flag on error', async () => {
@@ -562,7 +566,7 @@ describe('useDrop', () => {
       // Make getConfig fail to simulate processing error
       mockGetConfig.mockRejectedValueOnce(new Error('Config fetch failed'));
 
-      const file = createMockFile('test.txt');
+      const file = createMockFile('index.html');
 
       await act(async () => {
         await result.current.processFiles([file]);
@@ -577,7 +581,7 @@ describe('useDrop', () => {
       // 1. Simulate an error first
       mockGetConfig.mockRejectedValueOnce(new Error('Config fetch failed'));
       await act(async () => {
-        await result.current.processFiles([createMockFile('bad.txt')]);
+        await result.current.processFiles([createMockFile('index.html')]);
       });
 
       // Should have error state
@@ -585,7 +589,7 @@ describe('useDrop', () => {
       expect(result.current.status?.title).toBe('Processing Failed');
 
       await act(async () => {
-        await result.current.processFiles([createMockFile('good.txt')]);
+        await result.current.processFiles([createMockFile('index.html')]);
       });
 
       await waitFor(() => {
@@ -593,7 +597,7 @@ describe('useDrop', () => {
       });
 
       expect(result.current.files).toHaveLength(1);
-      expect(result.current.files[0].name).toBe('good.txt');
+      expect(result.current.files[0].name).toBe('index.html');
     });
   });
 
@@ -705,6 +709,7 @@ describe('useDrop', () => {
       const { result } = renderHook(() => useDrop({ ship }));
 
       const files = [
+        createMockFile('index.html', '<html></html>'),
         createMockFile('document.pdf', 'content'),
         createMockFile('Thumbs.db', 'windows junk'),
         createMockFile('desktop.ini', 'windows junk'),
@@ -719,9 +724,9 @@ describe('useDrop', () => {
         expect(result.current.isProcessing).toBe(false);
       });
 
-      expect(result.current.files).toHaveLength(2);
+      expect(result.current.files).toHaveLength(3);
       const fileNames = result.current.files.map(f => f.name);
-      expect(fileNames).toEqual(['document.pdf', 'image.png']);
+      expect(fileNames).toEqual(['index.html', 'document.pdf', 'image.png']);
     });
 
     it('should filter out files in __MACOSX directory', async () => {

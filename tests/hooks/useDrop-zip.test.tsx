@@ -83,6 +83,7 @@ describe('useDrop - ZIP File Handling', () => {
 
     // Multiple files including one ZIP
     const files = [
+      createMockFile('index.html', '<html></html>'),
       createMockFile('document.pdf', 'pdf content', 'application/pdf'),
       createMockFile('archive.zip', 'zip content', 'application/zip'),
       createMockFile('image.png', 'png content', 'image/png'),
@@ -96,9 +97,9 @@ describe('useDrop - ZIP File Handling', () => {
       expect(result.current.isProcessing).toBe(false);
     });
 
-    // Should have 3 files (ZIP not extracted)
-    expect(result.current.files).toHaveLength(3);
-    expect(result.current.files.map(f => f.name)).toEqual(['document.pdf', 'archive.zip', 'image.png']);
+    // Should have 4 files (ZIP not extracted)
+    expect(result.current.files).toHaveLength(4);
+    expect(result.current.files.map(f => f.name)).toEqual(['index.html', 'document.pdf', 'archive.zip', 'image.png']);
 
     // Verify that extractZipToFiles was NOT called
     expect(extractSpy).not.toHaveBeenCalled();
@@ -114,6 +115,7 @@ describe('useDrop - ZIP File Handling', () => {
     const extractSpy = vi.spyOn(await import('@/utils/zipExtractor'), 'extractZipToFiles');
 
     const files = [
+      createMockFile('index.html', '<html></html>'),
       createMockFile('archive1.zip', 'zip content 1', 'application/zip'),
       createMockFile('archive2.zip', 'zip content 2', 'application/zip'),
     ];
@@ -126,9 +128,9 @@ describe('useDrop - ZIP File Handling', () => {
       expect(result.current.isProcessing).toBe(false);
     });
 
-    // Should have 2 files (ZIPs not extracted)
-    expect(result.current.files).toHaveLength(2);
-    expect(result.current.files.map(f => f.name)).toEqual(['archive1.zip', 'archive2.zip']);
+    // Should have 3 files (ZIPs not extracted)
+    expect(result.current.files).toHaveLength(3);
+    expect(result.current.files.map(f => f.name)).toEqual(['index.html', 'archive1.zip', 'archive2.zip']);
 
     // Verify that extractZipToFiles was NOT called
     expect(extractSpy).not.toHaveBeenCalled();
@@ -204,6 +206,7 @@ describe('useDrop - ZIP File Handling', () => {
     const extractSpy = vi.spyOn(await import('@/utils/zipExtractor'), 'extractZipToFiles');
     extractSpy.mockResolvedValue({
       files: [
+        createMockFileWithPath('index.html', 'index.html', '<html></html>', 'text/html'),
         createMockFileWithPath('index.html', 'dist/index.html', 'html', 'text/html'),
         createMockFileWithPath('app.js', 'dist/assets/app.js', 'js', 'application/javascript'),
       ],
@@ -221,10 +224,11 @@ describe('useDrop - ZIP File Handling', () => {
     });
 
     // Verify files retain original paths (dist/ prefix preserved)
-    expect(result.current.files).toHaveLength(2);
+    expect(result.current.files).toHaveLength(3);
     expect(result.current.files.map(f => f.path).sort()).toEqual([
       'dist/assets/app.js',
       'dist/index.html',
+      'index.html',
     ]);
 
     extractSpy.mockRestore();

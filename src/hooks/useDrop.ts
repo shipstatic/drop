@@ -147,7 +147,7 @@ export function useDrop(options: DropOptions): DropReturn {
   const hasError = state.value === 'error';
 
   // Computed valid files — inline filter since ProcessedFile has wider status type than ValidatableFile
-  const validFiles = useMemo(() => state.files.filter(f => f.status === 'ready'), [state.files]);
+  const validFiles = useMemo(() => state.files.filter(f => f.status === FILE_STATUSES.READY), [state.files]);
 
   // Get raw File objects for Ship SDK upload
   const getFilesForUpload = useCallback(() => {
@@ -245,8 +245,7 @@ export function useDrop(options: DropOptions): DropReturn {
       const cleanFiles = allFiles.filter(f => validPaths.has(getFilePath(f)));
 
       // Step 4: Convert all Files to ProcessedFiles
-      // NOTE: We no longer filter empty files here - validation will handle them
-      // Empty files will be marked as EXCLUDED with warnings (not errors)
+      // Empty files are kept — validation will mark them as EXCLUDED with warnings
       setState(prev => ({
         ...prev,
         status: { title: 'Processing...', details: 'Processing files...' },
@@ -256,9 +255,48 @@ export function useDrop(options: DropOptions): DropReturn {
       // Step 5: Strip common prefix if requested
       const finalFiles = stripPrefix ? stripCommonPrefix(processedFiles) : processedFiles;
 
-      // Step 5.5: Build uploads — skip deploy validation (build service produces the actual output)
+      // Step 6: Validate entry point
+      if (finalFiles.length > 0) {
+        const hasIndexHtml = needsBuild
+          ? finalFiles.some(f => f.path === 'index.html' || f.path.endsWith('/index.html'))
+          : finalFiles.some(f => f.path === 'index.html');
+
+        if (!hasIndexHtml) {
+          const message = needsBuild
+            ? 'No index.html found — every web project needs an index.html entry point'
+            : 'No index.html at root — the entry point must be in the top-level directory';
+
+          const filesWithStatus = finalFiles.map(f => ({
+            ...f,
+            status: FILE_STATUSES.VALIDATION_FAILED,
+            statusMessage: message,
+          }));
+
+          setState({
+            value: 'error',
+            files: filesWithStatus,
+            sourceName: detectedSourceName,
+            needsBuild,
+            status: {
+              title: 'Validation Failed',
+              details: message,
+              errors: [message],
+            },
+          });
+
+          onValidationError?.({
+            error: 'Validation Failed',
+            details: message,
+            errors: [message],
+            isClientError: true,
+          });
+          return;
+        }
+      }
+
+      // Step 7: Build uploads — skip deploy validation (build service produces the actual output)
       if (needsBuild) {
-        const filesWithStatus = finalFiles.map(f => ({ ...f, status: 'ready' as FileStatus }));
+        const filesWithStatus = finalFiles.map(f => ({ ...f, status: FILE_STATUSES.READY }));
 
         setState({
           value: 'ready',
@@ -271,7 +309,7 @@ export function useDrop(options: DropOptions): DropReturn {
         return;
       }
 
-      // Step 6: Map ProcessedFile to ValidatableFile format
+      // Step 8: Map ProcessedFile to ValidatableFile format
       // validateFiles expects { name, size }, not { file: File }
       // IMPORTANT: Use f.path (full path) not f.file.name (filename only) to match server validation
       const validatableFiles: ValidatableFile[] = finalFiles.map(f => ({
@@ -279,7 +317,7 @@ export function useDrop(options: DropOptions): DropReturn {
         size: f.file.size,
       }));
 
-      // Step 7: Validate all files using Ship SDK's config
+      // Step 9: Validate all files using Ship SDK's config
       const config = await ship.getConfig();
       const validation = validateFiles(validatableFiles, config);
 
@@ -342,7 +380,7 @@ export function useDrop(options: DropOptions): DropReturn {
         });
 
         onFilesReady?.(filesWithStatus.filter((f, idx) =>
-          validation.files[idx]?.status === 'ready'
+          validation.files[idx]?.status === FILE_STATUSES.READY
         ));
 
       } else {

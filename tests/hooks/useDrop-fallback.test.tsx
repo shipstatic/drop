@@ -144,15 +144,15 @@ describe('useDrop - Mixed File/Folder Drop Regression', () => {
         const { result } = renderHook(() => useDrop({ ship }));
 
         // Simulate dropping:
-        // - regular-file.txt (webkitGetAsEntry works)
+        // - index.html (webkitGetAsEntry works)
         // - problem-file.txt (webkitGetAsEntry returns null)
 
-        const regularEntry = createMockFileEntry('regular-file.txt');
+        const regularEntry = createMockFileEntry('index.html');
         const problemFile = new File(['content'], 'problem-file.txt');
 
         const mockEvent = createMockDragEvent({
             items: [
-                createMockDataTransferItem(regularEntry, new File(['content'], 'regular-file.txt')),
+                createMockDataTransferItem(regularEntry, new File(['content'], 'index.html')),
                 createMockDataTransferItem(null, problemFile),
             ],
         });
@@ -170,8 +170,8 @@ describe('useDrop - Mixed File/Folder Drop Regression', () => {
         const paths = result.current.files.map(f => f.path).sort();
 
         expect(paths).toEqual([
+            'index.html',
             'problem-file.txt',
-            'regular-file.txt',
         ]);
     });
 });

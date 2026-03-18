@@ -65,14 +65,29 @@ Convenience booleans: `isProcessing`, `isDragging`, `isInteractive` (idle/draggi
 ```
 1. Files dropped/selected
 2. Extract ZIP if single ZIP file
-3. Filter junk (filterJunk)
-4. Create ProcessedFile[] with paths
-5. Strip common directory prefix
-6. Validate (validateFiles + ship.getConfig())
-7. Transition to ready/error
+3. Detect unbuilt project (hasUnbuiltMarker) → needsBuild
+4. Strip node_modules files if needsBuild
+5. Filter junk (filterJunk, allowUnbuilt when needsBuild)
+6. Create ProcessedFile[] with paths
+7. Strip common directory prefix
+8. Validate entry point (index.html at root for built sites, anywhere for unbuilt projects)
+9. If needsBuild: skip validation → ready (build service validates output)
+10. Else: validate (validateFiles + ship.getConfig()) → ready/error
 ```
 
 **ZIP behavior:** Single ZIP → extract contents. Multiple files including ZIPs → treat ZIPs as regular files.
+
+### Build-on-Upload Detection
+
+Drop detects unbuilt projects (source code with `package.json`/`node_modules`) and surfaces a `needsBuild: boolean` signal on `DropReturn`. When `needsBuild` is true:
+
+- `traverseFileTree` skips `node_modules` directories entirely (performance — 50K+ files)
+- Remaining `node_modules` files (from `webkitdirectory` folder picker) are stripped
+- `filterJunk` runs with `allowUnbuilt: true` (no throw on markers)
+- Deploy validation is skipped — source files aren't deploy output
+- All files go straight to `ready` status
+
+The web app reads `drop.needsBuild` and passes `build: true, prerender: true` to the SDK. Drop doesn't know about `build`/`prerender` — it only detects and signals.
 
 ## Prop Getters API
 

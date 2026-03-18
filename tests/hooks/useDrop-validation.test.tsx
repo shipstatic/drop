@@ -53,7 +53,7 @@ describe('useDrop - Validation', () => {
     // Mock validation to fail with count error
     mockValidateFiles.mockReturnValueOnce({
       files: [
-        { name: 'file1.txt', status: FILE_STATUSES.VALIDATION_FAILED, statusMessage: 'File count exceeded' },
+        { name: 'index.html', status: FILE_STATUSES.VALIDATION_FAILED, statusMessage: 'File count exceeded' },
         { name: 'file2.txt', status: FILE_STATUSES.VALIDATION_FAILED, statusMessage: 'File count exceeded' },
         { name: 'file3.txt', status: FILE_STATUSES.VALIDATION_FAILED, statusMessage: 'File count exceeded' },
       ],
@@ -73,7 +73,7 @@ describe('useDrop - Validation', () => {
     );
 
     const files = [
-      createMockFile('file1.txt'),
+      createMockFile('index.html'),
       createMockFile('file2.txt'),
       createMockFile('file3.txt'),
     ];
@@ -180,13 +180,13 @@ describe('useDrop - Validation', () => {
     // Mock validation: empty files are warnings (not errors) but result in no valid files
     mockValidateFiles.mockReturnValueOnce({
       files: [
-        { name: 'empty.txt', status: FILE_STATUSES.EXCLUDED, statusMessage: 'File is empty (0 bytes) and cannot be deployed due to storage limitations' },
+        { name: 'index.html', status: FILE_STATUSES.EXCLUDED, statusMessage: 'File is empty (0 bytes) and cannot be deployed due to storage limitations' },
       ],
       validFiles: [],
       errors: [],  // No errors (empty files are warnings)
       warnings: [   // Empty files generate warnings
         {
-          file: 'empty.txt',
+          file: 'index.html',
           message: 'File is empty (0 bytes) and cannot be deployed due to storage limitations'
         }
       ],
@@ -195,7 +195,7 @@ describe('useDrop - Validation', () => {
 
     const { result } = renderHook(() => useDrop({ ship }));
 
-    const file = createMockFile('empty.txt', '');
+    const file = createMockFile('index.html', '');
 
     await act(async () => {
       await result.current.processFiles([file]);
@@ -220,11 +220,14 @@ describe('useDrop - Validation', () => {
 
     const { result } = renderHook(() => useDrop({ ship }));
 
-    // Create a file with application/octet-stream MIME type (like extensionless LICENSE)
-    const file = createMockFile('LICENSE', 'MIT License...', 'application/octet-stream');
+    // Create files — index.html required at root, plus a file with application/octet-stream MIME type
+    const files = [
+      createMockFile('index.html', '<html></html>'),
+      createMockFile('LICENSE', 'MIT License...', 'application/octet-stream'),
+    ];
 
     await act(async () => {
-      await result.current.processFiles([file]);
+      await result.current.processFiles(files);
     });
 
     await waitFor(() => {
@@ -233,14 +236,14 @@ describe('useDrop - Validation', () => {
 
     // Should transition to ready state (file accepted — no MIME type validation)
     expect(result.current.phase).toBe('ready');
-    expect(result.current.files).toHaveLength(1);
-    expect(result.current.files[0].status).toBe(FILE_STATUSES.READY);
+    expect(result.current.files).toHaveLength(2);
+    expect(result.current.files[1].status).toBe(FILE_STATUSES.READY);
 
     // ValidatableFile no longer includes type — only name and size
     const validateCall = mockValidateFiles.mock.calls[0];
     const filesPassedToValidate = validateCall[0];
-    expect(filesPassedToValidate[0].name).toBe('LICENSE');
-    expect(filesPassedToValidate[0].size).toBeGreaterThan(0);
+    expect(filesPassedToValidate[1].name).toBe('LICENSE');
+    expect(filesPassedToValidate[1].size).toBeGreaterThan(0);
   });
 
   it('should reject files with unsafe characters in directory names', async () => {
@@ -250,6 +253,7 @@ describe('useDrop - Validation', () => {
     // Mock validation to fail with unsafe characters error (matches actual validation behavior)
     mockValidateFiles.mockReturnValueOnce({
       files: [
+        { name: 'index.html', status: FILE_STATUSES.READY, statusMessage: 'Ready for upload' },
         { name: 'app/page/file?.js', status: FILE_STATUSES.VALIDATION_FAILED, statusMessage: 'File name contains unsafe characters' },
       ],
       validFiles: [],
@@ -267,7 +271,8 @@ describe('useDrop - Validation', () => {
       useDrop({ ship, onValidationError, stripPrefix: false })  // Disable prefix stripping to test full path validation
     );
 
-    // Create a file with unsafe characters in the path
+    // Create files — index.html required at root, plus a file with unsafe characters in the path
+    const indexFile = createMockFile('index.html', '<html></html>');
     const file = createMockFileWithPath(
       'file?.js',
       'app/page/file?.js',
@@ -276,7 +281,7 @@ describe('useDrop - Validation', () => {
     );
 
     await act(async () => {
-      await result.current.processFiles([file]);
+      await result.current.processFiles([indexFile, file]);
     });
 
     await waitFor(() => {
@@ -286,13 +291,155 @@ describe('useDrop - Validation', () => {
     expect(result.current.phase).toBe('error');
     expect(result.current.status?.title).toBe('Validation Failed');
     expect(onValidationError).toHaveBeenCalled();
-    expect(result.current.files[0].status).toBe(FILE_STATUSES.VALIDATION_FAILED);
+    expect(result.current.files[1].status).toBe(FILE_STATUSES.VALIDATION_FAILED);
 
     // Critical assertion: Verify that validateFiles was called with the FULL PATH, not just filename
     // This ensures we validate 'app/page/file?.js' not 'file?.js'
     const validateCall = mockValidateFiles.mock.calls[0];
     const filesPassedToValidate = validateCall[0];
-    expect(filesPassedToValidate[0].name).toBe('app/page/file?.js');
+    expect(filesPassedToValidate[1].name).toBe('app/page/file?.js');
+  });
+
+  it('should reject built site without index.html at root', async () => {
+    const { ship } = createMockShip();
+    const onValidationError = vi.fn();
+
+    const { result } = renderHook(() =>
+      useDrop({ ship, onValidationError })
+    );
+
+    const files = [
+      createMockFile('style.css', 'body {}'),
+      createMockFile('app.js', 'console.log("hi")'),
+    ];
+
+    await act(async () => {
+      await result.current.processFiles(files);
+    });
+
+    await waitFor(() => {
+      expect(result.current.isProcessing).toBe(false);
+    });
+
+    expect(result.current.phase).toBe('error');
+    expect(result.current.status?.title).toBe('Validation Failed');
+    expect(result.current.status?.details).toContain('No index.html at root');
+    expect(onValidationError).toHaveBeenCalled();
+    // Files are preserved in error state so the user can see what they dropped
+    expect(result.current.files).toHaveLength(2);
+    expect(result.current.files[0].status).toBe(FILE_STATUSES.VALIDATION_FAILED);
+  });
+
+  it('should accept built site with index.html at root', async () => {
+    const { ship } = createMockShip();
+
+    const { result } = renderHook(() => useDrop({ ship }));
+
+    const files = [
+      createMockFile('index.html', '<html></html>'),
+      createMockFile('style.css', 'body {}'),
+    ];
+
+    await act(async () => {
+      await result.current.processFiles(files);
+    });
+
+    await waitFor(() => {
+      expect(result.current.isProcessing).toBe(false);
+    });
+
+    expect(result.current.phase).toBe('ready');
+  });
+
+  it('should reject built site with index.html only in subdirectory', async () => {
+    const { ship } = createMockShip();
+    const onValidationError = vi.fn();
+
+    const { result } = renderHook(() =>
+      useDrop({ ship, onValidationError })
+    );
+
+    // Simulate a folder drop where stripCommonPrefix removes the common "dist/" prefix
+    // but index.html is nested inside a subdirectory
+    const files = [
+      createMockFileWithPath('style.css', 'dist/style.css', 'body {}'),
+      createMockFileWithPath('index.html', 'dist/public/index.html', '<html></html>'),
+    ];
+
+    await act(async () => {
+      await result.current.processFiles(files);
+    });
+
+    await waitFor(() => {
+      expect(result.current.isProcessing).toBe(false);
+    });
+
+    expect(result.current.phase).toBe('error');
+    expect(result.current.status?.title).toBe('Validation Failed');
+    expect(result.current.status?.details).toContain('No index.html at root');
+    // Files are preserved — user sees what they dropped
+    expect(result.current.files).toHaveLength(2);
+  });
+
+  it('should reject unbuilt project without index.html anywhere', async () => {
+    const { ship } = createMockShip();
+    const onValidationError = vi.fn();
+
+    const { result } = renderHook(() =>
+      useDrop({ ship, onValidationError })
+    );
+
+    // node_modules triggers needsBuild, but no index.html anywhere
+    const files = [
+      createMockFileWithPath('package.json', 'myapp/package.json', '{}'),
+      createMockFileWithPath('app.js', 'myapp/src/app.js', 'console.log("hi")'),
+      createMockFileWithPath('index.js', 'myapp/node_modules/.pnpm/react@19/node_modules/react/index.js', 'react'),
+    ];
+
+    await act(async () => {
+      await result.current.processFiles(files);
+    });
+
+    await waitFor(() => {
+      expect(result.current.isProcessing).toBe(false);
+    });
+
+    expect(result.current.phase).toBe('error');
+    expect(result.current.status?.title).toBe('Validation Failed');
+    expect(result.current.status?.details).toContain('No index.html found');
+    expect(onValidationError).toHaveBeenCalled();
+    // Files are preserved (node_modules stripped, 2 source files remain)
+    expect(result.current.files).toHaveLength(2);
+    expect(result.current.files[0].status).toBe(FILE_STATUSES.VALIDATION_FAILED);
+  });
+
+  it('should accept unbuilt project with index.html in subdirectory', async () => {
+    const { ship } = createMockShip();
+    const onFilesReady = vi.fn();
+
+    const { result } = renderHook(() =>
+      useDrop({ ship, onFilesReady })
+    );
+
+    // node_modules triggers needsBuild, index.html is nested in public/
+    const files = [
+      createMockFileWithPath('package.json', 'myapp/package.json', '{}'),
+      createMockFileWithPath('index.html', 'myapp/public/index.html', '<html></html>'),
+      createMockFileWithPath('App.tsx', 'myapp/src/App.tsx', 'export default function App() {}'),
+      createMockFileWithPath('index.js', 'myapp/node_modules/.pnpm/react@19/node_modules/react/index.js', 'react'),
+    ];
+
+    await act(async () => {
+      await result.current.processFiles(files);
+    });
+
+    await waitFor(() => {
+      expect(result.current.isProcessing).toBe(false);
+    });
+
+    expect(result.current.phase).toBe('ready');
+    expect(result.current.needsBuild).toBe(true);
+    expect(onFilesReady).toHaveBeenCalled();
   });
 
   it('should detect unbuilt project with node_modules and set needsBuild', async () => {
