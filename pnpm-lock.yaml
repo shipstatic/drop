@@ -9,8 +9,8 @@ importers:
   .:
     dependencies:
       '@shipstatic/ship':
-        specifier: ^0.9.1
-        version: 0.9.1(typescript@5.9.3)
+        specifier: ^0.9.6
+        version: 0.9.6(typescript@5.9.3)
       fflate:
         specifier: ^0.8.2
         version: 0.8.2
@@ -19,8 +19,8 @@ importers:
         version: 1.54.0
     devDependencies:
       '@shipstatic/types':
-        specifier: ^0.9.1
-        version: 0.9.1
+        specifier: ^0.9.8
+        version: 0.9.8
       '@testing-library/jest-dom':
         specifier: ^6.9.1
         version: 6.9.1
@@ -477,13 +477,13 @@ packages:
     cpu: [x64]
     os: [win32]
 
-  '@shipstatic/ship@0.9.1':
-    resolution: {integrity: sha512-V/UUdI+98+TXK1BzsoGv1A33UYIq+0Zh/3+8wiURVCK3Q5/k5oDvz8wey2d7sx68S0rOwE7IHfbYeytZmaKGNQ==}
+  '@shipstatic/ship@0.9.6':
+    resolution: {integrity: sha512-jfLXBd2om2DChaXAkqLxtemjFEsZbR0bGo4jpjCbj/Sn9A718uSUCqSNXnzKhBLmvJ12JenxlzKNOdhrV6P8aw==}
     engines: {node: '>=20.0.0'}
     hasBin: true
 
-  '@shipstatic/types@0.9.1':
-    resolution: {integrity: sha512-AhfHt79HnMBDIDjfmE4noi7+DGTLedDQpZC9WUAlRyJFv0KJ6+JUetxNhZwnR1399dIsPSGZUV9BIHXa+aFyvQ==}
+  '@shipstatic/types@0.9.8':
+    resolution: {integrity: sha512-LyNUM0RysWyxtzYfIGpjWRJwM1zY5P+zvnPsOWIhdoZoqvDDtFj7l2JkIW+6bf+oPiIs38kVAMYatYZh/WyynA==}
     engines: {node: '>=20.0.0'}
 
   '@testing-library/dom@10.4.1':
@@ -1713,7 +1713,7 @@ snapshots:
   '@rollup/rollup-win32-x64-msvc@4.60.1':
     optional: true
 
-  '@shipstatic/ship@0.9.1(typescript@5.9.3)':
+  '@shipstatic/ship@0.9.6(typescript@5.9.3)':
     dependencies:
       columnify: 1.6.0
       commander: 12.1.0
@@ -1728,7 +1728,7 @@ snapshots:
     transitivePeerDependencies:
       - typescript
 
-  '@shipstatic/types@0.9.1': {}
+  '@shipstatic/types@0.9.8': {}
 
   '@testing-library/dom@10.4.1':
     dependencies:
