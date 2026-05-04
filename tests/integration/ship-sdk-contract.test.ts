@@ -12,10 +12,10 @@ import {
   filterJunk,
   formatFileSize,
 } from '@shipstatic/ship';
-import type { ValidatableFile, ConfigResponse } from '@shipstatic/types';
+import type { ValidatableFile, PlatformLimits } from '@shipstatic/types';
 import { FILE_STATUSES, type ProcessedFile } from '@/types';
 import { createProcessedFile } from '@/utils/fileProcessing';
-import { PRODUCTION_CONFIG } from '../fixtures/config';
+import { PRODUCTION_LIMITS } from '../fixtures/platform-limits';
 
 describe('Ship SDK Contract', () => {
   describe('ProcessedFile satisfies ValidatableFile interface', () => {
@@ -38,7 +38,7 @@ describe('Ship SDK Contract', () => {
       const processed = createProcessedFile(file);
 
       // Use real validateFiles - not mocked
-      const result = validateFiles([processed], PRODUCTION_CONFIG);
+      const result = validateFiles([processed], PRODUCTION_LIMITS);
 
       expect(result).toHaveProperty('files');
       expect(result).toHaveProperty('validFiles');
@@ -55,7 +55,7 @@ describe('Ship SDK Contract', () => {
       const processed = createProcessedFile(file);
 
       // First validate
-      const validated = validateFiles([processed], PRODUCTION_CONFIG);
+      const validated = validateFiles([processed], PRODUCTION_LIMITS);
 
       // Then use real getValidFiles
       const valid = getValidFiles(validated.files);
@@ -75,7 +75,7 @@ describe('Ship SDK Contract', () => {
       expect(processed).toHaveProperty('path');
       expect(processed).toHaveProperty('lastModified');
 
-      const result = validateFiles([processed], PRODUCTION_CONFIG);
+      const result = validateFiles([processed], PRODUCTION_LIMITS);
 
       // Properties should survive validation (generic T extends ValidatableFile)
       const validatedFile = result.files[0] as ProcessedFile;
@@ -161,7 +161,7 @@ describe('Ship SDK Contract', () => {
       const file = new File(['malicious'], 'payload.exe', { type: 'application/octet-stream' });
       const processed = createProcessedFile(file);
 
-      const result = validateFiles([processed], PRODUCTION_CONFIG);
+      const result = validateFiles([processed], PRODUCTION_LIMITS);
 
       expect(result.canDeploy).toBe(false);
       expect(result.errors).toHaveLength(1);
@@ -179,7 +179,7 @@ describe('Ship SDK Contract', () => {
       ];
 
       const processed = files.map(f => createProcessedFile(f));
-      const result = validateFiles(processed, PRODUCTION_CONFIG);
+      const result = validateFiles(processed, PRODUCTION_LIMITS);
 
       expect(result.canDeploy).toBe(true);
       expect(result.errors).toHaveLength(0);
@@ -190,7 +190,7 @@ describe('Ship SDK Contract', () => {
       const file = new File([], 'empty.txt', { type: 'text/plain' });
       const processed = createProcessedFile(file);
 
-      const result = validateFiles([processed], PRODUCTION_CONFIG);
+      const result = validateFiles([processed], PRODUCTION_LIMITS);
 
       expect(result.canDeploy).toBe(true); // No errors, but no valid files
       expect(result.errors).toHaveLength(0);
@@ -202,15 +202,15 @@ describe('Ship SDK Contract', () => {
     });
 
     it('should reject files exceeding size limit', async () => {
-      const tinyConfig: ConfigResponse = {
-        ...PRODUCTION_CONFIG,
+      const tinyLimits: PlatformLimits = {
+        ...PRODUCTION_LIMITS,
         maxFileSize: 5, // 5 bytes
       };
 
       const file = new File(['this is more than 5 bytes'], 'big.txt', { type: 'text/plain' });
       const processed = createProcessedFile(file);
 
-      const result = validateFiles([processed], tinyConfig);
+      const result = validateFiles([processed], tinyLimits);
 
       expect(result.canDeploy).toBe(false);
       expect(result.errors).toHaveLength(1);
@@ -219,8 +219,8 @@ describe('Ship SDK Contract', () => {
 
     it('should handle atomic validation (all fail if one fails)', async () => {
       // Atomic validation: if ANY file fails, ALL files marked as failed
-      const tinyConfig: ConfigResponse = {
-        ...PRODUCTION_CONFIG,
+      const tinyLimits: PlatformLimits = {
+        ...PRODUCTION_LIMITS,
         maxFileSize: 100,
       };
 
@@ -230,7 +230,7 @@ describe('Ship SDK Contract', () => {
       ];
 
       const processed = await Promise.all(files.map(f => createProcessedFile(f)));
-      const result = validateFiles(processed, tinyConfig);
+      const result = validateFiles(processed, tinyLimits);
 
       // Atomic: all files should be marked as failed when any error occurs
       expect(result.canDeploy).toBe(false);

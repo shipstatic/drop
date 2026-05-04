@@ -72,7 +72,7 @@ Convenience booleans: `isProcessing`, `isDragging`, `isInteractive` (idle/draggi
 7. Strip common directory prefix
 8. Validate entry point (index.html at root for built sites, anywhere for unbuilt projects)
 9. If needsBuild: skip validation → ready (build service validates output)
-10. Else: validate (validateFiles + ship.getConfig()) → ready/error
+10. Else: validate (validateFiles + ship.getLimits()) → ready/error
 ```
 
 **ZIP behavior:** Single ZIP → extract contents. Multiple files including ZIPs → treat ZIPs as regular files.

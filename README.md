@@ -56,7 +56,7 @@ function Uploader() {
 - **Prop Getters API** - Spread props on your elements (like `react-dropzone`)
 - **Built-in Drag & Drop** - Folder support with `webkitGetAsEntry` API
 - **ZIP Support** - Automatic extraction and processing
-- **Ship SDK Integration** - Validation via `ship.getConfig()`
+- **Ship SDK Integration** - Validation via `ship.getLimits()`
 - **Headless** - No visual components, full styling control
 - **TypeScript** - Complete type definitions
 
@@ -147,7 +147,7 @@ Drop uses Ship SDK's validation automatically:
 ```tsx
 const drop = useDrop({ ship });
 
-// Behind the scenes: ship.getConfig() → validateFiles()
+// Behind the scenes: ship.getLimits() → validateFiles()
 // Client validation matches server limits
 ```
 
