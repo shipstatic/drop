@@ -13,7 +13,7 @@ import { createMockFile, createMockFileWithPath } from '../test-utils';
 import type { Ship } from '@shipstatic/ship';
 
 // Mock @shipstatic/ship
-const mockGetConfig = vi.fn();
+const mockGetLimits = vi.fn();
 const mockValidateFiles = vi.fn();
 
 // Mock @shipstatic/ship
@@ -30,7 +30,7 @@ vi.mock('@shipstatic/ship', async (importOriginal) => {
 
 // Helper to create mock Ship instance
 const createMockShip = (): Ship => ({
-  getConfig: mockGetConfig,
+  getLimits: mockGetLimits,
 } as any);
 
 describe('Folder Structure Preservation', () => {
@@ -38,7 +38,7 @@ describe('Folder Structure Preservation', () => {
     // Console mocking is handled globally in setup.ts
 
     // Default mock config - relaxed limits for unit tests
-    mockGetConfig.mockResolvedValue({
+    mockGetLimits.mockResolvedValue({
       maxFileSize: 100 * 1024 * 1024,
       maxTotalSize: 500 * 1024 * 1024,
       maxFilesCount: 10000,

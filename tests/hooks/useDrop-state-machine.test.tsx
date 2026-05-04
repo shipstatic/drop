@@ -515,8 +515,8 @@ describe('State Machine - Comprehensive Transition Tests', () => {
           resolveConfig = resolve;
         });
 
-        const { ship, mockGetConfig } = createMockShip();
-        mockGetConfig.mockImplementationOnce(() =>
+        const { ship, mockGetLimits } = createMockShip();
+        mockGetLimits.mockImplementationOnce(() =>
           slowConfig.then(() => ({
             maxFileSize: 100 * 1024 * 1024,
             maxTotalSize: 500 * 1024 * 1024,

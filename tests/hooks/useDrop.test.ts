@@ -64,7 +64,7 @@ describe('useDrop', () => {
 
   describe('processFiles - basic functionality', () => {
     it('should process single file successfully', async () => {
-      const { ship, mockGetConfig } = createMockShip();
+      const { ship, mockGetLimits } = createMockShip();
       const { result } = renderHook(() => useDrop({ ship }));
 
       const file = createMockFile('index.html', 'hello world');
@@ -82,7 +82,7 @@ describe('useDrop', () => {
       expect(result.current.phase).toBe('ready');
       expect(result.current.files[0].status).toBe(FILE_STATUSES.READY);
       expect(result.current.sourceName).toBe('index.html');
-      expect(mockGetConfig).toHaveBeenCalled();
+      expect(mockGetLimits).toHaveBeenCalled();
       expect(mockValidateFiles).toHaveBeenCalled();
     });
 
@@ -329,10 +329,10 @@ describe('useDrop', () => {
     });
 
     it('should have error in error state', async () => {
-      const { ship, mockGetConfig } = createMockShip();
+      const { ship, mockGetLimits } = createMockShip();
       const { result } = renderHook(() => useDrop({ ship }));
 
-      mockGetConfig.mockRejectedValueOnce(new Error('Network error'));
+      mockGetLimits.mockRejectedValueOnce(new Error('Network error'));
 
       await act(async () => {
         await result.current.processFiles([createMockFile('index.html')]);
@@ -349,8 +349,8 @@ describe('useDrop', () => {
         resolveConfig = resolve;
       });
 
-      const { ship, mockGetConfig } = createMockShip();
-      mockGetConfig.mockImplementationOnce(() =>
+      const { ship, mockGetLimits } = createMockShip();
+      mockGetLimits.mockImplementationOnce(() =>
         slowConfigPromise.then(() => ({
           maxFileSize: 100 * 1024 * 1024,
           maxTotalSize: 500 * 1024 * 1024,
@@ -560,11 +560,11 @@ describe('useDrop', () => {
     });
 
     it('should clear processing flag on error', async () => {
-      const { ship, mockGetConfig } = createMockShip();
+      const { ship, mockGetLimits } = createMockShip();
       const { result } = renderHook(() => useDrop({ ship }));
 
-      // Make getConfig fail to simulate processing error
-      mockGetConfig.mockRejectedValueOnce(new Error('Config fetch failed'));
+      // Make getLimits fail to simulate processing error
+      mockGetLimits.mockRejectedValueOnce(new Error('Config fetch failed'));
 
       const file = createMockFile('index.html');
 
@@ -575,11 +575,11 @@ describe('useDrop', () => {
     });
 
     it('should allow processing valid files after an error', async () => {
-      const { ship, mockGetConfig } = createMockShip();
+      const { ship, mockGetLimits } = createMockShip();
       const { result } = renderHook(() => useDrop({ ship }));
 
       // 1. Simulate an error first
-      mockGetConfig.mockRejectedValueOnce(new Error('Config fetch failed'));
+      mockGetLimits.mockRejectedValueOnce(new Error('Config fetch failed'));
       await act(async () => {
         await result.current.processFiles([createMockFile('index.html')]);
       });

@@ -88,14 +88,14 @@ export const createMockFileWithPath = (
  * it('test', async () => {
  *   const { ship } = createMockShip();
  *   // For tests needing config mock access:
- *   // const { ship, mockGetConfig } = createMockShip();
+ *   // const { ship, mockGetLimits } = createMockShip();
  *   // For custom config limits:
  *   // const { ship } = createMockShip({ maxFileSize: 1024 });
  * });
  * ```
  *
  * Each createMockShip() call creates an isolated Ship with its own pre-configured
- * mockGetConfig (resolved with DEFAULT_TEST_CONFIG). Use createPassingValidation()
+ * mockGetLimits (resolved with DEFAULT_TEST_CONFIG). Use createPassingValidation()
  * and createFailingValidation() for mockValidateFiles implementations.
  */
 
@@ -115,15 +115,15 @@ export const DEFAULT_TEST_CONFIG = {
  */
 export const createMockShip = (
   configOverrides: Partial<typeof DEFAULT_TEST_CONFIG> = {}
-): { ship: Ship; mockGetConfig: ReturnType<typeof vi.fn> } => {
-  const mockGetConfig = vi.fn().mockResolvedValue({
+): { ship: Ship; mockGetLimits: ReturnType<typeof vi.fn> } => {
+  const mockGetLimits = vi.fn().mockResolvedValue({
     ...DEFAULT_TEST_CONFIG,
     ...configOverrides,
   });
 
   return {
-    ship: { getConfig: mockGetConfig } as unknown as Ship,
-    mockGetConfig,
+    ship: { getLimits: mockGetLimits } as unknown as Ship,
+    mockGetLimits,
   };
 };
 

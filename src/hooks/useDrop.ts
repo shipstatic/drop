@@ -317,9 +317,9 @@ export function useDrop(options: DropOptions): DropReturn {
         size: f.file.size,
       }));
 
-      // Step 9: Validate all files using Ship SDK's config
-      const config = await ship.getConfig();
-      const validation = validateFiles(validatableFiles, config);
+      // Step 9: Validate all files using Ship SDK's platform limits
+      const limits = await ship.getLimits();
+      const validation = validateFiles(validatableFiles, limits);
 
       // Map validation results back to ProcessedFile format
       // validation.files has ValidatableFile with status, we need ProcessedFile with updated status

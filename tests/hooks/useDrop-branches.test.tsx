@@ -8,7 +8,7 @@ import { useDrop } from '@/hooks/useDrop';
 import { FILE_STATUSES } from '@/types';
 import { createMockFile, createMockShip } from '../test-utils';
 
-const { ship: mockShip, mockGetConfig } = createMockShip();
+const { ship: mockShip, mockGetLimits } = createMockShip();
 
 // Module-scoped mock functions (referenced by vi.mock — cannot be moved to shared utils)
 const mockValidateFiles = vi.fn((files: any[]) => ({
@@ -199,7 +199,7 @@ describe('useDrop - branch coverage', () => {
       const badFile = new File(['content'], 'index.html', { type: 'text/html' });
 
       // Mock Ship SDK to throw error
-      mockGetConfig.mockRejectedValueOnce(new Error('Network error'));
+      mockGetLimits.mockRejectedValueOnce(new Error('Network error'));
 
       await act(async () => {
         await result.current.processFiles([badFile]);
@@ -213,7 +213,7 @@ describe('useDrop - branch coverage', () => {
       const { result } = renderHook(() => useDrop({ ship: mockShip }));
 
       // Mock to throw error
-      mockGetConfig.mockRejectedValueOnce(new Error('Error'));
+      mockGetLimits.mockRejectedValueOnce(new Error('Error'));
 
       const file = createMockFile('test.txt', 'content');
 
@@ -469,13 +469,13 @@ describe('useDrop - branch coverage', () => {
 
   describe('handleDragOver during processing', () => {
     it('should NOT transition to dragging when already processing', async () => {
-      // Create a slow getConfig to keep processing state longer
+      // Create a slow getLimits to keep processing state longer
       let resolveConfig: () => void;
       const slowConfigPromise = new Promise<void>((resolve) => {
         resolveConfig = resolve;
       });
 
-      mockGetConfig.mockImplementationOnce(() =>
+      mockGetLimits.mockImplementationOnce(() =>
         slowConfigPromise.then(() => ({
           maxFileSize: 100 * 1024 * 1024,
           maxFilesCount: 10000,
