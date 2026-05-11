@@ -427,10 +427,12 @@ export function useDrop(options: DropOptions): DropReturn {
       // Other errors = unexpected processing failures
       const message = error instanceof Error ? error.message : String(error);
       const isValidation = isShipError(error);
+      // The single error message lives in `details` alone — `errors[]` is the
+      // breakdown for multi-error cases (atomic validation). Don't duplicate.
       const clientError: ClientError = {
         error: isValidation ? 'Validation Failed' : 'Processing Failed',
         details: isValidation ? message : `Failed to process files: ${message}`,
-        errors: isValidation ? [message] : [],
+        errors: [],
         isClientError: true,
       };
       setState({
@@ -441,7 +443,6 @@ export function useDrop(options: DropOptions): DropReturn {
         status: {
           title: clientError.error,
           details: clientError.details,
-          ...(clientError.errors.length > 0 && { errors: clientError.errors }),
         },
       });
       onValidationError?.(clientError);

@@ -4,6 +4,7 @@
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
+import { ShipError } from '@shipstatic/types';
 import { useDrop } from '@/hooks/useDrop';
 import { FILE_STATUSES } from '@/types';
 import { createMockFile, createMockShip } from '../test-utils';
@@ -207,6 +208,36 @@ describe('useDrop - branch coverage', () => {
 
       // Should have error state
       expect(result.current.status?.title).toBe('Processing Failed');
+    });
+
+    it('does not duplicate the message in status.details and status.errors for ShipError rejections', async () => {
+      // Regression: drop previously put the same message into both fields,
+      // causing consumers that render `details` + `errors[]` to show it twice.
+      const onValidationError = vi.fn();
+      const { result } = renderHook(() =>
+        useDrop({ ship: mockShip, onValidationError })
+      );
+
+      mockGetLimits.mockRejectedValueOnce(
+        ShipError.business('Get limits failed: Illegal invocation')
+      );
+
+      await act(async () => {
+        await result.current.processFiles([createMockFile('index.html')]);
+      });
+
+      expect(result.current.status?.title).toBe('Validation Failed');
+      expect(result.current.status?.details).toBe('Get limits failed: Illegal invocation');
+      expect(result.current.status?.errors).toBeUndefined();
+
+      // ClientError callback shape matches the single-source-of-truth contract.
+      expect(onValidationError).toHaveBeenCalledWith(
+        expect.objectContaining({
+          error: 'Validation Failed',
+          details: 'Get limits failed: Illegal invocation',
+          errors: [],
+        })
+      );
     });
 
     it('should clear processing flag on error', async () => {
