@@ -275,6 +275,8 @@ export function useDrop(options: DropOptions): DropReturn {
             statusMessage: message,
           }));
 
+          // The single error message lives in `details` alone — `errors[]` is
+          // the breakdown for multi-error cases. Don't duplicate.
           setState({
             value: 'error',
             files: filesWithStatus,
@@ -283,14 +285,13 @@ export function useDrop(options: DropOptions): DropReturn {
             status: {
               title: 'Validation Failed',
               details: message,
-              errors: [message],
             },
           });
 
           onValidationError?.({
             error: 'Validation Failed',
             details: message,
-            errors: [message],
+            errors: [],
             isClientError: true,
           });
           return;
