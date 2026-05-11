@@ -19,9 +19,9 @@ function App() {
     setIsDeploying(true);
 
     try {
-      const validFiles = drop.validFiles;
-      const files = validFiles.map((f) => f.file);
-      const result = await ship.deployments.upload(files);
+      const result = await ship.deployments.upload(drop.getFilesForUpload(), {
+        build: drop.needsBuild ? true : undefined,
+      });
       setDeploymentUrl(result.url);
     } catch (err: any) {
       setDeployError(err.message || "Deployment failed");
