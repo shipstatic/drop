@@ -1,19 +1,29 @@
-import {
-  formatFileSize as shipFormatFileSize,
-} from '@shipstatic/ship';
+import { optimizeDeployPaths } from '@shipstatic/ship';
 import { getMimeType } from './mimeType';
-import { FILE_STATUSES, type ProcessedFile, type FileWithPath } from '../types';
+import { FILE_STATUSES, type ProcessedFile } from '../types';
 
 /**
- * Unified file processing utilities
- * Converts Files directly to ProcessedFiles
+ * File processing utilities for the drop hook.
  */
 
 /**
- * Format file size to human-readable string
- * Re-exported from Ship SDK for convenience
+ * Format file size to human-readable string.
+ * Re-exported from Ship SDK for consumer convenience.
  */
-export const formatFileSize = shipFormatFileSize;
+export { formatFileSize } from '@shipstatic/ship';
+
+/**
+ * Patch a File's `webkitRelativePath` so downstream consumers (the Ship SDK)
+ * read our resolved deploy path. Browser-set `webkitRelativePath` is read-only,
+ * so we redefine the property — `configurable: true` allows re-patching later.
+ */
+export function setRelativePath(file: File, path: string): void {
+  Object.defineProperty(file, 'webkitRelativePath', {
+    value: path,
+    writable: false,
+    configurable: true,
+  });
+}
 
 /**
  * Create a ProcessedFile from a File object
@@ -35,19 +45,14 @@ export function createProcessedFile(
   }
 ): ProcessedFile {
   // Priority: custom path > webkitRelativePath > file.name
-  const webkitPath = (file as FileWithPath).webkitRelativePath || '';
-  const path = options?.path || (webkitPath && webkitPath.trim() ? webkitPath : file.name);
+  const path = options?.path || file.webkitRelativePath?.trim() || file.name;
 
-  // Determine MIME type
-  // Prioritize mime-db lookup over browser detection for accuracy
-  // Browsers often return incorrect MIME types (e.g., text/plain for .map, .scss files)
-  const mimeFromDb = getMimeType(path);
-  const mimeFromBrowser = file.type;
-  const type = mimeFromDb || mimeFromBrowser;
+  // Prefer mime-db lookup over the browser-reported type — browsers often
+  // return incorrect MIME types (e.g. text/plain for .map, .scss).
+  const type = getMimeType(path) || file.type;
 
   return {
-    // ProcessedFile properties
-    // Note: md5 is intentionally undefined - Ship SDK will calculate it during deployment
+    // md5 is intentionally undefined — Ship SDK calculates it during deployment.
     id: crypto.randomUUID(),
     file,
     path,
@@ -60,49 +65,22 @@ export function createProcessedFile(
 }
 
 /**
- * Strip common directory prefix from file paths
- * Only strips if ALL files share the same prefix
+ * Strip common directory prefix from file paths.
+ *
+ * Delegates the path algorithm to Ship SDK's `optimizeDeployPaths` (the single
+ * source of truth for deploy-path normalization) and mutates each underlying
+ * File's `webkitRelativePath` so downstream consumers (Ship SDK) read the
+ * stripped path when given the raw File objects.
  */
 export function stripCommonPrefix(files: ProcessedFile[]): ProcessedFile[] {
   if (files.length === 0) return files;
 
-  const paths = files.map(f => f.path);
-  const segments = paths[0].split('/');
+  const deployFiles = optimizeDeployPaths(files.map(f => f.path));
 
-  // Find common prefix by checking each segment
-  let commonDepth = 0;
-  for (let i = 0; i < segments.length - 1; i++) {
-    const segment = segments[i];
-    if (paths.every(p => p.split('/')[i] === segment)) {
-      commonDepth = i + 1;
-    } else {
-      break;
-    }
-  }
-
-  // No common prefix
-  if (commonDepth === 0) return files;
-
-  const prefix = segments.slice(0, commonDepth).join('/') + '/';
-
-  return files.map(f => {
-    const newPath = f.path.startsWith(prefix) ? f.path.slice(prefix.length) : f.path;
-
-    // Patch the underlying File object so that downstream consumers (like Ship SDK)
-    // see the correct, stripped path when reading webkitRelativePath.
-    // This allows passing the raw File objects while preserving the "Drop" logic.
-    if (f.file) {
-      Object.defineProperty(f.file, 'webkitRelativePath', {
-        value: newPath,
-        writable: false,
-        configurable: true,
-      });
-    }
-
-    return {
-      ...f,
-      path: newPath,
-    };
+  return files.map((f, i) => {
+    const newPath = deployFiles[i].path;
+    setRelativePath(f.file, newPath);
+    return { ...f, path: newPath };
   });
 }
 
@@ -123,11 +101,7 @@ export async function traverseFileTree(
       const relativePath = currentPath
         ? `${currentPath}/${file.name}`
         : file.name;
-      Object.defineProperty(file, 'webkitRelativePath', {
-        value: relativePath,
-        writable: false,
-        configurable: true,
-      });
+      setRelativePath(file, relativePath);
       files.push(file);
     } else if (entry.isDirectory) {
       const dirReader = (entry as FileSystemDirectoryEntry).createReader();

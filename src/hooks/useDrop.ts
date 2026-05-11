@@ -18,18 +18,24 @@
  * ```
  */
 import { useState, useCallback, useRef, useMemo } from 'react';
-import type { ProcessedFile, ClientError, DropState, DropStatus, DropStateValue, FileWithPath, FileStatus } from '../types';
-import { FILE_STATUSES } from '../types';
+import {
+  FILE_STATUSES,
+  type ProcessedFile,
+  type ClientError,
+  type DropState,
+  type DropStatus,
+  type DropStateValue,
+  type FileStatus,
+} from '../types';
 import { extractZipToFiles, isZipFile } from '../utils/zipExtractor';
 import {
   createProcessedFile,
+  setRelativePath,
   stripCommonPrefix,
   traverseFileTree,
 } from '../utils/fileProcessing';
-import type { Ship } from '@shipstatic/ship';
-import type { ValidatableFile } from '@shipstatic/types';
-import { isShipError, hasUnbuiltMarker } from '@shipstatic/types';
-import { validateFiles, filterJunk } from '@shipstatic/ship';
+import { validateFiles, filterJunk, pluralize, type Ship } from '@shipstatic/ship';
+import { isShipError, hasUnbuiltMarker, type ValidatableFile } from '@shipstatic/types';
 
 export interface DropOptions {
   /** Ship SDK instance (required for validation) */
@@ -186,7 +192,7 @@ export function useDrop(options: DropOptions): DropReturn {
         detectedSourceName = newFiles[0].name.replace(/\.zip$/i, '');
       } else if (newFiles.length > 0) {
         // Check if files have webkitRelativePath (folder drop/selection)
-        const firstPath = (newFiles[0] as FileWithPath).webkitRelativePath || '';
+        const firstPath = newFiles[0].webkitRelativePath || '';
         if (firstPath && firstPath.includes('/')) {
           // Folder drop: extract folder name from path
           detectedSourceName = firstPath.split('/')[0];
@@ -220,10 +226,7 @@ export function useDrop(options: DropOptions): DropReturn {
       }
 
       // Step 3: Detect unbuilt project and filter junk files
-      const getFilePath = (f: File) => {
-        const webkitPath = (f as FileWithPath).webkitRelativePath;
-        return (webkitPath && webkitPath.trim()) ? webkitPath : f.name;
-      };
+      const getFilePath = (f: File) => f.webkitRelativePath?.trim() || f.name;
 
       let filePaths = allFiles.map(getFilePath);
       const needsBuild = filePaths.some(p => hasUnbuiltMarker(p));
@@ -303,7 +306,7 @@ export function useDrop(options: DropOptions): DropReturn {
           files: filesWithStatus,
           sourceName: detectedSourceName,
           needsBuild: true,
-          status: { title: 'Ready', details: `${filesWithStatus.length} file(s) ready — project will be built` },
+          status: { title: 'Ready', details: `${pluralize(filesWithStatus.length, 'file', 'files', true)} ready — project will be built` },
         });
         onFilesReady?.(filesWithStatus);
         return;
@@ -343,7 +346,7 @@ export function useDrop(options: DropOptions): DropReturn {
           needsBuild: false,
           status: {
             title: 'Validation Failed',
-            details: `${validation.errors.length} file(s) failed validation`,
+            details: `${pluralize(validation.errors.length, 'file', 'files', true)} failed validation`,
             errors: errorMessages
           },
         });
@@ -351,18 +354,18 @@ export function useDrop(options: DropOptions): DropReturn {
         // Call error callback with structured errors (backward compatible format)
         onValidationError?.({
           error: 'Validation Failed',
-          details: `${validation.errors.length} error(s)`,
+          details: pluralize(validation.errors.length, 'error', 'errors', true),
           errors: errorMessages,
           isClientError: true
         });
 
       } else if (validation.validFiles.length > 0) {
         // Files are ready - show count with excluded files if any
-        let details = `${validation.validFiles.length} file(s) ready`;
+        let details = `${pluralize(validation.validFiles.length, 'file', 'files', true)} ready`;
 
         // Add warning info if empty files were excluded
         if (validation.warnings.length > 0) {
-          details += ` (${validation.warnings.length} empty file(s) excluded)`;
+          details += ` (${pluralize(validation.warnings.length, 'empty file', 'empty files', true)} excluded)`;
         }
 
         setState({
@@ -396,7 +399,7 @@ export function useDrop(options: DropOptions): DropReturn {
             needsBuild: false,
             status: {
               title: 'All files excluded',
-              details: `${validation.warnings.length} file(s) excluded (empty files cannot be deployed)`,
+              details: `${pluralize(validation.warnings.length, 'file', 'files', true)} excluded (empty files cannot be deployed)`,
               warnings: validation.warnings.map(w => `${w.file}: ${w.message}`)
             },
           });
@@ -516,11 +519,7 @@ export function useDrop(options: DropOptions): DropReturn {
             const file = item.getAsFile();
             if (file) {
               // Ensure root files have their name as path (consistent with traverseFileTree)
-              Object.defineProperty(file, 'webkitRelativePath', {
-                value: file.name,
-                writable: false,
-                configurable: true,
-              });
+              setRelativePath(file, file.name);
               files.push(file);
             }
           }

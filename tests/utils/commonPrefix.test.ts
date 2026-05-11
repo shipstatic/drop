@@ -167,11 +167,10 @@ describe('Common Prefix Stripping', () => {
 
       const result = stripCommonPrefix(files);
 
-      // When both paths are identical, algorithm strips all common segments except the last
-      // 'root/folder/' splits into ['root', 'folder', ''] - last segment (empty) is not stripped
-      // So 'root/folder/' gets stripped, leaving just empty string
-      expect(result[0].path).toBe('');
-      expect(result[1].path).toBe('');
+      // Trailing-slash inputs are pathological — Ship's path optimizer falls
+      // back to the original path rather than emitting an empty deploy path.
+      expect(result[0].path).toBe('root/folder/');
+      expect(result[1].path).toBe('root/folder/');
     });
   });
 
@@ -258,9 +257,10 @@ describe('Common Prefix Stripping', () => {
 
       const result = stripCommonPrefix(files);
 
-      // No common prefix due to leading slash mismatch
-      expect(result[0].path).toBe('/project/file1.txt');
-      expect(result[1].path).toBe('project/file2.txt');
+      // Ship's optimizer normalizes the leading slash, so both paths share the
+      // 'project/' prefix and get stripped consistently.
+      expect(result[0].path).toBe('file1.txt');
+      expect(result[1].path).toBe('file2.txt');
     });
   });
 

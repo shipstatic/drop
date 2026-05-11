@@ -333,12 +333,12 @@ describe('createMockReadyStatus', () => {
     const status = createMockReadyStatus(5);
 
     expect(status.title).toBe('Ready');
-    expect(status.details).toBe('5 file(s) are ready.');
+    expect(status.details).toBe('5 files ready.');
   });
 
   it('handles singular file count', () => {
     const status = createMockReadyStatus(1);
 
-    expect(status.details).toBe('1 file(s) are ready.');
+    expect(status.details).toBe('1 file ready.');
   });
 });
