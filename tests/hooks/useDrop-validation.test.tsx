@@ -324,7 +324,12 @@ describe('useDrop - Validation', () => {
     expect(result.current.phase).toBe('error');
     expect(result.current.status?.title).toBe('Validation Failed');
     expect(result.current.status?.details).toContain('No index.html at root');
-    expect(onValidationError).toHaveBeenCalled();
+    // Regression: the single message must NOT appear in both status.details
+    // and status.errors[] — consumers that render both fields show it twice.
+    expect(result.current.status?.errors).toBeUndefined();
+    expect(onValidationError).toHaveBeenCalledWith(
+      expect.objectContaining({ errors: [] })
+    );
     // Files are preserved in error state so the user can see what they dropped
     expect(result.current.files).toHaveLength(2);
     expect(result.current.files[0].status).toBe(FILE_STATUSES.VALIDATION_FAILED);
