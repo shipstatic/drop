@@ -31,7 +31,7 @@ function App() {
   };
 
   const handleClear = () => {
-    drop.clearAll();
+    drop.reset();
     setDeploymentUrl("");
     setDeployError("");
     setIsDeploying(false);
