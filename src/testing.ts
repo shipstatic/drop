@@ -8,6 +8,7 @@
  * ```
  */
 
+import { pluralize } from '@shipstatic/ship';
 import type { ProcessedFile, DropStatus, DropStateValue } from './types';
 import type { DropReturn, DropzonePropsOptions } from './hooks/useDrop';
 
@@ -40,7 +41,7 @@ export interface MockDropOptions {
  *   });
  *
  *   render(<DeployDropArea drop={drop} />);
- *   expect(screen.getByText('1 files ready')).toBeInTheDocument();
+ *   expect(screen.getByText('1 file ready')).toBeInTheDocument();
  * });
  * ```
  */
@@ -266,7 +267,7 @@ export function createMockProcessingStatus(
 export function createMockReadyStatus(fileCount: number): DropStatus {
   return {
     title: 'Ready',
-    details: `${fileCount} file(s) are ready.`,
+    details: `${pluralize(fileCount, 'file', 'files', true)} ready.`,
   };
 }
 

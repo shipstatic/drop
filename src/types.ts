@@ -6,15 +6,6 @@
 
 import { FileValidationStatus } from '@shipstatic/types';
 
-/**
- * Extended File interface with webkitRelativePath
- * This property is set by browsers for folder uploads and drag-drop
- * https://developer.mozilla.org/en-US/docs/Web/API/File/webkitRelativePath
- */
-export interface FileWithPath extends File {
-  readonly webkitRelativePath: string;
-}
-
 // File statuses during processing
 export const FILE_STATUSES = {
   ...FileValidationStatus,

@@ -4,6 +4,7 @@
  */
 import { unzipSync } from 'fflate';
 import { getMimeType } from './mimeType';
+import { setRelativePath } from './fileProcessing';
 
 export interface ZipExtractionResult {
   /** Extracted files as regular File objects */
@@ -48,11 +49,7 @@ export async function extractZipToFiles(zipFile: File): Promise<ZipExtractionRes
       // Set webkitRelativePath to the full path — same contract as drag-and-drop files.
       // This unifies the path mechanism: all file sources use webkitRelativePath for paths
       // and file.name for the bare filename.
-      Object.defineProperty(file, 'webkitRelativePath', {
-        value: sanitizedPath,
-        writable: false,
-        configurable: true,
-      });
+      setRelativePath(file, sanitizedPath);
 
       files.push(file);
     }

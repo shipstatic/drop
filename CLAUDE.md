@@ -6,7 +6,7 @@ Claude Code instructions for the **Drop** package.
 
 **@shipstatic/drop** is a React companion to Ship SDK. It provides what the SDK doesn't have for browser deployments: ZIP extraction, drag & drop with folder support, and React state management.
 
-**Maturity:** Release candidate. Interfaces are stabilizing; changes should be deliberate.
+**Maturity:** Stable; semver applies — breaking changes require a major version bump.
 
 **Drop's scope:** Everything BEFORE `ship.deployments.upload()`. The SDK handles everything after.
 
@@ -176,7 +176,7 @@ import {
 | `createMockFileWithPath(name, path, ...)` | Mock `File` with `webkitRelativePath` |
 | `createMockErrorStatus(title?, details?, errors?)` | Mock error status |
 | `createMockProcessingStatus(title?, details?)` | Mock processing status |
-| `createMockReadyStatus(count)` | Mock ready status (`"N file(s) are ready."`) |
+| `createMockReadyStatus(count)` | Mock ready status (`"N files ready."` / `"1 file ready."`) |
 
 ### Testing Philosophy
 
