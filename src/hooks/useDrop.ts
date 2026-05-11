@@ -183,6 +183,41 @@ export function useDrop(options: DropOptions): DropReturn {
 
     let detectedSourceName = '';
 
+    /**
+     * Transition to error state and notify the consumer.
+     *
+     * `details` carries the single user-facing message. `errors` is reserved
+     * for per-item breakdowns in multi-error cases — leave it out for single
+     * errors, otherwise consumers that render both fields show the message
+     * twice.
+     */
+    const setErrorState = (params: {
+      title: string;
+      details: string;
+      errors?: string[];
+      files?: ProcessedFile[];
+      needsBuild?: boolean;
+    }) => {
+      const { title, details, errors, files = [], needsBuild = false } = params;
+      setState({
+        value: 'error',
+        files,
+        sourceName: detectedSourceName,
+        needsBuild,
+        status: {
+          title,
+          details,
+          ...(errors?.length && { errors }),
+        },
+      });
+      onValidationError?.({
+        error: title,
+        details,
+        errors: errors ?? [],
+        isClientError: true,
+      });
+    };
+
     try {
       // Step 1: Detect source name from input
       // Priority: ZIP name > folder name (from webkitRelativePath) > first file name
@@ -275,24 +310,11 @@ export function useDrop(options: DropOptions): DropReturn {
             statusMessage: message,
           }));
 
-          // The single error message lives in `details` alone — `errors[]` is
-          // the breakdown for multi-error cases. Don't duplicate.
-          setState({
-            value: 'error',
-            files: filesWithStatus,
-            sourceName: detectedSourceName,
-            needsBuild,
-            status: {
-              title: 'Validation Failed',
-              details: message,
-            },
-          });
-
-          onValidationError?.({
-            error: 'Validation Failed',
+          setErrorState({
+            title: 'Validation Failed',
             details: message,
-            errors: [],
-            isClientError: true,
+            files: filesWithStatus,
+            needsBuild,
           });
           return;
         }
@@ -335,29 +357,11 @@ export function useDrop(options: DropOptions): DropReturn {
 
       // Check canDeploy instead of error (atomic validation)
       if (!validation.canDeploy) {
-        // Format error messages from structured errors
-        const errorMessages = validation.errors.map(err =>
-          `${err.file}: ${err.message}`
-        );
-
-        setState({
-          value: 'error',
+        setErrorState({
+          title: 'Validation Failed',
+          details: `${pluralize(validation.errors.length, 'file', 'files', true)} failed validation`,
+          errors: validation.errors.map(err => `${err.file}: ${err.message}`),
           files: filesWithStatus,
-          sourceName: detectedSourceName,
-          needsBuild: false,
-          status: {
-            title: 'Validation Failed',
-            details: `${pluralize(validation.errors.length, 'file', 'files', true)} failed validation`,
-            errors: errorMessages
-          },
-        });
-
-        // Call error callback with structured errors (backward compatible format)
-        onValidationError?.({
-          error: 'Validation Failed',
-          details: pluralize(validation.errors.length, 'error', 'errors', true),
-          errors: errorMessages,
-          isClientError: true
         });
 
       } else if (validation.validFiles.length > 0) {
@@ -407,46 +411,22 @@ export function useDrop(options: DropOptions): DropReturn {
           // Note: validFiles.length === 0 will naturally disable deploy button in UI
         } else {
           // No valid files due to errors or processing failures
-          const noValidError: ClientError = {
-            error: 'No Valid Files',
+          setErrorState({
+            title: 'No Valid Files',
             details: 'None of the provided files could be processed.',
-            errors: [],
-            isClientError: true,
-          };
-          setState({
-            value: 'error',
             files: filesWithStatus,
-            sourceName: detectedSourceName,
-            needsBuild: false,
-            status: { title: noValidError.error, details: noValidError.details },
           });
-          onValidationError?.(noValidError);
         }
       }
     } catch (error) {
-      // ShipError = validation rejection (e.g. unbuilt project from filterJunk)
-      // Other errors = unexpected processing failures
+      // ShipError = validation rejection (e.g. unbuilt project from filterJunk).
+      // Other errors = unexpected processing failures.
       const message = error instanceof Error ? error.message : String(error);
       const isValidation = isShipError(error);
-      // The single error message lives in `details` alone — `errors[]` is the
-      // breakdown for multi-error cases (atomic validation). Don't duplicate.
-      const clientError: ClientError = {
-        error: isValidation ? 'Validation Failed' : 'Processing Failed',
+      setErrorState({
+        title: isValidation ? 'Validation Failed' : 'Processing Failed',
         details: isValidation ? message : `Failed to process files: ${message}`,
-        errors: [],
-        isClientError: true,
-      };
-      setState({
-        value: 'error',
-        files: [],
-        sourceName: detectedSourceName,
-        needsBuild: false,
-        status: {
-          title: clientError.error,
-          details: clientError.details,
-        },
       });
-      onValidationError?.(clientError);
     } finally {
       // Always clear processing ref, even on error
       isProcessingRef.current = false;
