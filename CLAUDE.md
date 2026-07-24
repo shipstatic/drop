@@ -8,6 +8,8 @@ Claude Code instructions for the **Drop** package.
 
 **Maturity:** Stable; semver applies — breaking changes require a major version bump.
 
+**Branches:** `main` (production) + `development` (integration). The publish workflow runs on both — the guarded publish step publishes only when `package.json` holds a version not yet on the registry, with the dist-tag derived from the version (`-` suffix → `beta`, else `latest`). See root `CLAUDE.md` "Branch & CI Model".
+
 **Drop's scope:** Everything BEFORE `ship.deployments.upload()`. The SDK handles everything after.
 
 ## Architecture
