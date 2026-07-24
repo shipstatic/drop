@@ -9,8 +9,8 @@ importers:
   .:
     dependencies:
       '@shipstatic/ship':
-        specifier: ^1.0.1
-        version: 1.0.1(typescript@5.9.3)
+        specifier: 2.0.0-beta.2
+        version: 2.0.0-beta.2(typescript@5.9.3)
       fflate:
         specifier: ^0.8.2
         version: 0.8.2
@@ -19,8 +19,8 @@ importers:
         version: 1.54.0
     devDependencies:
       '@shipstatic/types':
-        specifier: ^1.0.0
-        version: 1.0.0
+        specifier: 2.2.1-beta.0
+        version: 2.2.1-beta.0
       '@testing-library/jest-dom':
         specifier: ^6.9.1
         version: 6.9.1
@@ -484,13 +484,13 @@ packages:
     cpu: [x64]
     os: [win32]
 
-  '@shipstatic/ship@1.0.1':
-    resolution: {integrity: sha512-G2YDaGWwVvsxxKPDriYrRnDTBS8yWfaRUo2Zu9bmDMQFq+pDTjeB78Tp/oclihQ5wo4mazGV0Ds8h+/xMZ64aQ==}
+  '@shipstatic/ship@2.0.0-beta.2':
+    resolution: {integrity: sha512-OhIswhT4gs4QGWOZt463xv237oraTfeIK8/XEYhmczJGNgdjei07vOtwdLjpwTS9wVIe/CwTyMiF8/+T5MsIgQ==}
     engines: {node: '>=20.0.0'}
     hasBin: true
 
-  '@shipstatic/types@1.0.0':
-    resolution: {integrity: sha512-F+R23xp7TTBhdrJszajiz8CSHIeA5q4LVgb7eo2AI3QlsHC8BYDiYQQH5GrEbz/O/YuqpgOnro71rHVJIXieAg==}
+  '@shipstatic/types@2.2.1-beta.0':
+    resolution: {integrity: sha512-VTmq20iasbUS6tyD9EpkNRU7UNhIzbYKHoexM3C4kuuw0E2e/4fsBVzRHSen78wszToy91P6yRXe4gHq4idYNg==}
     engines: {node: '>=20.0.0'}
 
   '@testing-library/dom@10.4.1':
@@ -716,8 +716,8 @@ packages:
     resolution: {integrity: sha512-5IKcdX0nnYavi6G7TtOhwkYzyjfJlatbjMjuLSfE2kYT5pMDOilZ4OvMhi637CcDICTmz3wARPoyhqyX1Y+XvA==}
     engines: {node: ^14.18.0 || >=16.10.0}
 
-  cosmiconfig@9.0.1:
-    resolution: {integrity: sha512-hr4ihw+DBqcvrsEDioRO31Z17x71pUYoNe/4h6Z0wB72p7MU7/9gH8Q3s12NFhHPfYBBOV3qyfUxmr/Yn3shnQ==}
+  cosmiconfig@9.0.2:
+    resolution: {integrity: sha512-gtTZxTDau1wL7Y7zifc2dd8jHSK/k6BTx/2Xp/BpdlAdnlYWFVt7qhJqgwi7637yRwRQ3qL4ZidbB4I8tA5VOg==}
     engines: {node: '>=14'}
     peerDependencies:
       typescript: '>=4.9.5'
@@ -924,8 +924,8 @@ packages:
   js-tokens@9.0.1:
     resolution: {integrity: sha512-mxa9E9ITFOt0ban3j6L5MpjwegGz6lBQmM1IJkWeBZGcMxto50+eWdjC/52xDbS2vy0k7vIMK0Fe2wfL9OQSpQ==}
 
-  js-yaml@4.1.1:
-    resolution: {integrity: sha512-qQKT4zQxXl8lLwBtHMWwaTcGfFOZviOJet3Oy/xmGk2gZH677CJM9EvtfdSkgWcATZhj/55JZ0rmy3myCT5lsA==}
+  js-yaml@4.3.0:
+    resolution: {integrity: sha512-1td788aAnnZ5qs7V2QIRl1owjtYpbKt749Y3xauqQgwIIGF/xXWz1wMTEBx5O3LK3lXLVuqXPdPxj2BoFHaW9Q==}
     hasBin: true
 
   jsdom@29.1.1:
@@ -1434,8 +1434,8 @@ packages:
   xmlchars@2.2.0:
     resolution: {integrity: sha512-JZnDKK8B0RCDw84FNdDAIpZK+JuJw+s7Lz8nksI7SIuU3UXJJslUthsi+uWBUYOwPFwW7W7PRLRfUKpxjtjFCw==}
 
-  yocto-spinner@1.2.0:
-    resolution: {integrity: sha512-Yw0hUB6UA3o4YUgKy3oSe9a4cxoaZ9sBfYDw+JSxo6Id0KoJGoxzPA24qqUXYKBWABs/zDSGTz9kww7t3F0XGw==}
+  yocto-spinner@1.2.2:
+    resolution: {integrity: sha512-DODGl1wJjA/s5pnJFKau9lIYHT81lnhob1i3e1TjxZRxEhWRKl74nTbWE6H5KlkViQQTo/Z29YFdxzTZAMY3ng==}
     engines: {node: '>=18.19'}
 
   yoctocolors@2.1.2:
@@ -1708,22 +1708,22 @@ snapshots:
   '@rollup/rollup-win32-x64-msvc@4.60.1':
     optional: true
 
-  '@shipstatic/ship@1.0.1(typescript@5.9.3)':
+  '@shipstatic/ship@2.0.0-beta.2(typescript@5.9.3)':
     dependencies:
       columnify: 1.6.0
       commander: 12.1.0
-      cosmiconfig: 9.0.1(typescript@5.9.3)
+      cosmiconfig: 9.0.2(typescript@5.9.3)
       form-data-encoder: 4.1.0
       formdata-node: 6.0.3
       junk: 4.0.1
       spark-md5: 3.0.2
-      yocto-spinner: 1.2.0
+      yocto-spinner: 1.2.2
       yoctocolors: 2.1.2
       zod: 4.4.3
     transitivePeerDependencies:
       - typescript
 
-  '@shipstatic/types@1.0.0': {}
+  '@shipstatic/types@2.2.1-beta.0': {}
 
   '@testing-library/dom@10.4.1':
     dependencies:
@@ -1950,11 +1950,11 @@ snapshots:
 
   consola@3.4.2: {}
 
-  cosmiconfig@9.0.1(typescript@5.9.3):
+  cosmiconfig@9.0.2(typescript@5.9.3):
     dependencies:
       env-paths: 2.2.1
       import-fresh: 3.3.1
-      js-yaml: 4.1.1
+      js-yaml: 4.3.0
       parse-json: 5.2.0
     optionalDependencies:
       typescript: 5.9.3
@@ -2161,7 +2161,7 @@ snapshots:
 
   js-tokens@9.0.1: {}
 
-  js-yaml@4.1.1:
+  js-yaml@4.3.0:
     dependencies:
       argparse: 2.0.1
 
@@ -2653,7 +2653,7 @@ snapshots:
 
   xmlchars@2.2.0: {}
 
-  yocto-spinner@1.2.0:
+  yocto-spinner@1.2.2:
     dependencies:
       yoctocolors: 2.1.2
 
