@@ -9,13 +9,12 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@shipstatic/drop": "^1.0.0",
-    "@shipstatic/ship": "^1.0.1",
+    "@shipstatic/drop": "^2.0.0-beta.0",
+    "@shipstatic/ship": "^2.0.0-beta.2",
     "react": "^19.2.3",
     "react-dom": "^19.2.3"
   },
   "devDependencies": {
-    "@shipstatic/types": "^1.0.0",
     "@types/react": "^19.2.7",
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^4.7.0",

@@ -1,90 +1,59 @@
 /**
- * Core types for @shipstatic/drop
- * Imports types from @shipstatic/types (single source of truth)
- * and defines drop-specific types
+ * Core types for @shipstatic/drop.
+ *
+ * `@shipstatic/types` owns the file-validation vocabulary and drop uses it by its
+ * real name — `FileValidationStatus`, reachable from `@shipstatic/ship`, which
+ * every consumer already depends on. Re-badging it as a drop-local
+ * `FILE_STATUSES` would put a second name on one object and leave a consumer of
+ * both packages wondering whether they differ.
+ *
+ * Drop adds no statuses of its own, so `ProcessedFile` stays expressible as a
+ * `ValidatableFile` and the packages can never disagree about what "ready" means.
  */
 
-import { FileValidationStatus } from '@shipstatic/types';
-
-// File statuses during processing
-export const FILE_STATUSES = {
-  ...FileValidationStatus,
-  PROCESSING: "processing",
-  UPLOADING: "uploading",
-  COMPLETE: "complete",
-  ERROR: "error",
-} as const;
-
-export type FileStatus = (typeof FILE_STATUSES)[keyof typeof FILE_STATUSES];
+import type { FileValidationStatusType } from '@shipstatic/types';
 
 /**
- * Client-side error structure
- */
-export interface ClientError {
-  error: string;
-  details: string;
-  errors: string[];
-  isClientError: true;
-}
-
-/**
- * Processed file entry ready for upload
- * Contains both the File object and UI-specific metadata
- * Use `file` property to access the underlying File for SDK operations
+ * A file prepared for deployment.
+ *
+ * `path` is the deploy identity; `name` is the basename, for display. Ship
+ * computes checksums during upload, so no `md5` lives here.
  */
 export interface ProcessedFile {
   /** Unique identifier for React keys and tracking */
   id: string;
-  /** The File object - pass this to ship.deployments.upload() */
+  /** The File object — pass this to ship.deployments.upload() */
   file: File;
-  /** Relative path for deployment (e.g., "images/photo.jpg") */
+  /** Relative path for deployment (e.g. "images/photo.jpg") */
   path: string;
   /** File size in bytes */
   size: number;
-  /** MD5 hash (optional - Ship SDK calculates during deployment if not provided) */
-  md5?: string;
-  /** Filename without path */
+  /** Filename without path — for display; `path` is the deploy identity */
   name: string;
-  /** MIME type for UI icons/previews */
+  /** MIME type as reported by the browser, for UI icons/previews */
   type: string;
   /** Last modified timestamp */
   lastModified: number;
-  /** Current processing/upload status */
-  status: FileStatus;
+  /** Current processing status */
+  status: FileValidationStatusType;
   /** Human-readable status message for UI */
   statusMessage?: string;
-  /** Upload progress (0-100) - only set during upload */
-  progress?: number;
 }
 
 /**
- * State machine values for the drop hook
+ * Phase of the drop lifecycle.
+ *
+ * Dragging is not a phase — it is a pointer state that can occur over any of
+ * these, carried separately as `isDragging`.
  */
-export type DropStateValue =
-  | 'idle'       // The hook is ready for files
-  | 'dragging'   // The user is dragging files over the dropzone
-  | 'processing' // Files are being validated and processed
-  | 'ready'      // Files are valid and ready for deployment
-  | 'error';     // An error occurred during processing
+export type DropPhase = 'idle' | 'processing' | 'ready' | 'error';
 
-/**
- * Status information with title and details
- */
+/** What to show the user about the current phase. */
 export interface DropStatus {
   title: string;
   details: string;
+  /** Per-item breakdown, for multi-error cases */
   errors?: string[];
-  warnings?: string[];  // Non-blocking issues (e.g., excluded empty files)
+  /** Non-blocking issues (e.g. excluded empty files) */
+  warnings?: string[];
 }
-
-/**
- * State machine state for the drop hook
- */
-export interface DropState {
-  value: DropStateValue;
-  files: ProcessedFile[];
-  sourceName: string;
-  status: DropStatus | null;
-  needsBuild: boolean;
-}
-

@@ -1,8 +1,8 @@
 # @shipstatic/drop
 
-Headless file processing toolkit for Ship SDK deployments.
+Headless file processing for Ship SDK deployments.
 
-A focused React hook for preparing files for deployment with [@shipstatic/ship](https://github.com/shipstatic/ship). Handles ZIP extraction, path normalization, folder structure preservation, and validation.
+A React hook that prepares files for deployment with [@shipstatic/ship](https://www.npmjs.com/package/@shipstatic/ship): drag & drop with folder support, ZIP extraction, path normalization, and validation against your account's real platform limits. No UI, full styling control.
 
 ## Installation
 
@@ -10,20 +10,21 @@ A focused React hook for preparing files for deployment with [@shipstatic/ship](
 npm install @shipstatic/drop @shipstatic/ship
 ```
 
+React 18 or 19 is a peer dependency.
+
 ## Quick Start
 
 ```tsx
 import { useDrop } from '@shipstatic/drop';
 import Ship from '@shipstatic/ship';
 
-const ship = new Ship({ deployToken: 'token-xxxx' });
+const ship = new Ship({ token: 'deploy-...' });
 
 function Uploader() {
   const drop = useDrop({ ship });
 
-  const handleUpload = async () => {
-    const files = drop.getFilesForUpload();
-    await ship.deployments.upload(files);
+  const upload = async () => {
+    await ship.deployments.upload(drop.getFilesForUpload());
   };
 
   return (
@@ -33,199 +34,230 @@ function Uploader() {
         style={{
           border: '2px dashed',
           borderColor: drop.isDragging ? 'blue' : 'gray',
-          padding: '40px',
+          padding: 40,
           textAlign: 'center',
         }}
       >
         <input {...drop.getInputProps()} />
-        {drop.isDragging ? 'Drop here' : 'Click or drag files/folders'}
+        {drop.isDragging ? 'Drop here' : 'Click or drag a folder'}
       </div>
 
-      {drop.status && <p>{drop.status.title}: {drop.status.details}</p>}
+      {drop.status && (
+        <p>
+          {drop.status.title}: {drop.status.details}
+        </p>
+      )}
 
-      <button onClick={handleUpload} disabled={!drop.validFiles.length}>
-        Upload {drop.validFiles.length} files
+      <button onClick={upload} disabled={drop.validFiles.length === 0}>
+        Deploy {drop.validFiles.length} files
       </button>
     </div>
   );
 }
 ```
 
-## Features
+## Why it exists
 
-- **Prop Getters API** - Spread props on your elements (like `react-dropzone`)
-- **Built-in Drag & Drop** - Folder support with `webkitGetAsEntry` API
-- **ZIP Support** - Automatic extraction and processing
-- **Ship SDK Integration** - Validation via `ship.getLimits()`
-- **Headless** - No visual components, full styling control
-- **TypeScript** - Complete type definitions
+Ship's SDK deploys files. It doesn't do the browser-side work of *getting* them:
 
-## State Machine
+- **Folder drag & drop** via `webkitGetAsEntry`, traversed to exhaustion (`readEntries` returns at most 100 entries per call, so a naive reader truncates large folders)
+- **ZIP extraction**, off the main thread
+- **Path normalization** — the common directory prefix is stripped so `my-site/index.html` deploys as `index.html`
+- **Validation** against your live limits from `ship.getLimits()`, using Ship's own validator so client and server can never disagree
+- **React state** for the whole lifecycle
 
-```
-idle → dragging → processing → ready/error
-```
+## `useDrop(options)`
 
-Use semantic booleans for clean rendering:
-
-```tsx
-{drop.isProcessing && <Spinner />}
-{drop.hasError && <Error message={drop.status?.details} onRetry={drop.reset} />}
-{drop.isInteractive && <DropZone />}
+```ts
+const drop = useDrop({ ship });
 ```
 
-Or use `phase` for switch-case logic:
+| Option | Type | Purpose |
+|--------|------|---------|
+| `ship` | `Pick<Ship, 'getLimits'>` | Your Ship client — used for platform limits. A real `Ship` satisfies it. |
 
-```tsx
-switch (drop.phase) {
-  case 'idle': return 'Drop files here';
-  case 'dragging': return 'Drop now!';
-  case 'processing': return 'Processing...';
-  case 'ready': return `${drop.validFiles.length} files ready`;
-  case 'error': return drop.status?.details;
-}
-```
+### What it returns
 
-## API
-
-### `useDrop(options)`
-
-```typescript
-interface DropOptions {
-  ship: Ship;                                    // Ship SDK instance (required)
-  onFilesReady?: (files: ProcessedFile[]) => void;
-  onValidationError?: (error: ClientError) => void;
-  stripPrefix?: boolean;                         // Strip common path prefix (default: true)
-}
-```
-
-### Return Value
-
-```typescript
+```ts
 interface DropReturn {
   // State
-  phase: 'idle' | 'dragging' | 'processing' | 'ready' | 'error';
-  isProcessing: boolean;
-  isDragging: boolean;
-  isInteractive: boolean;  // true when idle, dragging, or ready
-  hasError: boolean;       // true when in error state
+  phase: 'idle' | 'processing' | 'ready' | 'error';
+  isProcessing: boolean;   // phase === 'processing'
+  isDragging: boolean;     // pointer is over the dropzone
+  isInteractive: boolean;  // idle or ready
+  hasError: boolean;       // phase === 'error'
   files: ProcessedFile[];
-  validFiles: ProcessedFile[];
-  sourceName: string;
-  status: { title: string; details: string; errors?: string[]; warnings?: string[] } | null;
+  validFiles: ProcessedFile[];  // only those that passed validation
+  sourceName: string;      // ZIP name, folder name, or filename
+  status: DropStatus | null;
+  needsBuild: boolean;
 
   // Prop getters
-  getDropzoneProps: (options?: { clickable?: boolean }) => {...};
-  getInputProps: () => {...};
+  getDropzoneProps: (options?: { clickable?: boolean }) => { ... };
+  getInputProps: () => { ... };
 
   // Actions
-  open: () => void;                              // Trigger file picker
-  processFiles: (files: File[]) => Promise<void>;
-  reset: () => void;                             // Clear all files and reset state
+  open: () => void;                              // trigger the file picker
+  processFiles: (files: File[]) => Promise<void>; // advanced — see below
+  reset: () => void;
 
-  // Helpers
-  getFilesForUpload: () => File[];               // Get raw File objects for SDK
+  getFilesForUpload: () => File[];  // raw Files for ship.deployments.upload()
 }
 ```
 
-### Prop Getter Options
+**`isDragging` is not a phase.** It's a pointer state that can occur over any phase, so a ready set stays ready while a new folder is dragged over it. Switch on `phase`; style on `isDragging`.
+
+### Phases
+
+```
+idle → processing → ready   (deployable)
+                  → error   (see status)
+```
+
+`status` carries what to show the user:
+
+```ts
+interface DropStatus {
+  title: string;
+  details: string;
+  errors?: string[];    // per-file breakdown, on multi-error failures
+  warnings?: string[];  // non-blocking, e.g. excluded empty files
+}
+```
+
+To react to a phase change, use the state — that's what it's for:
 
 ```tsx
-// Default: clickable dropzone (click opens file picker)
-<div {...drop.getDropzoneProps()}>
+useEffect(() => {
+  if (drop.phase === 'ready') track('files_ready', drop.files.length);
+}, [drop.phase]);
+```
 
-// Drag-only dropzone (no click behavior)
+## Prop getters
+
+```tsx
+<div {...drop.getDropzoneProps()}>
+  <input {...drop.getInputProps()} />
+</div>
+```
+
+Drag-only, with your own trigger:
+
+```tsx
 <div {...drop.getDropzoneProps({ clickable: false })}>
+  <input {...drop.getInputProps()} />
   <button onClick={drop.open}>Select folder</button>
 </div>
 ```
 
-## Ship SDK Integration
+`getDropzoneProps()` handles `webkitGetAsEntry` internally, which is what preserves folder structure. Calling `processFiles()` yourself loses it — the browser invalidates `dataTransfer.items` at the first `await`, so entries must be captured synchronously.
 
-Drop uses Ship SDK's validation automatically:
+**The hidden input is a folder picker.** It always carries `webkitdirectory`, so clicking opens a directory chooser. Individual files arrive by drag & drop.
 
-```tsx
-const drop = useDrop({ ship });
+## Validation
 
-// Behind the scenes: ship.getLimits() → validateFiles()
-// Client validation matches server limits
+Validation is **atomic**: if any file fails, every non-excluded file is marked `validation_failed` and nothing is deployable. Call `reset()` and start over.
+
+Empty files (0 bytes) are `excluded` with a warning rather than failing the deploy.
+
+| Status | Meaning |
+|--------|---------|
+| `pending` | Awaiting validation |
+| `processing_error` | Failed during processing |
+| `excluded` | Excluded with a warning — not an error |
+| `validation_failed` | Failed validation; blocks deployment |
+| `ready` | Deployable |
+
+These are Ship's own values. Drop adds none of its own, so a `ProcessedFile` is directly expressible as Ship's `ValidatableFile` — and you compare against `FileValidationStatus`, imported from `@shipstatic/ship`, rather than a drop-specific alias:
+
+```ts
+import { FileValidationStatus } from '@shipstatic/ship';
+
+const ready = drop.files.filter(f => f.status === FileValidationStatus.READY);
 ```
 
-Pass files to Ship SDK:
+## Build on upload
+
+Drop recognises an unbuilt project (source files with `package.json` / `node_modules`) and sets `needsBuild`. `node_modules` is skipped during traversal and stripped from folder-picker selections, deploy validation is skipped (source files aren't build output), and every file goes straight to `ready`.
+
+Pass the signal through to the SDK:
 
 ```tsx
-const files = drop.getFilesForUpload();
-await ship.deployments.upload(files);
-```
-
-## Testing
-
-The `/testing` subpath provides mock utilities for testing components that use `useDrop`:
-
-```typescript
-import {
-  createMockDrop,
-  createMockDropWithSpies,
-  createMockProcessedFile,
-} from '@shipstatic/drop/testing';
-```
-
-### Testing Component States
-
-```tsx
-import { render, screen } from '@testing-library/react';
-import { createMockDrop, createMockProcessedFile } from '@shipstatic/drop/testing';
-
-it('shows file count when ready', () => {
-  const drop = createMockDrop({
-    phase: 'ready',
-    files: [
-      createMockProcessedFile('index.html'),
-      createMockProcessedFile('style.css'),
-    ],
-  });
-
-  render(<MyDropzone drop={drop} />);
-  expect(screen.getByText('2 files ready')).toBeInTheDocument();
+await ship.deployments.upload(drop.getFilesForUpload(), {
+  build: drop.needsBuild,
+  prerender: drop.needsBuild,
 });
 ```
 
-### Testing Interactions
+## ZIP handling
+
+A **single** dropped ZIP is extracted and its contents deployed. ZIPs among several files are treated as ordinary files. Archive paths are sanitized against directory traversal (`../../etc/passwd` → `etc/passwd`).
+
+## Without React
+
+The pipeline is a plain function, so any UI layer can use it:
+
+```ts
+import { processFiles } from '@shipstatic/drop';
+import { FileValidationStatus } from '@shipstatic/ship';
+
+const outcome = await processFiles(files, { limits: await ship.getLimits() });
+
+if (outcome.phase === 'ready') {
+  const ready = outcome.files.filter(f => f.status === FileValidationStatus.READY);
+  await ship.deployments.upload(ready.map(f => f.file));
+} else {
+  console.error(outcome.status.title, outcome.status.details);
+}
+```
+
+It never throws — a missing entry point, an oversized file, an unbuilt project, and an unexpected failure all come back as an `error` outcome. Pass `onStatus` to report progress during extraction.
+
+## Testing your components
+
+`@shipstatic/drop/testing` builds the fixtures so your tests don't have to:
 
 ```tsx
-import userEvent from '@testing-library/user-event';
-import { createMockDropWithSpies, createMockProcessedFile } from '@shipstatic/drop/testing';
+import { createMockDrop, createMockProcessedFile } from '@shipstatic/drop/testing';
 
-it('calls reset when Clear is clicked', async () => {
-  const { drop, spies } = createMockDropWithSpies({
+it('renders the file count', () => {
+  const drop = createMockDrop({
     phase: 'ready',
     files: [createMockProcessedFile('index.html')],
   });
 
-  render(<MyDropzone drop={drop} />);
-  await userEvent.click(screen.getByText('Clear'));
-
-  expect(spies.reset.toHaveBeenCalled()).toBe(true);
+  render(<Dropzone drop={drop} />);
+  expect(screen.getByText('1 file')).toBeInTheDocument();
 });
 ```
 
-### Available Utilities
+Override any field — including with your own spies, which is how you assert on interactions:
 
-| Function | Purpose |
-|----------|---------|
-| `createMockDrop(options?)` | Mock `DropReturn` for rendering tests |
-| `createMockDropWithSpies(options?)` | Mock with call tracking for interaction tests |
-| `createMockProcessedFile(name, options?)` | Mock `ProcessedFile` |
-| `createMockFile(name, content?, type?)` | Mock `File` object |
-| `createMockFileWithPath(name, path, ...)` | Mock `File` with `webkitRelativePath` |
-| `createMockErrorStatus(title?, details?, errors?)` | Mock error status |
-| `createMockProcessingStatus(title?, details?)` | Mock processing status |
-| `createMockReadyStatus(count)` | Mock ready status (`"N file(s) are ready."`) |
+```tsx
+const reset = vi.fn();
+const drop = createMockDrop({ phase: 'ready', reset });
 
-## Requirements
+render(<Dropzone drop={drop} />);
+await userEvent.click(screen.getByText('Clear'));
 
-- React 18+ or 19+
-- Modern browsers (Chrome, Edge, Safari 11.1+, Firefox 50+)
+expect(reset).toHaveBeenCalled();
+```
+
+The subpath deliberately ships no spy or matcher helpers of its own — your test framework already has better ones.
+
+| Export | Purpose |
+|--------|---------|
+| `createMockDrop(overrides?)` | A complete `DropReturn`; convenience booleans and `validFiles` derive from `phase` and `files` unless overridden |
+| `createMockProcessedFile(name, options?)` | A `ProcessedFile` backed by a real `File` |
+| `createMockFileWithPath(name, path, content?, type?)` | A real `File` carrying a folder-relative path |
+
+## Gotchas
+
+- **`webkitRelativePath` is the handoff.** Drop writes each file's deploy path there, and the Ship SDK reads it. Don't modify it in between.
+- **`stripCommonPrefix` mutates File objects.** It returns new `ProcessedFile`s but rewrites `webkitRelativePath` on the underlying `File` — deliberately, because that's what the SDK reads.
+- **Unreadable entries are skipped silently.** A folder with permission-denied files still deploys; the failures are logged to the console with no programmatic signal.
+- **No MD5 here.** Ship computes checksums during upload.
+- **`type` is the browser's report.** The platform derives `Content-Type` server-side from the path, so drop bundles no MIME database.
 
 ## License
 
