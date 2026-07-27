@@ -112,11 +112,19 @@ jobs:
 
       - uses: pnpm/action-setup@v6
 
+      # No `registry-url`, deliberately. When it is set, setup-node writes
+      # `//registry.npmjs.org/:_authToken=${NODE_AUTH_TOKEN}` into a temp .npmrc;
+      # with no token in the env that line is an EMPTY credential, and npm reads
+      # any `_authToken` line — even empty — as "token auth is configured" and
+      # so never attempts the OIDC handshake. The publish then goes out
+      # anonymous and 403s (actions/setup-node#1551). It is the PRESENCE of the
+      # token line, not the absence of a token value, that suppresses OIDC —
+      # which is why dropping this input, not just the env var, is the fix.
+      # npm's default registry is already registry.npmjs.org, so nothing is lost.
       - uses: actions/setup-node@v7
         with:
           node-version: 22
           cache: pnpm
-          registry-url: 'https://registry.npmjs.org'
 
       - run: pnpm install --frozen-lockfile
 
@@ -132,11 +140,15 @@ jobs:
       - run: npm install -g npm@latest
 
       - run: npm publish --access public --tag "${{ needs.version.outputs.tag }}"
-        # NO NODE_AUTH_TOKEN, deliberately. npm authenticates with a token
-        # whenever one is present and never attempts OIDC, so keeping it "as a
-        # fallback" silently disables trusted publishing — which is exactly what
-        # happened on the first attempt. The absence of a credential here IS the
-        # mechanism.
+        # No NODE_AUTH_TOKEN and no registry-url: with neither a token in the env
+        # nor an `_authToken` line in .npmrc, npm attempts OIDC. It exchanges the
+        # GitHub id-token for a short-lived publish credential against the trusted
+        # publisher configured on npmjs.com. That publisher is scoped to repo +
+        # workflow filename with the environment left BLANK — a package may have
+        # only ONE trusted publisher, so it cannot name both npm-beta and
+        # npm-latest; the GitHub environments still gate the branch, npm just
+        # trusts the workflow file. No `--provenance`: drop's source is private
+        # and npm cannot attest a private repo.
 
       - uses: slackapi/slack-github-action@v4
         with:
