@@ -149,6 +149,26 @@ jobs:
       # specify and the ecosystem runs; `@latest` opted us into an untested major.
       - run: npm install -g npm@11
 
+      # TEMPORARY: patch npm's OWN auth resolver to report, per request, which
+      # _authToken keys are present in opts. If the PUT resolves none, the OIDC
+      # token never reached the request and npm published anonymously.
+      - name: Diagnose auth resolution
+        run: |
+          set +e
+          AUTHJS="$(npm root -g)/npm/node_modules/npm-registry-fetch/lib/auth.js"
+          node -e '
+            const fs = require("fs");
+            const p = process.argv[1];
+            let s = fs.readFileSync(p, "utf8");
+            const needle = "const getAuth = (uri, opts = {}) => {";
+            if (!s.includes(needle)) { console.log("PATCH TARGET NOT FOUND"); process.exit(0); }
+            s = s.replace(needle, needle + "\n  try { console.error(\"[DIAG] getAuth\", uri, \"keys=\" + JSON.stringify(Object.keys(opts).filter(k => k.includes(\"_authToken\")))); } catch (e) {}");
+            fs.writeFileSync(p, s);
+            console.log("patched", p);
+          ' "$AUTHJS"
+          npm publish --tag "${{ needs.version.outputs.tag }}" 2>&1 | grep -aE "DIAG|npm error|Publishing to|oidc" | head -40
+          exit 0
+
       - run: npm publish --tag "${{ needs.version.outputs.tag }}"
         # No NODE_AUTH_TOKEN and no registry-url: with neither a token in the env
         # nor an `_authToken` line in .npmrc, npm attempts OIDC. It exchanges the
