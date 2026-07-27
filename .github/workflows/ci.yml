@@ -137,97 +137,19 @@ jobs:
       # the failure looked like a permissions problem rather than a policy one.
       # OIDC needs npm >= 11.5.1; node 22 bundles npm 10.x, and pnpm has no OIDC
       # support at all, so the publish step is `npm`, not `pnpm`.
-      - run: npm install -g npm@latest
+      #
+      # PINNED TO 11, NOT `@latest`. On npm 12.0.1 the OIDC exchange succeeds and
+      # the CLI logs "Successfully retrieved and set token" — then publishes
+      # ANONYMOUSLY anyway, so the registry answers a bare 403 with no message.
+      # Proven on 2026-07-27: with the very token that CLI minted, a direct
+      # libnpmpublish call published 2.0.0-beta.0 in the same job where
+      # `npm publish` 403'd, and the CLI kept 403ing even for a version that by
+      # then EXISTED (an authenticated client gets "cannot publish over the
+      # previously published versions" instead). 11.x is the version the docs
+      # specify and the ecosystem runs; `@latest` opted us into an untested major.
+      - run: npm install -g npm@11
 
-      # TEMPORARY DIAGNOSTIC — remove once publishing is green.
-      # Replays npm's OWN exchange protocol (lib/utils/oidc.js): POST with the
-      # GitHub id-token as the bearer credential and an empty body — NOT a JSON
-      # body. The response is what tells us the minted token's capability.
-      - name: Diagnose OIDC exchange
-        run: |
-          set +e
-          ID_TOKEN=$(curl -sS -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
-            "${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=npm:registry.npmjs.org" \
-            | node -pe 'JSON.parse(require("fs").readFileSync(0,"utf8")).value')
-
-          curl -sS -i -X POST -H "authorization: Bearer $ID_TOKEN" \
-            "https://registry.npmjs.org/-/npm/v1/oidc/token/exchange/package/@shipstatic%2fdrop" \
-            > /tmp/x.txt 2>&1
-
-          node -e '
-            const fs = require("fs");
-            const raw = fs.readFileSync("/tmp/x.txt", "utf8");
-            const i = raw.indexOf("\r\n\r\n");
-            const head = i < 0 ? raw : raw.slice(0, i);
-            const body = i < 0 ? "" : raw.slice(i + 4);
-            console.log("--- exchange status + headers ---");
-            for (const l of head.split(/\r?\n/)) {
-              console.log(/authorization|set-cookie/i.test(l) ? l.split(":")[0] + ": <redacted>" : l);
-            }
-            console.log("--- exchange body (token value redacted, every other field shown) ---");
-            try {
-              const j = JSON.parse(body);
-              const safe = {};
-              for (const [k, v] of Object.entries(j)) {
-                safe[k] = /token/i.test(k) ? "<" + String(v).length + " chars>" : v;
-              }
-              console.log(JSON.stringify(safe, null, 2));
-              if (j.token) fs.writeFileSync("/tmp/npmtok", j.token);
-            } catch (e) { console.log(body.slice(0, 600)); }
-          '
-
-          if [ -s /tmp/npmtok ]; then
-            TOK=$(cat /tmp/npmtok)
-            echo "--- what the minted token can see ---"
-            printf 'whoami: '; curl -sS -o /dev/null -w '%{http_code}\n' -H "authorization: Bearer $TOK" https://registry.npmjs.org/-/whoami
-            printf 'trust config: '
-            curl -sS -w '\n[status %{http_code}]\n' -H "authorization: Bearer $TOK" \
-              "https://registry.npmjs.org/-/package/@shipstatic%2fdrop/trust"
-          fi
-          exit 0
-
-      # TEMPORARY: npm's CLI swallows the registry's 403 body. Drive the publish
-      # through libnpmpublish directly so the real body + headers are visible, then
-      # test whether STAGING is permitted where publishing is not — which is
-      # precisely what a stage-only trusted publisher looks like.
-      - name: Diagnose the 403
-        run: |
-          set +e
-          node -e '
-            const cp = require("child_process");
-            const fs = require("fs");
-            const path = require("path");
-            const root = cp.execSync("npm root -g").toString().trim();
-            const { publish } = require(path.join(root, "npm/node_modules/libnpmpublish"));
-            const manifest = JSON.parse(fs.readFileSync("package.json", "utf8"));
-            cp.execSync("npm pack --pack-destination /tmp", { stdio: "inherit" });
-            const fname = manifest.name.replace("@", "").replace("/", "-") + "-" + manifest.version + ".tgz";
-            const tarball = fs.readFileSync("/tmp/" + fname);
-            const token = fs.readFileSync("/tmp/npmtok", "utf8").trim();
-            publish(manifest, tarball, {
-              registry: "https://registry.npmjs.org/",
-              "//registry.npmjs.org/:_authToken": token,
-              defaultTag: "beta",
-            }).then(() => console.log("PUBLISH OK"))
-              .catch(e => {
-                console.log("=== THE REAL REGISTRY RESPONSE ===");
-                console.log("code:", e.code, "status:", e.statusCode);
-                console.log("message:", e.message);
-                console.log("body:", JSON.stringify(e.body));
-                let h = e.headers;
-                try { h = h && typeof h.raw === "function" ? h.raw() : h; } catch (x) {}
-                console.log("headers:", JSON.stringify(h, null, 2));
-              });
-          '
-          echo "=== is STAGING permitted where publishing is not? ==="
-          npm stage publish . --tag "${{ needs.version.outputs.tag }}" 2>&1 | tail -25
-          exit 0
-
-      # The boring, canonical publish. No --access: the package already exists and
-      # is public, and `--access` asks the registry to SET package access, which is
-      # a settings write rather than a publish.
-      - name: Publish
-        run: npm publish --tag "${{ needs.version.outputs.tag }}"
+      - run: npm publish --tag "${{ needs.version.outputs.tag }}"
         # No NODE_AUTH_TOKEN and no registry-url: with neither a token in the env
         # nor an `_authToken` line in .npmrc, npm attempts OIDC. It exchanges the
         # GitHub id-token for a short-lived publish credential against the trusted
