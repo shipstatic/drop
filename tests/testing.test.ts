@@ -1,6 +1,11 @@
 import { FileValidationStatus } from '@shipstatic/types';
 import { describe, expect, it, vi } from 'vitest';
-import { createMockDrop, createMockFileWithPath, createMockProcessedFile } from '../src/testing';
+import {
+  createMockDrop,
+  createMockFileWithPath,
+  createMockProcessedFile,
+  mockUseDrop,
+} from '../src/testing';
 import type { DropReturn } from '../src/useDrop';
 
 /**
@@ -178,5 +183,27 @@ describe('createMockFileWithPath', () => {
     expect(file.webkitRelativePath).toBe('dist/index.html');
     expect(file.type).toBe('text/html');
     await expect(file.text()).resolves.toBe('<html>');
+  });
+});
+
+describe('mockUseDrop', () => {
+  it('returns a useDrop replacement built from createMockDrop', () => {
+    const useDrop = mockUseDrop({ phase: 'ready', sourceName: 'dist' });
+    const drop = useDrop();
+
+    expect(drop.phase).toBe('ready');
+    expect(drop.sourceName).toBe('dist');
+    // A complete DropReturn, so the mock cannot describe a hook drop does not have
+    expect(typeof drop.getDropzoneProps).toBe('function');
+    expect(typeof drop.getFilesForUpload).toBe('function');
+  });
+
+  it('takes no arguments and still yields a usable idle hook', () => {
+    expect(mockUseDrop()().phase).toBe('idle');
+  });
+
+  it('returns a fresh object per call, so tests cannot leak state', () => {
+    const useDrop = mockUseDrop({ phase: 'ready' });
+    expect(useDrop()).not.toBe(useDrop());
   });
 });

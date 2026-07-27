@@ -347,6 +347,7 @@ import {
 | `createMockDrop(overrides?)` | A complete `DropReturn`. Takes `Partial<DropReturn>` — there is no separate options vocabulary, because every option IS a field. Convenience booleans and `validFiles` derive from `phase`/`files` unless overridden. |
 | `createMockProcessedFile(name, options?)` | A `ProcessedFile` backed by a real `File` |
 | `createMockFileWithPath(name, path, content?, type?)` | A real `File` carrying a folder-relative path |
+| `mockUseDrop(overrides?)` | A `useDrop` replacement, for consumers that CALL the hook instead of receiving `drop` as a prop |
 
 **It ships no spy, matcher, or status helpers, deliberately.** Interactions are
 asserted with the consumer's own framework, passed straight through the overrides:
@@ -366,7 +367,15 @@ Three rules hold this line, each of which was learned the hard way:
    it; a `createMockReadyStatus` once emitted `"1 file ready."` where the pipeline
    emits `"1 file ready"`. `DropStatus` is `{title, details}` — construct it
    inline, or get it from a real pipeline run.
-3. **Never wrap a one-line constructor.** `createMockFile` was
+3. **A consumer that receives `drop` as a prop needs no module mock at all.**
+   That is the pattern to steer consumers toward — `web/my`'s `DeployDropArea`
+   takes `drop: DropReturn` and has 22 clean `createMockDrop` call sites, while
+   every component that calls `useDrop` itself needs `vi.mock`. A
+   `<DropProvider>` + context hook was considered and **declined**: it is the
+   canonical React answer, but it doubles this package's consumption API to save
+   three lines in three files, and one headless hook is the whole identity.
+   `mockUseDrop` exists for the callers that remain.
+4. **Never wrap a one-line constructor.** `createMockFile` was
    `new File([c], n, {type})`. `createMockFileWithPath` survives because
    `webkitRelativePath` is read-only and needs `defineProperty`.
 

@@ -81,6 +81,35 @@ export function createMockDrop(overrides: Partial<DropReturn> = {}): DropReturn 
   };
 }
 
+/**
+ * A `useDrop` replacement for consumers that call the hook rather than receiving
+ * `drop` as a prop.
+ *
+ * ```tsx
+ * vi.mock('@shipstatic/drop', () => ({ useDrop: mockUseDrop({ phase: 'ready' }) }));
+ * ```
+ *
+ * Framework-agnostic on purpose — it returns a function, and your test framework
+ * installs it. The value is not the three lines it saves: it is that the mock's
+ * shape comes from `createMockDrop`, so it cannot describe a hook this package
+ * does not have. A hand-written module mock can, and did — one consumer described
+ * react-dropzone's API (`rejectedFiles`, `isDragActive`, `getRootProps`, `clear`)
+ * for months, because nothing typechecked it.
+ *
+ * Note this replaces the WHOLE module. If you also import `processFiles` or a
+ * type from `@shipstatic/drop`, spread the real module in first:
+ *
+ * ```tsx
+ * vi.mock('@shipstatic/drop', async (importOriginal) => ({
+ *   ...(await importOriginal<typeof import('@shipstatic/drop')>()),
+ *   useDrop: mockUseDrop({ phase: 'ready' }),
+ * }));
+ * ```
+ */
+export function mockUseDrop(overrides: Partial<DropReturn> = {}): () => DropReturn {
+  return () => createMockDrop(overrides);
+}
+
 let mockFileIdCounter = 0;
 
 /** Build a `ProcessedFile` backed by a real `File`. */

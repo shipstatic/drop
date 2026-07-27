@@ -250,6 +250,16 @@ The subpath deliberately ships no spy or matcher helpers of its own — your tes
 | `createMockDrop(overrides?)` | A complete `DropReturn`; convenience booleans and `validFiles` derive from `phase` and `files` unless overridden |
 | `createMockProcessedFile(name, options?)` | A `ProcessedFile` backed by a real `File` |
 | `createMockFileWithPath(name, path, content?, type?)` | A real `File` carrying a folder-relative path |
+| `mockUseDrop(overrides?)` | A `useDrop` replacement, for components that call the hook themselves |
+
+If your component **receives** `drop` as a prop, you need nothing else — pass it a
+`createMockDrop()`. If it calls `useDrop` internally, replace the module:
+
+```tsx
+import { mockUseDrop } from '@shipstatic/drop/testing';
+
+vi.mock('@shipstatic/drop', () => ({ useDrop: mockUseDrop({ phase: 'ready' }) }));
+```
 
 ## Gotchas
 
