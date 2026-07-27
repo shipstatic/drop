@@ -139,7 +139,34 @@ jobs:
       # support at all, so the publish step is `npm`, not `pnpm`.
       - run: npm install -g npm@latest
 
-      - run: npm publish --access public --tag "${{ needs.version.outputs.tag }}"
+      # TEMPORARY DIAGNOSTIC — remove after root-causing the OIDC 403.
+      - name: Diagnose OIDC
+        run: |
+          echo "=== versions actually in the publish step ==="
+          echo "which npm: $(which npm)"
+          echo "npm:  $(npm --version)"
+          echo "node: $(node --version)"
+          echo "=== OIDC env present? (value never printed) ==="
+          echo "ACTIONS_ID_TOKEN_REQUEST_URL set:   ${ACTIONS_ID_TOKEN_REQUEST_URL:+yes}"
+          echo "ACTIONS_ID_TOKEN_REQUEST_TOKEN set: ${ACTIONS_ID_TOKEN_REQUEST_TOKEN:+yes}"
+          echo "=== OIDC token CLAIMS (raw token never echoed) ==="
+          RESP=$(curl -sS -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" "${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=npm:registry.npmjs.org")
+          printf '%s' "$RESP" | node -e '
+            const fs = require("fs");
+            const d = JSON.parse(fs.readFileSync(0, "utf8"));
+            const jwt = d.value || "";
+            const p = JSON.parse(Buffer.from(jwt.split(".")[1], "base64url").toString());
+            console.log(JSON.stringify({
+              iss: p.iss, aud: p.aud,
+              repository_owner: p.repository_owner,
+              repository: p.repository,
+              workflow_ref: p.workflow_ref,
+              environment: p.environment,
+              ref: p.ref, sub: p.sub,
+            }, null, 2));
+          '
+
+      - run: npm publish --access public --tag "${{ needs.version.outputs.tag }}" --loglevel verbose
         # No NODE_AUTH_TOKEN and no registry-url: with neither a token in the env
         # nor an `_authToken` line in .npmrc, npm attempts OIDC. It exchanges the
         # GitHub id-token for a short-lived publish credential against the trusted
