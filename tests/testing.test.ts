@@ -1,344 +1,182 @@
+import { FileValidationStatus } from '@shipstatic/types';
+import { describe, expect, it, vi } from 'vitest';
+import { createMockDrop, createMockFileWithPath, createMockProcessedFile } from '../src/testing';
+import type { DropReturn } from '../src/useDrop';
+
 /**
- * Tests for @shipstatic/drop/testing utilities
+ * The published `/testing` subpath — three functions, and nothing that duplicates
+ * a test framework.
+ *
+ * Every assertion here is also a TYPE assertion, and is gated by `pnpm typecheck`
+ * for a reason: this subpath's whole job is to be correct in a CONSUMER's
+ * typechecked test file. A published helper whose declared type disagrees with
+ * what it returns is unusable there, and only a typechecked suite catches it.
+ *
+ * Interactions are asserted with the consumer's own `vi.fn()`, passed through
+ * `createMockDrop` overrides — which is why no spy vocabulary ships here.
  */
-
-import { describe, it, expect } from 'vitest';
-import {
-  createMockDrop,
-  createMockDropWithSpies,
-  createMockProcessedFile,
-  createMockFile,
-  createMockFileWithPath,
-  createMockErrorStatus,
-  createMockProcessingStatus,
-  createMockReadyStatus,
-} from '../src/testing';
-
 describe('createMockDrop', () => {
-  it('returns default idle state', () => {
-    const drop = createMockDrop();
+  it('is a complete DropReturn with no arguments', () => {
+    const drop: DropReturn = createMockDrop();
 
     expect(drop.phase).toBe('idle');
-    expect(drop.isProcessing).toBe(false);
     expect(drop.isDragging).toBe(false);
+    expect(drop.isProcessing).toBe(false);
     expect(drop.isInteractive).toBe(true);
     expect(drop.hasError).toBe(false);
     expect(drop.files).toEqual([]);
     expect(drop.validFiles).toEqual([]);
     expect(drop.sourceName).toBe('');
     expect(drop.status).toBeNull();
+    expect(drop.needsBuild).toBe(false);
+    expect(typeof drop.getDropzoneProps).toBe('function');
+    expect(typeof drop.getInputProps).toBe('function');
+    expect(typeof drop.open).toBe('function');
+    expect(typeof drop.processFiles).toBe('function');
+    expect(typeof drop.reset).toBe('function');
+    expect(typeof drop.getFilesForUpload).toBe('function');
   });
 
-  it('returns processing state correctly', () => {
-    const drop = createMockDrop({ phase: 'processing' });
-
-    expect(drop.phase).toBe('processing');
-    expect(drop.isProcessing).toBe(true);
-    expect(drop.isInteractive).toBe(false);
+  it('derives the convenience booleans from the phase', () => {
+    expect(createMockDrop({ phase: 'processing' }).isProcessing).toBe(true);
+    expect(createMockDrop({ phase: 'error' }).hasError).toBe(true);
+    expect(createMockDrop({ phase: 'ready' }).isInteractive).toBe(true);
+    expect(createMockDrop({ phase: 'processing' }).isInteractive).toBe(false);
+    expect(createMockDrop({ phase: 'error' }).isInteractive).toBe(false);
   });
 
-  it('returns dragging state correctly', () => {
-    const drop = createMockDrop({ phase: 'dragging' });
+  it('derives validFiles from files', () => {
+    const drop = createMockDrop({
+      files: [
+        createMockProcessedFile('index.html'),
+        createMockProcessedFile('bad.exe', { status: FileValidationStatus.VALIDATION_FAILED }),
+      ],
+    });
 
-    expect(drop.phase).toBe('dragging');
+    expect(drop.files).toHaveLength(2);
+    expect(drop.validFiles.map((f) => f.name)).toEqual(['index.html']);
+    expect(drop.getFilesForUpload()).toHaveLength(1);
+  });
+
+  it('takes isDragging independently of the phase', () => {
+    const drop = createMockDrop({ phase: 'ready', isDragging: true });
+
+    expect(drop.phase).toBe('ready');
     expect(drop.isDragging).toBe(true);
     expect(drop.isInteractive).toBe(true);
   });
 
-  it('returns error state correctly', () => {
-    const drop = createMockDrop({ phase: 'error' });
+  it('accepts the consumer’s own spies for any action', () => {
+    // This is the whole interaction story: no bespoke spy vocabulary, just the
+    // caller's `vi.fn()` with the caller's own matchers.
+    const reset = vi.fn();
+    const open = vi.fn();
+    const processFiles = vi.fn();
+    const drop = createMockDrop({ phase: 'ready', reset, open, processFiles });
 
-    expect(drop.phase).toBe('error');
-    expect(drop.hasError).toBe(true);
-    expect(drop.isInteractive).toBe(false);
-  });
-
-  it('returns ready state correctly', () => {
-    const mockFile = createMockProcessedFile('index.html');
-    const drop = createMockDrop({
-      phase: 'ready',
-      files: [mockFile],
-    });
-
-    expect(drop.phase).toBe('ready');
-    expect(drop.isInteractive).toBe(true);
-    expect(drop.files).toHaveLength(1);
-    expect(drop.validFiles).toHaveLength(1);
-  });
-
-  it('filters validFiles based on status', () => {
-    const readyFile = createMockProcessedFile('ready.html');
-    const failedFile = createMockProcessedFile('failed.html', {
-      status: 'validation_failed',
-    });
-
-    const drop = createMockDrop({
-      phase: 'ready',
-      files: [readyFile, failedFile],
-    });
-
-    expect(drop.files).toHaveLength(2);
-    expect(drop.validFiles).toHaveLength(1);
-    expect(drop.validFiles[0].name).toBe('ready.html');
-  });
-
-  it('provides working getDropzoneProps', () => {
-    const drop = createMockDrop();
-    const props = drop.getDropzoneProps();
-
-    expect(props.onDragOver).toBeInstanceOf(Function);
-    expect(props.onDragLeave).toBeInstanceOf(Function);
-    expect(props.onDrop).toBeInstanceOf(Function);
-    expect(props.onClick).toBeInstanceOf(Function);
-  });
-
-  it('respects clickable option in getDropzoneProps', () => {
-    const drop = createMockDrop();
-
-    const propsWithClick = drop.getDropzoneProps();
-    const propsWithoutClick = drop.getDropzoneProps({ clickable: false });
-
-    expect(propsWithClick.onClick).toBeDefined();
-    expect(propsWithoutClick.onClick).toBeUndefined();
-  });
-
-  it('provides working getInputProps', () => {
-    const drop = createMockDrop();
-    const props = drop.getInputProps();
-
-    expect(props.type).toBe('file');
-    expect(props.multiple).toBe(true);
-    expect(props.style).toEqual({ display: 'none' });
-    expect(props.onChange).toBeInstanceOf(Function);
-  });
-
-  it('provides getFilesForUpload helper', () => {
-    const mockFile = createMockProcessedFile('index.html');
-    const drop = createMockDrop({
-      phase: 'ready',
-      files: [mockFile],
-    });
-
-    const files = drop.getFilesForUpload();
-    expect(files).toHaveLength(1);
-    expect(files[0]).toBeInstanceOf(File);
-    expect(files[0].name).toBe('index.html');
-  });
-
-  it('includes sourceName when provided', () => {
-    const drop = createMockDrop({ sourceName: 'my-folder.zip' });
-    expect(drop.sourceName).toBe('my-folder.zip');
-  });
-
-  it('includes status when provided', () => {
-    const status = createMockErrorStatus('Validation Failed', 'Test error');
-    const drop = createMockDrop({ status });
-
-    expect(drop.status).toEqual(status);
-  });
-});
-
-describe('createMockDropWithSpies', () => {
-  it('returns drop and spies objects', () => {
-    const { drop, spies } = createMockDropWithSpies();
-
-    expect(drop).toBeDefined();
-    expect(spies).toBeDefined();
-    expect(spies.open).toBeInstanceOf(Function);
-    expect(spies.processFiles).toBeInstanceOf(Function);
-    expect(spies.reset).toBeInstanceOf(Function);
-    expect(spies.getFilesForUpload).toBeInstanceOf(Function);
-  });
-
-  it('tracks open calls', () => {
-    const { drop, spies } = createMockDropWithSpies();
-
-    expect(spies.open.toHaveBeenCalled()).toBe(false);
-    drop.open();
-    expect(spies.open.toHaveBeenCalled()).toBe(true);
-    expect(spies.open.calls()).toBe(1);
-
-    drop.open();
-    expect(spies.open.calls()).toBe(2);
-  });
-
-  it('tracks reset calls', () => {
-    const { drop, spies } = createMockDropWithSpies();
-
-    expect(spies.reset.toHaveBeenCalled()).toBe(false);
     drop.reset();
-    expect(spies.reset.toHaveBeenCalled()).toBe(true);
-    expect(spies.reset.calls()).toBe(1);
+    drop.open();
+    drop.processFiles([]);
+
+    expect(reset).toHaveBeenCalledOnce();
+    expect(open).toHaveBeenCalledOnce();
+    expect(processFiles).toHaveBeenCalledWith([]);
   });
 
-  it('tracks processFiles calls with arguments', async () => {
-    const { drop, spies } = createMockDropWithSpies();
-    const files = [createMockFile('test.html')];
+  it('lets an explicit override beat every derivation', () => {
+    const drop = createMockDrop({
+      phase: 'error',
+      // A component might be handed a deliberately inconsistent state to check
+      // that it renders defensively.
+      isInteractive: true,
+      validFiles: [createMockProcessedFile('index.html')],
+    });
 
-    expect(spies.processFiles.toHaveBeenCalled()).toBe(false);
-    await drop.processFiles(files);
-    expect(spies.processFiles.toHaveBeenCalled()).toBe(true);
-    expect(spies.processFiles.calls()).toHaveLength(1);
-    expect(spies.processFiles.toHaveBeenCalledWith(files)).toBe(true);
+    expect(drop.hasError).toBe(true);
+    expect(drop.isInteractive).toBe(true);
+    expect(drop.validFiles).toHaveLength(1);
+  });
+
+  it('passes through sourceName, status and needsBuild', () => {
+    const status = { title: 'Ready', details: '3 files ready' };
+    const drop = createMockDrop({ sourceName: 'dist', status, needsBuild: true });
+
+    expect(drop.sourceName).toBe('dist');
+    expect(drop.status).toBe(status);
+    expect(drop.needsBuild).toBe(true);
+  });
+
+  it('returns spreadable prop objects', () => {
+    const drop = createMockDrop();
+
+    expect(drop.getDropzoneProps().onClick).toBeDefined();
+    expect(drop.getDropzoneProps({ clickable: false }).onClick).toBeUndefined();
+    expect(drop.getInputProps().webkitdirectory).toBe('');
+  });
+
+  it('every default action and handler is callable without throwing', () => {
+    // Consumers spread these onto real elements and React invokes them, so
+    // "present" is not enough — a mock whose handlers throw is worse than none.
+    const drop = createMockDrop();
+    const dropzone = drop.getDropzoneProps();
+    const event = {} as never;
+
+    expect(() => dropzone.onDragOver(event)).not.toThrow();
+    expect(() => dropzone.onDragLeave(event)).not.toThrow();
+    expect(() => dropzone.onDrop(event)).not.toThrow();
+    expect(() => dropzone.onClick?.()).not.toThrow();
+    expect(() => drop.getInputProps().onChange(event)).not.toThrow();
+    expect(() => drop.open()).not.toThrow();
+    expect(() => drop.reset()).not.toThrow();
+    expect(drop.getFilesForUpload()).toEqual([]);
+  });
+
+  it('resolves the default processFiles', async () => {
+    await expect(createMockDrop().processFiles([])).resolves.toBeUndefined();
   });
 });
 
 describe('createMockProcessedFile', () => {
-  it('creates a ProcessedFile with defaults', () => {
-    const file = createMockProcessedFile('index.html');
+  it('builds a ready file backed by a real File', () => {
+    const processed = createMockProcessedFile('index.html');
 
-    expect(file.name).toBe('index.html');
-    expect(file.path).toBe('index.html');
-    expect(file.status).toBe('ready');
-    expect(file.type).toBe('text/plain');
-    expect(file.file).toBeInstanceOf(File);
-    expect(file.id).toMatch(/^mock-file-\d+$/);
+    expect(processed.name).toBe('index.html');
+    expect(processed.path).toBe('index.html');
+    expect(processed.status).toBe(FileValidationStatus.READY);
+    expect(processed.file).toBeInstanceOf(File);
+    expect(processed.size).toBeGreaterThan(0);
   });
 
-  it('accepts custom path', () => {
-    const file = createMockProcessedFile('index.html', {
-      path: 'dist/index.html',
+  it('accepts overrides', () => {
+    const processed = createMockProcessedFile('app.css', {
+      path: 'css/app.css',
+      content: 'body{}',
+      type: 'text/css',
+      status: FileValidationStatus.EXCLUDED,
+      statusMessage: 'empty',
     });
 
-    expect(file.name).toBe('index.html');
-    expect(file.path).toBe('dist/index.html');
+    expect(processed.path).toBe('css/app.css');
+    expect(processed.type).toBe('text/css');
+    expect(processed.status).toBe(FileValidationStatus.EXCLUDED);
+    expect(processed.statusMessage).toBe('empty');
+    expect(processed.size).toBe(6);
   });
 
-  it('accepts custom content', () => {
-    const file = createMockProcessedFile('index.html', {
-      content: '<h1>Hello</h1>',
-    });
-
-    expect(file.size).toBe(14); // '<h1>Hello</h1>'.length
-  });
-
-  it('accepts custom type', () => {
-    const file = createMockProcessedFile('index.html', {
-      type: 'text/html',
-    });
-
-    expect(file.type).toBe('text/html');
-  });
-
-  it('accepts custom status', () => {
-    const file = createMockProcessedFile('bad.exe', {
-      status: 'validation_failed',
-      statusMessage: 'File extension not allowed',
-    });
-
-    expect(file.status).toBe('validation_failed');
-    expect(file.statusMessage).toBe('File extension not allowed');
-  });
-
-  it('generates unique ids', () => {
-    const file1 = createMockProcessedFile('a.html');
-    const file2 = createMockProcessedFile('b.html');
-
-    expect(file1.id).not.toBe(file2.id);
-  });
-});
-
-describe('createMockFile', () => {
-  it('creates a File with defaults', () => {
-    const file = createMockFile('test.txt');
-
-    expect(file).toBeInstanceOf(File);
-    expect(file.name).toBe('test.txt');
-    expect(file.type).toBe('text/plain');
-    expect(file.size).toBe('test content'.length);
-  });
-
-  it('accepts custom content', () => {
-    const file = createMockFile('data.json', '{"key": "value"}');
-
-    expect(file.size).toBe('{"key": "value"}'.length);
-  });
-
-  it('accepts custom type', () => {
-    const file = createMockFile('data.json', '{}', 'application/json');
-
-    expect(file.type).toBe('application/json');
+  it('gives distinct ids', () => {
+    const ids = ['a', 'b', 'c'].map((n) => createMockProcessedFile(n).id);
+    expect(new Set(ids).size).toBe(3);
   });
 });
 
 describe('createMockFileWithPath', () => {
-  it('creates a File with webkitRelativePath set', () => {
-    const file = createMockFileWithPath(
-      'index.html',
-      'my-project/dist/index.html'
-    );
+  it('builds a real File carrying a folder-relative path', async () => {
+    const file = createMockFileWithPath('index.html', 'dist/index.html', '<html>', 'text/html');
 
     expect(file).toBeInstanceOf(File);
     expect(file.name).toBe('index.html');
-    expect(file.webkitRelativePath).toBe('my-project/dist/index.html');
-  });
-
-  it('webkitRelativePath is read-only', () => {
-    const file = createMockFileWithPath(
-      'index.html',
-      'my-project/index.html'
-    );
-
-    // Should throw or be silently ignored in strict mode
-    expect(() => {
-      // @ts-expect-error - testing that the property is read-only
-      file.webkitRelativePath = 'changed';
-    }).toThrow();
-  });
-});
-
-describe('createMockErrorStatus', () => {
-  it('creates error status with defaults', () => {
-    const status = createMockErrorStatus();
-
-    expect(status.title).toBe('Validation Failed');
-    expect(status.details).toBe('One or more files failed validation');
-    expect(status.errors).toEqual([]);
-  });
-
-  it('accepts custom values', () => {
-    const status = createMockErrorStatus(
-      'Upload Failed',
-      'Network error occurred',
-      ['File too large', 'Connection timeout']
-    );
-
-    expect(status.title).toBe('Upload Failed');
-    expect(status.details).toBe('Network error occurred');
-    expect(status.errors).toEqual(['File too large', 'Connection timeout']);
-  });
-});
-
-describe('createMockProcessingStatus', () => {
-  it('creates processing status with defaults', () => {
-    const status = createMockProcessingStatus();
-
-    expect(status.title).toBe('Processing...');
-    expect(status.details).toBe('Validating and preparing files.');
-  });
-
-  it('accepts custom values', () => {
-    const status = createMockProcessingStatus(
-      'Extracting ZIP...',
-      'Please wait while we extract your files.'
-    );
-
-    expect(status.title).toBe('Extracting ZIP...');
-    expect(status.details).toBe('Please wait while we extract your files.');
-  });
-});
-
-describe('createMockReadyStatus', () => {
-  it('creates ready status with file count', () => {
-    const status = createMockReadyStatus(5);
-
-    expect(status.title).toBe('Ready');
-    expect(status.details).toBe('5 files ready.');
-  });
-
-  it('handles singular file count', () => {
-    const status = createMockReadyStatus(1);
-
-    expect(status.details).toBe('1 file ready.');
+    expect(file.webkitRelativePath).toBe('dist/index.html');
+    expect(file.type).toBe('text/html');
+    await expect(file.text()).resolves.toBe('<html>');
   });
 });

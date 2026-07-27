@@ -1,0 +1,20 @@
+{
+  // Typecheck config: `src` AND `tests`.
+  //
+  // `tsconfig.json` stays build-shaped (rootDir: src, declaration output) and is
+  // what tsup reads. This one exists because vitest transpiles via esbuild
+  // WITHOUT typechecking, so before 2026-07-27 nothing checked `tests/**` — and
+  // that absence is the single enabling condition for every fiction the audit
+  // found: a `ValidatableFile` assignment that never held (under a comment
+  // calling itself a "compile-time check"), a validation mock whose two
+  // factories returned incompatible shapes, and a published `/testing` type that
+  // erased the very assertion helpers it returns.
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "rootDir": ".",
+    "types": ["node", "vitest/globals"]
+  },
+  "include": ["src/**/*", "tests/**/*", "tests-browser/**/*", "vitest.config.ts"],
+  "exclude": ["node_modules", "dist", "example"]
+}
