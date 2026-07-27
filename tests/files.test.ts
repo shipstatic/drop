@@ -7,16 +7,7 @@ import {
   setRelativePath,
   stripCommonPrefix,
 } from '../src/files';
-import {
-  dirEntry,
-  entryTree,
-  file,
-  fileAt,
-  fileEntry,
-  READ_ENTRIES_BATCH_SIZE,
-  unreadableDirEntry,
-  unreadableFileEntry,
-} from './fixtures/builders';
+import { file, fileAt } from './fixtures/builders';
 
 describe('setRelativePath', () => {
   it('sets webkitRelativePath on a File', () => {
