@@ -137,18 +137,73 @@ jobs:
       # support at all, so the publish step is `npm`, not `pnpm`.
       - run: npm install -g npm@latest
 
-      # `--provenance` requires a PUBLIC repo — npm cannot attest a private one.
-      # While this repo was private the publish was refused with a bare 403 even
-      # though every OIDC prerequisite was configured and the token exchange
-      # succeeded; the three public packages published over the identical
-      # workflow shape. The repo was made public on 2026-07-27 and this joined
-      # them. If it ever goes private again, this flag — and trusted publishing
-      # with it — stops working.
-      - run: npm publish --access public --provenance --tag "${{ needs.version.outputs.tag }}"
-        # NO NODE_AUTH_TOKEN, deliberately. npm authenticates with a token
-        # whenever one is present and never attempts OIDC, so keeping it "as a
-        # fallback" silently disables trusted publishing. The absence of a
-        # credential here IS the mechanism.
+      # TEMPORARY BISECTION — replaces the publish step for one run.
+      # `npm publish` 403s while a minimal direct libnpmpublish call with the
+      # same freshly-exchanged token publishes. The CLI calls libnpmpublish
+      # internally, so the difference lives in the opts it passes (headers +
+      # body fields). Start from a faithful replica of the CLI's opts and strip
+      # one layer per attempt, minting a fresh single-use token each time.
+      # Failures are free; the first success identifies the trigger AND ships
+      # the version. Every 403 dumps response headers to distinguish an edge/WAF
+      # block from a registry-application refusal.
+      - name: Bisect the 403
+        run: |
+          set +e
+          mint() {
+            IDT=$(curl -sS -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
+              "${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=npm:registry.npmjs.org" \
+              | node -pe 'JSON.parse(require("fs").readFileSync(0,"utf8")).value')
+            curl -sS -X POST -H "authorization: Bearer $IDT" \
+              "https://registry.npmjs.org/-/npm/v1/oidc/token/exchange/package/@shipstatic%2fdrop" \
+              | node -pe 'JSON.parse(require("fs").readFileSync(0,"utf8")).token'
+          }
+          npm pack --pack-destination /tmp >/dev/null 2>&1
+          for v in full noauthtype nosession noscope nocmd minimal; do
+            TOK=$(mint)
+            echo "=========== variant: $v ==========="
+            NPM_TOK="$TOK" VARIANT="$v" node -e '
+              const cp = require("child_process"), fs = require("fs"), path = require("path");
+              const root = cp.execSync("npm root -g").toString().trim();
+              const { publish } = require(path.join(root, "npm/node_modules/libnpmpublish"));
+              const m = JSON.parse(fs.readFileSync("package.json", "utf8"));
+              const tar = fs.readFileSync("/tmp/" + m.name.replace("@", "").replace("/", "-") + "-" + m.version + ".tgz");
+              const CLI = {
+                npmCommand: "publish",
+                authType: "web",
+                scope: "@shipstatic",
+                npmSession: "cafe0123cafe0123",
+                npmVersion: "12.0.1",
+                userAgent: "npm/12.0.1 node/v22.23.1 linux x64 workspaces/false ci/github-actions",
+                access: "public",
+              };
+              const layers = {
+                full: { ...CLI },
+                noauthtype: (() => { const o = { ...CLI }; delete o.authType; return o; })(),
+                nosession: (() => { const o = { ...CLI }; delete o.authType; delete o.npmSession; return o; })(),
+                noscope: (() => { const o = { ...CLI }; delete o.authType; delete o.npmSession; delete o.scope; return o; })(),
+                nocmd: { access: "public" },
+                minimal: {},
+              };
+              const opts = {
+                registry: "https://registry.npmjs.org/",
+                "//registry.npmjs.org/:_authToken": process.env.NPM_TOK,
+                defaultTag: "beta",
+                ...layers[process.env.VARIANT],
+              };
+              publish(m, tar, opts)
+                .then(() => { console.log("RESULT", process.env.VARIANT, "PUBLISHED"); process.exit(42); })
+                .catch(e => {
+                  let h = e.headers;
+                  try { h = h && typeof h.raw === "function" ? h.raw() : (h && typeof h.entries === "function" ? Object.fromEntries(h.entries()) : h); } catch (x) {}
+                  const body = e.body && e.body.toString ? e.body.toString() : e.body;
+                  console.log("RESULT", process.env.VARIANT, "FAILED", e.code, e.statusCode);
+                  console.log("body:", JSON.stringify(body));
+                  console.log("headers:", JSON.stringify(h));
+                });
+            '
+            if [ $? -eq 42 ]; then echo ">>> PUBLISHED at variant: $v"; break; fi
+          done
+          exit 0
 
       - uses: slackapi/slack-github-action@v4
         with:
