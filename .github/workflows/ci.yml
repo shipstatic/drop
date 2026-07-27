@@ -146,15 +146,103 @@ jobs:
       # byte-identical workflow. Most plausibly npm-side state stale from the
       # repo being private until 2026-07-27. Retest --provenance periodically;
       # restore it when the registry accepts the attestation.
-      # `--provenance=false`, not flag omission: npm AUTO-ENABLES provenance on
-      # public repo + public package + trusted publishing when the config is
-      # default (lib/utils/oidc.js), so omitting the flag still attaches the
-      # attestation. Only an explicit false suppresses it.
-      - run: npm publish --access public --provenance=false --tag "${{ needs.version.outputs.tag }}"
-        # NO NODE_AUTH_TOKEN, deliberately. npm authenticates with a token
-        # whenever one is present and never attempts OIDC, so keeping it "as a
-        # fallback" silently disables trusted publishing. The absence of a
-        # credential here IS the mechanism.
+      # TEMPORARY CAPTURE+REPLAY — the CLI's PUT fails with an EMPTY-body 403
+      # while libnpmpublish PUTs succeed or get structured app-layer errors.
+      # Stop reconstructing the difference; capture the CLI's exact body, replay
+      # those bytes with a fresh token, and diff against a working body.
+      - name: Capture and replay the CLI PUT
+        run: |
+          set +e
+          RF="$(npm root -g)/npm/node_modules/npm-registry-fetch/lib/index.js"
+          node -e '
+            const fs=require("fs"); const p=process.argv[1];
+            fs.appendFileSync(p, `
+const __orig = module.exports; const __fs = require("fs");
+let __n = 0;
+const __wrapped = (uri, opts = {}) => {
+  try {
+    if (opts.method && String(opts.method).toUpperCase() === "PUT") {
+      __n++;
+      const body = typeof opts.body === "object" ? JSON.stringify(opts.body) : String(opts.body);
+      __fs.writeFileSync("/tmp/body-" + __n + ".json", body);
+      console.error("[CAP] PUT", uri, "bytes=" + body.length,
+        JSON.stringify({authType:opts.authType, scope:opts.scope, npmSession:opts.npmSession,
+          npmCommand:opts.npmCommand, ua:(opts.userAgent||"").slice(0,50)}));
+    }
+  } catch (e) { console.error("[CAP] err", e.message); }
+  return __orig(uri, opts);
+};
+Object.assign(__wrapped, __orig);
+module.exports = __wrapped;
+`);
+            console.log("patched", p);
+          ' "$RF"
+
+          mint() {
+            IDT=$(curl -sS -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
+              "${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=npm:registry.npmjs.org" \
+              | node -pe 'JSON.parse(require("fs").readFileSync(0,"utf8")).value')
+            curl -sS -X POST -H "authorization: Bearer $IDT" \
+              "https://registry.npmjs.org/-/npm/v1/oidc/token/exchange/package/@shipstatic%2fdrop" \
+              | node -pe 'JSON.parse(require("fs").readFileSync(0,"utf8")).token'
+          }
+
+          echo "########## 1: the real CLI publish (expected: 403, body captured) ##########"
+          npm publish --access public --provenance=false --tag "beta" 2>&1 | grep -aE "CAP|npm error code|npm error 403" | head -8
+
+          if [ ! -f /tmp/body-1.json ]; then echo "NO BODY CAPTURED — abort"; exit 0; fi
+
+          echo "########## 2: replay the CLI's EXACT bytes, fresh token, minimal headers ##########"
+          TOK=$(mint) node -e '
+            (async () => {
+              const fs = require("fs");
+              const body = fs.readFileSync("/tmp/body-1.json");
+              const r = await fetch("https://registry.npmjs.org/@shipstatic%2fdrop", {
+                method: "PUT",
+                headers: { "content-type": "application/json",
+                           authorization: "Bearer " + process.env.TOK },
+                body,
+              });
+              const t = await r.text();
+              console.log("replay status:", r.status);
+              console.log("replay headers:", JSON.stringify(Object.fromEntries(r.headers), null, 1));
+              console.log("replay body:", t.slice(0, 500));
+            })();
+          '
+
+          echo "########## 3: known-good shape via libnpmpublish (captures body-2) ##########"
+          NPM_TOK=$(mint) node -e '
+            const cp=require("child_process"),fs=require("fs"),path=require("path");
+            const root=cp.execSync("npm root -g").toString().trim();
+            const {publish}=require(path.join(root,"npm/node_modules/libnpmpublish"));
+            const m=JSON.parse(fs.readFileSync("package.json","utf8"));
+            cp.execSync("npm pack --pack-destination /tmp",{stdio:"ignore"});
+            const tar=fs.readFileSync("/tmp/"+m.name.replace("@","").replace("/","-")+"-"+m.version+".tgz");
+            publish(m,tar,{registry:"https://registry.npmjs.org/","//registry.npmjs.org/:_authToken":process.env.NPM_TOK,defaultTag:"beta",access:"public"})
+              .then(()=>console.log("libnpmpublish: PUBLISHED"))
+              .catch(e=>console.log("libnpmpublish: FAILED",e.statusCode));
+          '
+
+          echo "########## 4: diff CLI body vs known-good body ##########"
+          node -e '
+            const fs = require("fs");
+            if (!fs.existsSync("/tmp/body-2.json")) { console.log("no body-2"); process.exit(0); }
+            const A = JSON.parse(fs.readFileSync("/tmp/body-1.json"));
+            const B = JSON.parse(fs.readFileSync("/tmp/body-2.json"));
+            const short = v => { const s = JSON.stringify(v); return s && s.length > 120 ? s.slice(0,120)+"…("+s.length+")" : s; };
+            const diff = (a, b, label) => {
+              const keys = [...new Set([...Object.keys(a||{}), ...Object.keys(b||{})])];
+              for (const k of keys) {
+                const va = JSON.stringify(a?.[k]), vb = JSON.stringify(b?.[k]);
+                if (va !== vb) console.log(`${label}.${k}: CLI=${short(a?.[k])} GOOD=${short(b?.[k])}`);
+              }
+            };
+            diff(A, B, "root");
+            const vA = Object.keys(A.versions)[0], vB = Object.keys(B.versions)[0];
+            console.log("versions:", vA, "vs", vB);
+            diff(A.versions[vA], B.versions[vB], "ver");
+          '
+          exit 0
 
       - uses: slackapi/slack-github-action@v4
         with:
