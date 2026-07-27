@@ -146,7 +146,11 @@ jobs:
       # byte-identical workflow. Most plausibly npm-side state stale from the
       # repo being private until 2026-07-27. Retest --provenance periodically;
       # restore it when the registry accepts the attestation.
-      - run: npm publish --access public --tag "${{ needs.version.outputs.tag }}"
+      # `--provenance=false`, not flag omission: npm AUTO-ENABLES provenance on
+      # public repo + public package + trusted publishing when the config is
+      # default (lib/utils/oidc.js), so omitting the flag still attaches the
+      # attestation. Only an explicit false suppresses it.
+      - run: npm publish --access public --provenance=false --tag "${{ needs.version.outputs.tag }}"
         # NO NODE_AUTH_TOKEN, deliberately. npm authenticates with a token
         # whenever one is present and never attempts OIDC, so keeping it "as a
         # fallback" silently disables trusted publishing. The absence of a
