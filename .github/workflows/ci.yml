@@ -157,9 +157,9 @@ jobs:
           node -e '
             const fs=require("fs"); const p=process.argv[1];
             fs.appendFileSync(p, `
-const __orig = module.exports; const __fs = require("fs");
-let __n = 0;
-const __wrapped = (uri, opts = {}) => {
+            const __orig = module.exports; const __fs = require("fs");
+            let __n = 0;
+            const __wrapped = (uri, opts = {}) => {
   try {
     if (opts.method && String(opts.method).toUpperCase() === "PUT") {
       __n++;
@@ -171,10 +171,10 @@ const __wrapped = (uri, opts = {}) => {
     }
   } catch (e) { console.error("[CAP] err", e.message); }
   return __orig(uri, opts);
-};
-Object.assign(__wrapped, __orig);
-module.exports = __wrapped;
-`);
+            };
+            Object.assign(__wrapped, __orig);
+            module.exports = __wrapped;
+            `);
             console.log("patched", p);
           ' "$RF"
 
