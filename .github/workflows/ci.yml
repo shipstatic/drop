@@ -139,45 +139,58 @@ jobs:
       # support at all, so the publish step is `npm`, not `pnpm`.
       - run: npm install -g npm@latest
 
-      # TEMPORARY DIAGNOSTIC — remove after root-causing the OIDC 403.
-      - name: Diagnose OIDC
-        run: |
-          echo "=== versions actually in the publish step ==="
-          echo "which npm: $(which npm)"
-          echo "npm:  $(npm --version)"
-          echo "node: $(node --version)"
-          echo "=== OIDC env present? (value never printed) ==="
-          echo "ACTIONS_ID_TOKEN_REQUEST_URL set:   ${ACTIONS_ID_TOKEN_REQUEST_URL:+yes}"
-          echo "ACTIONS_ID_TOKEN_REQUEST_TOKEN set: ${ACTIONS_ID_TOKEN_REQUEST_TOKEN:+yes}"
-          echo "=== OIDC token CLAIMS (raw token never echoed) ==="
-          RESP=$(curl -sS -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" "${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=npm:registry.npmjs.org")
-          printf '%s' "$RESP" | node -e '
-            const fs = require("fs");
-            const d = JSON.parse(fs.readFileSync(0, "utf8"));
-            const jwt = d.value || "";
-            const p = JSON.parse(Buffer.from(jwt.split(".")[1], "base64url").toString());
-            console.log(JSON.stringify({
-              iss: p.iss, aud: p.aud,
-              repository_owner: p.repository_owner,
-              repository: p.repository,
-              workflow_ref: p.workflow_ref,
-              environment: p.environment,
-              ref: p.ref, sub: p.sub,
-            }, null, 2));
-          '
-
-      - name: Publish (silly + dump registry response on failure)
+      # TEMPORARY DIAGNOSTIC — remove once publishing is green.
+      # Replays npm's OWN exchange protocol (lib/utils/oidc.js): POST with the
+      # GitHub id-token as the bearer credential and an empty body — NOT a JSON
+      # body. The response is what tells us the minted token's capability.
+      - name: Diagnose OIDC exchange
         run: |
           set +e
-          npm publish --access public --tag "${{ needs.version.outputs.tag }}" --loglevel silly 2>&1 | tee /tmp/pub.log
-          code=${PIPESTATUS[0]}
-          if [ "$code" != "0" ]; then
-            echo "==================== NPM DEBUG LOG (full HTTP exchange) ===================="
-            tail -n 120 /home/runner/.npm/_logs/*-debug-0.log
-            echo "==================== response headers/body greps ===================="
-            grep -iaE 'www-authenticate|npm-notice|x-local-cache|forbidden|two-factor|2fa|bypass|otp|policy|granular|automation|body|401|403' /home/runner/.npm/_logs/*-debug-0.log | tail -60
+          ID_TOKEN=$(curl -sS -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
+            "${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=npm:registry.npmjs.org" \
+            | node -pe 'JSON.parse(require("fs").readFileSync(0,"utf8")).value')
+
+          curl -sS -i -X POST -H "authorization: Bearer $ID_TOKEN" \
+            "https://registry.npmjs.org/-/npm/v1/oidc/token/exchange/package/@shipstatic%2fdrop" \
+            > /tmp/x.txt 2>&1
+
+          node -e '
+            const fs = require("fs");
+            const raw = fs.readFileSync("/tmp/x.txt", "utf8");
+            const i = raw.indexOf("\r\n\r\n");
+            const head = i < 0 ? raw : raw.slice(0, i);
+            const body = i < 0 ? "" : raw.slice(i + 4);
+            console.log("--- exchange status + headers ---");
+            for (const l of head.split(/\r?\n/)) {
+              console.log(/authorization|set-cookie/i.test(l) ? l.split(":")[0] + ": <redacted>" : l);
+            }
+            console.log("--- exchange body (token value redacted, every other field shown) ---");
+            try {
+              const j = JSON.parse(body);
+              const safe = {};
+              for (const [k, v] of Object.entries(j)) {
+                safe[k] = /token/i.test(k) ? "<" + String(v).length + " chars>" : v;
+              }
+              console.log(JSON.stringify(safe, null, 2));
+              if (j.token) fs.writeFileSync("/tmp/npmtok", j.token);
+            } catch (e) { console.log(body.slice(0, 600)); }
+          '
+
+          if [ -s /tmp/npmtok ]; then
+            TOK=$(cat /tmp/npmtok)
+            echo "--- what the minted token can see ---"
+            printf 'whoami: '; curl -sS -o /dev/null -w '%{http_code}\n' -H "authorization: Bearer $TOK" https://registry.npmjs.org/-/whoami
+            printf 'trust config: '
+            curl -sS -w '\n[status %{http_code}]\n' -H "authorization: Bearer $TOK" \
+              "https://registry.npmjs.org/-/package/@shipstatic%2fdrop/trust"
           fi
-          exit $code
+          exit 0
+
+      # The boring, canonical publish. No --access: the package already exists and
+      # is public, and `--access` asks the registry to SET package access, which is
+      # a settings write rather than a publish.
+      - name: Publish
+        run: npm publish --tag "${{ needs.version.outputs.tag }}"
         # No NODE_AUTH_TOKEN and no registry-url: with neither a token in the env
         # nor an `_authToken` line in .npmrc, npm attempts OIDC. It exchanges the
         # GitHub id-token for a short-lived publish credential against the trusted
