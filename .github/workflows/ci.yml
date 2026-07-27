@@ -132,11 +132,11 @@ jobs:
       - run: npm install -g npm@latest
 
       - run: npm publish --access public --tag "${{ needs.version.outputs.tag }}"
-        env:
-          # Retained only as a fallback until trusted publishing is confirmed
-          # working for this package; OIDC takes precedence when configured.
-          # Delete this env block once a publish has succeeded without it.
-          NODE_AUTH_TOKEN: ${{ secrets.NODE_AUTH_TOKEN }}
+        # NO NODE_AUTH_TOKEN, deliberately. npm authenticates with a token
+        # whenever one is present and never attempts OIDC, so keeping it "as a
+        # fallback" silently disables trusted publishing — which is exactly what
+        # happened on the first attempt. The absence of a credential here IS the
+        # mechanism.
 
       - uses: slackapi/slack-github-action@v4
         with:
