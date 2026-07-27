@@ -143,22 +143,12 @@ jobs:
       # ecosystem runs; 12.0.1 was also verified to work here.
       - run: npm install -g npm@11
 
-      # `--force` is load-bearing, and ONLY to skip npm's pre-publish version
-      # check. That check (publish.js `#registryVersions`) fetches the packument
-      # with `preferOnline: true` — a guaranteed authenticated network round-trip
-      # — and the OIDC token minted by the exchange is SINGLE-USE. So the check
-      # burns the credential and the PUT that follows is refused; the registry
-      # says "OIDC publish authorize: Route already used with token" on a second
-      # use, though the publish route itself answers a bare, message-less 403.
-      # Proven by A/B on 2026-07-27: two publishes with one token — first
-      # PUBLISHED, second failed with exactly that error.
-      #
-      # Nothing is lost by skipping it: `--force` only bypasses the "is this
-      # version already published" guard, and the `version` job above already
-      # answers that question UNAUTHENTICATED (`npm view`) before this job runs.
-      # The registry remains the final authority — it rejects a duplicate version
-      # regardless of this flag.
-      - run: npm publish --force --tag "${{ needs.version.outputs.tag }}" --loglevel silly 2>&1 | grep -aE "http fetch|oidc|npm error" | head -30
+      # `--auth-type=legacy` suppresses the `npm-auth-type: web` header npm would
+      # otherwise send (npm-registry-fetch sets it from the `auth-type` config,
+      # which defaults to `web`). On 2026-07-27 a direct publish carrying the SAME
+      # OIDC token but no such header succeeded in the very job where npm's own
+      # publish 403'd — that header is the one wire-level difference between them.
+      - run: npm publish --tag "${{ needs.version.outputs.tag }}" --auth-type=legacy
         # No NODE_AUTH_TOKEN and no registry-url: with neither a token in the env
         # nor an `_authToken` line in .npmrc, npm attempts OIDC. It exchanges the
         # GitHub id-token for a short-lived publish credential against the trusted
