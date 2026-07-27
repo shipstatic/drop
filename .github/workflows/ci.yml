@@ -200,9 +200,9 @@ jobs:
             const root = cp.execSync("npm root -g").toString().trim();
             const { publish } = require(path.join(root, "npm/node_modules/libnpmpublish"));
             const manifest = JSON.parse(fs.readFileSync("package.json", "utf8"));
-            const raw = cp.execSync("npm pack --json --pack-destination /tmp", { encoding: "utf8" });
-            const packed = JSON.parse(raw.slice(raw.indexOf("[")));
-            const tarball = fs.readFileSync("/tmp/" + packed[0].filename);
+            cp.execSync("npm pack --pack-destination /tmp", { stdio: "inherit" });
+            const fname = manifest.name.replace("@", "").replace("/", "-") + "-" + manifest.version + ".tgz";
+            const tarball = fs.readFileSync("/tmp/" + fname);
             const token = fs.readFileSync("/tmp/npmtok", "utf8").trim();
             publish(manifest, tarball, {
               registry: "https://registry.npmjs.org/",
@@ -220,7 +220,7 @@ jobs:
               });
           '
           echo "=== is STAGING permitted where publishing is not? ==="
-          npm stage publish . 2>&1 | tail -25
+          npm stage publish . --tag "${{ needs.version.outputs.tag }}" 2>&1 | tail -25
           exit 0
 
       # The boring, canonical publish. No --access: the package already exists and
