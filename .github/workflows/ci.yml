@@ -166,7 +166,18 @@ jobs:
             }, null, 2));
           '
 
-      - run: npm publish --access public --tag "${{ needs.version.outputs.tag }}" --loglevel verbose
+      - name: Publish (silly + dump registry response on failure)
+        run: |
+          set +e
+          npm publish --access public --tag "${{ needs.version.outputs.tag }}" --loglevel silly 2>&1 | tee /tmp/pub.log
+          code=${PIPESTATUS[0]}
+          if [ "$code" != "0" ]; then
+            echo "==================== NPM DEBUG LOG (full HTTP exchange) ===================="
+            tail -n 120 /home/runner/.npm/_logs/*-debug-0.log
+            echo "==================== response headers/body greps ===================="
+            grep -iaE 'www-authenticate|npm-notice|x-local-cache|forbidden|two-factor|2fa|bypass|otp|policy|granular|automation|body|401|403' /home/runner/.npm/_logs/*-debug-0.log | tail -60
+          fi
+          exit $code
         # No NODE_AUTH_TOKEN and no registry-url: with neither a token in the env
         # nor an `_authToken` line in .npmrc, npm attempts OIDC. It exchanges the
         # GitHub id-token for a short-lived publish credential against the trusted
