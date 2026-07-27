@@ -68,6 +68,14 @@
   ],
   "author": "ShipStatic",
   "license": "MIT",
+  "homepage": "https://github.com/shipstatic/drop",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/shipstatic/drop.git"
+  },
+  "bugs": {
+    "url": "https://github.com/shipstatic/drop/issues"
+  },
   "packageManager": "pnpm@10.12.4",
   "engines": {
     "node": ">=20.0.0"
