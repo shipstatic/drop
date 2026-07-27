@@ -137,62 +137,20 @@ jobs:
       # support at all, so the publish step is `npm`, not `pnpm`.
       - run: npm install -g npm@latest
 
-      # TEMPORARY PROBE — no versions are published by A/B. Tests whether the
-      # authenticated packument GET that `npm publish` performs between the
-      # token exchange and the PUT consumes the single-use OIDC token. A PUT of
-      # an ALREADY-EXISTING version distinguishes the outcomes without burning
-      # anything: valid token -> app-layer "cannot publish over previously
-      # published versions"; consumed token -> the bare 403 / route-already-used.
-      - name: Probe token burn
-        run: |
-          set +e
-          mint() {
-            IDT=$(curl -sS -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
-              "${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=npm:registry.npmjs.org" \
-              | node -pe 'JSON.parse(require("fs").readFileSync(0,"utf8")).value')
-            curl -sS -X POST -H "authorization: Bearer $IDT" \
-              "https://registry.npmjs.org/-/npm/v1/oidc/token/exchange/package/@shipstatic%2fdrop" \
-              | node -pe 'JSON.parse(require("fs").readFileSync(0,"utf8")).token'
-          }
-          npm pack --pack-destination /tmp >/dev/null 2>&1
-
-          putexisting() {  # $1 label, $2 token
-            NPM_TOK="$2" node -e '
-              const cp=require("child_process"),fs=require("fs"),path=require("path");
-              const root=cp.execSync("npm root -g").toString().trim();
-              const {publish}=require(path.join(root,"npm/node_modules/libnpmpublish"));
-              const m=JSON.parse(fs.readFileSync("package.json","utf8"));
-              const tar=fs.readFileSync("/tmp/"+m.name.replace("@","").replace("/","-")+"-"+m.version+".tgz");
-              m.version="2.0.0-beta.3"; // EXISTS on the registry
-              publish(m,tar,{registry:"https://registry.npmjs.org/","//registry.npmjs.org/:_authToken":process.env.NPM_TOK,defaultTag:"beta",access:"public"})
-                .then(()=>console.log("UNEXPECTED: PUBLISHED over existing?!"))
-                .catch(e=>{const b=e.body&&e.body.toString?e.body.toString():JSON.stringify(e.body);
-                  console.log("PUT existing ->",e.statusCode,"body:",b)});
-            '
-          }
-
-          echo "=== A: fresh token -> PUT existing (NO prior GET) ==="
-          putexisting A "$(mint)"
-
-          echo "=== B: fresh token -> authenticated GET packument -> PUT existing ==="
-          T=$(mint)
-          G=$(curl -sS -o /dev/null -w '%{http_code}' -H "authorization: Bearer $T" "https://registry.npmjs.org/@shipstatic%2fdrop")
-          echo "GET packument: $G"
-          putexisting B "$T"
-
-          echo "=== C: fresh token -> PUT NEW beta.4 (no GET) — replica of bisect win ==="
-          NPM_TOK="$(mint)" node -e '
-            const cp=require("child_process"),fs=require("fs"),path=require("path");
-            const root=cp.execSync("npm root -g").toString().trim();
-            const {publish}=require(path.join(root,"npm/node_modules/libnpmpublish"));
-            const m=JSON.parse(fs.readFileSync("package.json","utf8"));
-            const tar=fs.readFileSync("/tmp/"+m.name.replace("@","").replace("/","-")+"-"+m.version+".tgz");
-            publish(m,tar,{registry:"https://registry.npmjs.org/","//registry.npmjs.org/:_authToken":process.env.NPM_TOK,defaultTag:"beta",access:"public"})
-              .then(()=>console.log("C: PUBLISHED",m.version))
-              .catch(e=>{const b=e.body&&e.body.toString?e.body.toString():JSON.stringify(e.body);
-                console.log("C: FAILED",e.statusCode,"body:",b)});
-          '
-          exit 0
+      # No `--provenance`, deliberately — and this is drop-specific. The registry
+      # REJECTS drop's provenance attestation with a bare 403: the bundle signs
+      # and reaches the Sigstore transparency log, then the PUT is refused.
+      # Isolated on 2026-07-27 by era-controlled A/B: identical PUTs with the
+      # same freshly-exchanged OIDC token publish WITHOUT an attestation and
+      # 403 WITH one, while types/ship/mcp publish with --provenance over the
+      # byte-identical workflow. Most plausibly npm-side state stale from the
+      # repo being private until 2026-07-27. Retest --provenance periodically;
+      # restore it when the registry accepts the attestation.
+      - run: npm publish --access public --tag "${{ needs.version.outputs.tag }}"
+        # NO NODE_AUTH_TOKEN, deliberately. npm authenticates with a token
+        # whenever one is present and never attempts OIDC, so keeping it "as a
+        # fallback" silently disables trusted publishing. The absence of a
+        # credential here IS the mechanism.
 
       - uses: slackapi/slack-github-action@v4
         with:
