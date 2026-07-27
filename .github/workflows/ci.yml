@@ -112,15 +112,13 @@ jobs:
 
       - uses: pnpm/action-setup@v6
 
-      # No `registry-url`, deliberately. When it is set, setup-node writes
-      # `//registry.npmjs.org/:_authToken=${NODE_AUTH_TOKEN}` into a temp .npmrc;
-      # with no token in the env that line is an EMPTY credential, and npm reads
+      # No `registry-url`: it makes setup-node write
+      # `//registry.npmjs.org/:_authToken=${NODE_AUTH_TOKEN}` into a temp .npmrc,
+      # and with no token in the env that line is an EMPTY credential. npm reads
       # any `_authToken` line — even empty — as "token auth is configured" and
-      # so never attempts the OIDC handshake. The publish then goes out
-      # anonymous and 403s (actions/setup-node#1551). It is the PRESENCE of the
-      # token line, not the absence of a token value, that suppresses OIDC —
-      # which is why dropping this input, not just the env var, is the fix.
-      # npm's default registry is already registry.npmjs.org, so nothing is lost.
+      # never attempts the OIDC handshake, so the publish goes out anonymous and
+      # 403s (actions/setup-node#1551). Dropping the input, not just the env var,
+      # is the fix. npm's default registry is registry.npmjs.org already.
       - uses: actions/setup-node@v7
         with:
           node-version: 22
@@ -137,27 +135,20 @@ jobs:
       # the failure looked like a permissions problem rather than a policy one.
       # OIDC needs npm >= 11.5.1; node 22 bundles npm 10.x, and pnpm has no OIDC
       # support at all, so the publish step is `npm`, not `pnpm`.
-      #
-      # Pinned to a major, not `@latest`, so a new npm major cannot land in the
-      # publish path unreviewed. 11.x is what the OIDC docs specify and what the
-      # ecosystem runs; 12.0.1 was also verified to work here.
-      - run: npm install -g npm@11
+      - run: npm install -g npm@latest
 
-      # `--auth-type=legacy` suppresses the `npm-auth-type: web` header npm would
-      # otherwise send (npm-registry-fetch sets it from the `auth-type` config,
-      # which defaults to `web`). On 2026-07-27 a direct publish carrying the SAME
-      # OIDC token but no such header succeeded in the very job where npm's own
-      # publish 403'd — that header is the one wire-level difference between them.
-      - run: npm publish --tag "${{ needs.version.outputs.tag }}" --auth-type=legacy
-        # No NODE_AUTH_TOKEN and no registry-url: with neither a token in the env
-        # nor an `_authToken` line in .npmrc, npm attempts OIDC. It exchanges the
-        # GitHub id-token for a short-lived publish credential against the trusted
-        # publisher configured on npmjs.com. That publisher is scoped to repo +
-        # workflow filename with the environment left BLANK — a package may have
-        # only ONE trusted publisher, so it cannot name both npm-beta and
-        # npm-latest; the GitHub environments still gate the branch, npm just
-        # trusts the workflow file. No `--provenance`: drop's source is private
-        # and npm cannot attest a private repo.
+      # `--provenance` requires a PUBLIC repo — npm cannot attest a private one.
+      # While this repo was private the publish was refused with a bare 403 even
+      # though every OIDC prerequisite was configured and the token exchange
+      # succeeded; the three public packages published over the identical
+      # workflow shape. The repo was made public on 2026-07-27 and this joined
+      # them. If it ever goes private again, this flag — and trusted publishing
+      # with it — stops working.
+      - run: npm publish --access public --provenance --tag "${{ needs.version.outputs.tag }}"
+        # NO NODE_AUTH_TOKEN, deliberately. npm authenticates with a token
+        # whenever one is present and never attempts OIDC, so keeping it "as a
+        # fallback" silently disables trusted publishing. The absence of a
+        # credential here IS the mechanism.
 
       - uses: slackapi/slack-github-action@v4
         with:
