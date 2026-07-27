@@ -186,6 +186,43 @@ jobs:
           fi
           exit 0
 
+      # TEMPORARY: npm's CLI swallows the registry's 403 body. Drive the publish
+      # through libnpmpublish directly so the real body + headers are visible, then
+      # test whether STAGING is permitted where publishing is not — which is
+      # precisely what a stage-only trusted publisher looks like.
+      - name: Diagnose the 403
+        run: |
+          set +e
+          node -e '
+            const cp = require("child_process");
+            const fs = require("fs");
+            const path = require("path");
+            const root = cp.execSync("npm root -g").toString().trim();
+            const { publish } = require(path.join(root, "npm/node_modules/libnpmpublish"));
+            const manifest = JSON.parse(fs.readFileSync("package.json", "utf8"));
+            const raw = cp.execSync("npm pack --json --pack-destination /tmp", { encoding: "utf8" });
+            const packed = JSON.parse(raw.slice(raw.indexOf("[")));
+            const tarball = fs.readFileSync("/tmp/" + packed[0].filename);
+            const token = fs.readFileSync("/tmp/npmtok", "utf8").trim();
+            publish(manifest, tarball, {
+              registry: "https://registry.npmjs.org/",
+              "//registry.npmjs.org/:_authToken": token,
+              defaultTag: "beta",
+            }).then(() => console.log("PUBLISH OK"))
+              .catch(e => {
+                console.log("=== THE REAL REGISTRY RESPONSE ===");
+                console.log("code:", e.code, "status:", e.statusCode);
+                console.log("message:", e.message);
+                console.log("body:", JSON.stringify(e.body));
+                let h = e.headers;
+                try { h = h && typeof h.raw === "function" ? h.raw() : h; } catch (x) {}
+                console.log("headers:", JSON.stringify(h, null, 2));
+              });
+          '
+          echo "=== is STAGING permitted where publishing is not? ==="
+          npm stage publish . 2>&1 | tail -25
+          exit 0
+
       # The boring, canonical publish. No --access: the package already exists and
       # is public, and `--access` asks the registry to SET package access, which is
       # a settings write rather than a publish.
