@@ -158,7 +158,7 @@ jobs:
       # answers that question UNAUTHENTICATED (`npm view`) before this job runs.
       # The registry remains the final authority — it rejects a duplicate version
       # regardless of this flag.
-      - run: npm publish --force --tag "${{ needs.version.outputs.tag }}"
+      - run: npm publish --force --tag "${{ needs.version.outputs.tag }}" --loglevel silly 2>&1 | grep -aE "http fetch|oidc|npm error" | head -30
         # No NODE_AUTH_TOKEN and no registry-url: with neither a token in the env
         # nor an `_authToken` line in .npmrc, npm attempts OIDC. It exchanges the
         # GitHub id-token for a short-lived publish credential against the trusted
