@@ -138,70 +138,27 @@ jobs:
       # OIDC needs npm >= 11.5.1; node 22 bundles npm 10.x, and pnpm has no OIDC
       # support at all, so the publish step is `npm`, not `pnpm`.
       #
-      # PINNED TO 11, NOT `@latest`. On npm 12.0.1 the OIDC exchange succeeds and
-      # the CLI logs "Successfully retrieved and set token" — then publishes
-      # ANONYMOUSLY anyway, so the registry answers a bare 403 with no message.
-      # Proven on 2026-07-27: with the very token that CLI minted, a direct
-      # libnpmpublish call published 2.0.0-beta.0 in the same job where
-      # `npm publish` 403'd, and the CLI kept 403ing even for a version that by
-      # then EXISTED (an authenticated client gets "cannot publish over the
-      # previously published versions" instead). 11.x is the version the docs
-      # specify and the ecosystem runs; `@latest` opted us into an untested major.
+      # Pinned to a major, not `@latest`, so a new npm major cannot land in the
+      # publish path unreviewed. 11.x is what the OIDC docs specify and what the
+      # ecosystem runs; 12.0.1 was also verified to work here.
       - run: npm install -g npm@11
 
-      # TEMPORARY: patch npm's OWN auth resolver to report, per request, which
-      # _authToken keys are present in opts. If the PUT resolves none, the OIDC
-      # token never reached the request and npm published anonymously.
-      - name: Diagnose auth resolution
-        run: |
-          set +e
-          AUTHJS="$(npm root -g)/npm/node_modules/npm-registry-fetch/lib/auth.js"
-          node -e '
-            const fs = require("fs");
-            const p = process.argv[1];
-            let s = fs.readFileSync(p, "utf8");
-            const needle = "const getAuth = (uri, opts = {}) => {";
-            if (!s.includes(needle)) { console.log("PATCH TARGET NOT FOUND"); process.exit(0); }
-            s = s.replace(needle, needle + "\n  try { console.error(\"[DIAG] getAuth\", uri, \"keys=\" + JSON.stringify(Object.keys(opts).filter(k => k.includes(\"_authToken\")))); } catch (e) {}");
-            fs.writeFileSync(p, s);
-            console.log("patched", p);
-          ' "$AUTHJS"
-          npm publish --tag "${{ needs.version.outputs.tag }}" 2>&1 | grep -aE "DIAG|npm error|Publishing to|oidc" | head -40
-
-          echo "########## A/B: is the npm-command header the trigger? ##########"
-          ID_TOKEN=$(curl -sS -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
-            "${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=npm:registry.npmjs.org" \
-            | node -pe 'JSON.parse(require("fs").readFileSync(0,"utf8")).value')
-          TOK=$(curl -sS -X POST -H "authorization: Bearer $ID_TOKEN" \
-            "https://registry.npmjs.org/-/npm/v1/oidc/token/exchange/package/@shipstatic%2fdrop" \
-            | node -pe 'JSON.parse(require("fs").readFileSync(0,"utf8")).token')
-
-          NPM_TOK="$TOK" node -e '
-            const cp = require("child_process");
-            const fs = require("fs");
-            const path = require("path");
-            const root = cp.execSync("npm root -g").toString().trim();
-            const { publish } = require(path.join(root, "npm/node_modules/libnpmpublish"));
-            const manifest = JSON.parse(fs.readFileSync("package.json", "utf8"));
-            cp.execSync("npm pack --pack-destination /tmp", { stdio: "ignore" });
-            const fname = manifest.name.replace("@", "").replace("/", "-") + "-" + manifest.version + ".tgz";
-            const tarball = fs.readFileSync("/tmp/" + fname);
-            const base = {
-              registry: "https://registry.npmjs.org/",
-              "//registry.npmjs.org/:_authToken": process.env.NPM_TOK,
-              defaultTag: "beta",
-            };
-            const run = (label, extra) => publish(manifest, tarball, { ...base, ...extra })
-              .then(() => console.log(label, "=> PUBLISHED"))
-              .catch(e => console.log(label, "=> FAILED", e.code, e.statusCode, JSON.stringify(e.body)));
-            (async () => {
-              await run("WITH npm-command:publish", { npmCommand: "publish" });
-              await run("WITHOUT npm-command   ", {});
-            })();
-          '
-          exit 0
-
-      - run: npm publish --tag "${{ needs.version.outputs.tag }}"
+      # `--force` is load-bearing, and ONLY to skip npm's pre-publish version
+      # check. That check (publish.js `#registryVersions`) fetches the packument
+      # with `preferOnline: true` — a guaranteed authenticated network round-trip
+      # — and the OIDC token minted by the exchange is SINGLE-USE. So the check
+      # burns the credential and the PUT that follows is refused; the registry
+      # says "OIDC publish authorize: Route already used with token" on a second
+      # use, though the publish route itself answers a bare, message-less 403.
+      # Proven by A/B on 2026-07-27: two publishes with one token — first
+      # PUBLISHED, second failed with exactly that error.
+      #
+      # Nothing is lost by skipping it: `--force` only bypasses the "is this
+      # version already published" guard, and the `version` job above already
+      # answers that question UNAUTHENTICATED (`npm view`) before this job runs.
+      # The registry remains the final authority — it rejects a duplicate version
+      # regardless of this flag.
+      - run: npm publish --force --tag "${{ needs.version.outputs.tag }}"
         # No NODE_AUTH_TOKEN and no registry-url: with neither a token in the env
         # nor an `_authToken` line in .npmrc, npm attempts OIDC. It exchanges the
         # GitHub id-token for a short-lived publish credential against the trusted
