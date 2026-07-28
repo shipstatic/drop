@@ -9,8 +9,8 @@ importers:
   .:
     dependencies:
       '@shipstatic/ship':
-        specifier: 2.0.0-beta.3
-        version: 2.0.0-beta.3(typescript@5.9.3)
+        specifier: 2.0.0-beta.6
+        version: 2.0.0-beta.6(typescript@5.9.3)
       fflate:
         specifier: ^0.8.3
         version: 0.8.3
@@ -22,8 +22,8 @@ importers:
         specifier: 2.5.5
         version: 2.5.5
       '@shipstatic/types':
-        specifier: 2.2.1-beta.0
-        version: 2.2.1-beta.0
+        specifier: 2.5.0-beta.13
+        version: 2.5.0-beta.13
       '@testing-library/react':
         specifier: ^16.3.2
         version: 16.3.2(@testing-library/dom@10.4.1)(@types/react-dom@19.2.3(@types/react@19.2.17))(@types/react@19.2.17)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
@@ -647,13 +647,13 @@ packages:
     cpu: [x64]
     os: [win32]
 
-  '@shipstatic/ship@2.0.0-beta.3':
-    resolution: {integrity: sha512-zHfgYP/eE+5EsrB+1gdMqdQA1tHtl7ukItj25HaURevoC+metH7PNnePkGxw3G1ms5UaCuh41iqvs05z+lxksg==}
+  '@shipstatic/ship@2.0.0-beta.6':
+    resolution: {integrity: sha512-TpRP8Uv5qmAkh85CKq63bM83Z3oEH+FPLxZubG9jO9j7HX+PHJV6wEhV4Oi9baJ0GywIjNnHi4gSVBMM32cFhQ==}
     engines: {node: '>=20.0.0'}
     hasBin: true
 
-  '@shipstatic/types@2.2.1-beta.0':
-    resolution: {integrity: sha512-VTmq20iasbUS6tyD9EpkNRU7UNhIzbYKHoexM3C4kuuw0E2e/4fsBVzRHSen78wszToy91P6yRXe4gHq4idYNg==}
+  '@shipstatic/types@2.5.0-beta.13':
+    resolution: {integrity: sha512-7lyfzY6xEwFCeLtUXMCsEu6csLvyLFdwjhgHSma1ZBf5pEQIvzyeZGiukEI9KT4sqs+H6N7x9U5ENmIxdlOdMQ==}
     engines: {node: '>=20.0.0'}
 
   '@sindresorhus/is@4.6.0':
@@ -2091,7 +2091,7 @@ snapshots:
   '@rollup/rollup-win32-x64-msvc@4.62.3':
     optional: true
 
-  '@shipstatic/ship@2.0.0-beta.3(typescript@5.9.3)':
+  '@shipstatic/ship@2.0.0-beta.6(typescript@5.9.3)':
     dependencies:
       columnify: 1.6.0
       commander: 14.0.3
@@ -2106,7 +2106,7 @@ snapshots:
     transitivePeerDependencies:
       - typescript
 
-  '@shipstatic/types@2.2.1-beta.0': {}
+  '@shipstatic/types@2.5.0-beta.13': {}
 
   '@sindresorhus/is@4.6.0': {}
 
