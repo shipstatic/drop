@@ -135,6 +135,19 @@ jobs:
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NODE_AUTH_TOKEN }}
 
+      # TEMP — npm support ticket for the bare 403. The logfile npm's error line
+      # points at lives under the runner's HOME and dies with the runner, so the
+      # one artifact support asks for on every 403 is the one thing the job log
+      # never had. Remove when the ticket closes.
+      - name: npm debug logfile
+        if: failure()
+        run: |
+          for f in "$HOME"/.npm/_logs/*-debug-*.log; do
+            [ -f "$f" ] || continue
+            echo "===== $f ====="
+            cat "$f"
+          done
+
       - uses: slackapi/slack-github-action@v4
         with:
           webhook: ${{ secrets.SLACK_WEBHOOK_URL }}
