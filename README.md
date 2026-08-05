@@ -201,7 +201,7 @@ await ship.deployments.upload(drop.getFilesForUpload(), {
 
 ## ZIP handling
 
-A **single** dropped ZIP is extracted and its contents deployed. ZIPs among several files are treated as ordinary files. Archive paths are sanitized against directory traversal (`../../etc/passwd` → `etc/passwd`).
+A **single** dropped ZIP is extracted and its contents deployed. ZIPs among several files are treated as ordinary files. Archive paths are sanitized against directory traversal (`../../config.json` → `config.json`).
 
 ## Without React
 
