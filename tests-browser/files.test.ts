@@ -54,7 +54,12 @@ describe('File in a real browser', () => {
 
 describe('webkitRelativePath as Chromium defines it', () => {
   it('is an empty string on a plain File, not undefined', () => {
-    // The fallback in `filePath` depends on this being falsy-but-present.
+    // The fallback in `filePath` depends on this being falsy-but-present, and
+    // that fallback is what makes the FILES picker need no pipeline of its own:
+    // a `webkitdirectory` input and a drop both hand over a path, a plain
+    // `<input type="file">` hands over nothing, and all three converge here on
+    // the same deploy path. Certified on the real platform object because this
+    // is precisely the property jsdom only approximates.
     const file = new File(['x'], 'index.html');
 
     expect(file.webkitRelativePath).toBe('');

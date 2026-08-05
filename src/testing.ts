@@ -11,9 +11,13 @@
  * so this file deliberately ships none of it.
  */
 
-import { FileValidationStatus, type FileValidationStatusType } from '@shipstatic/types';
+import {
+  FileValidationStatus,
+  type FileValidationStatusType,
+  WEB_FILE_ACCEPT,
+} from '@shipstatic/types';
 import type { ProcessedFile } from './types';
-import type { DropReturn, DropzonePropsOptions } from './useDrop';
+import type { DropInputProps, DropReturn, DropzonePropsOptions, PickerMode } from './useDrop';
 
 const noop = () => {};
 
@@ -60,12 +64,14 @@ export function createMockDrop(overrides: Partial<DropReturn> = {}): DropReturn 
       onDrop: noop,
       ...(options?.clickable !== false && { onClick: noop }),
     }),
-    getInputProps: () => ({
+    // Mirrors the real getter's one branch: folder is the default, and exactly
+    // one attribute tells the two pickers apart.
+    getInputProps: (mode?: PickerMode): DropInputProps => ({
       ref: { current: null },
       type: 'file' as const,
       style: { display: 'none' },
       multiple: true,
-      webkitdirectory: '',
+      ...(mode === 'files' ? { accept: WEB_FILE_ACCEPT } : { webkitdirectory: '' }),
       onChange: noop,
     }),
 
