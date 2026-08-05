@@ -97,56 +97,37 @@ jobs:
     if: needs.version.outputs.publish == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 10
-    # `npm-latest` accepts pushes from `main` ONLY (a deployment branch policy),
-    # and NODE_AUTH_TOKEN lives in these two environments and NOWHERE at repo
-    # level — a branch that cannot reach the environment cannot reach the
-    # credential either.
+    # `npm-latest` carries a main-only deployment branch policy, so publishing
+    # `latest` off `main` is refused by GitHub before a step runs.
     environment: npm-${{ needs.version.outputs.tag }}
     permissions:
       contents: read
+      id-token: write
     steps:
       - uses: actions/checkout@v7
 
       - uses: pnpm/action-setup@v6
 
-      # `registry-url` makes setup-node write
-      # `//registry.npmjs.org/:_authToken=${NODE_AUTH_TOKEN}` into a temp .npmrc —
-      # exactly what token auth needs. Mutually exclusive with OIDC: that line,
-      # even with an empty token, makes npm skip the trusted-publishing handshake
-      # (actions/setup-node#1551).
+      # No `registry-url`: it would write an `_authToken` line into .npmrc, and
+      # npm reads that line — even with no token — as "token auth is configured"
+      # and skips the OIDC handshake (actions/setup-node#1551).
       - uses: actions/setup-node@v7
         with:
           node-version: 22
           cache: pnpm
-          registry-url: 'https://registry.npmjs.org'
 
       - run: pnpm install --frozen-lockfile
 
       - run: pnpm run build
 
-      # TOKEN auth, unlike the other packages (OIDC trusted publishing): the
-      # registry refuses drop's OIDC publishes with a bare, message-less 403 —
-      # parked investigation, 2026-07-27, every configurable dimension proven
-      # identical to types/ship/mcp, which publish green over the same workflow
-      # shape. Until npm support resolves it, drop publishes with a granular
-      # access token (bypass-2FA), which also requires the package's Publishing
-      # access to ALLOW tokens. No `--provenance` — it rides the OIDC path.
-      - run: npm publish --access public --tag "${{ needs.version.outputs.tag }}"
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NODE_AUTH_TOKEN }}
+      # OIDC needs npm >= 11.5.1; node 22 bundles 10.x, and pnpm has no OIDC
+      # support — hence `npm`, not `pnpm`, for the publish.
+      - run: npm install -g npm@latest
 
-      # TEMP — npm support ticket for the bare 403. The logfile npm's error line
-      # points at lives under the runner's HOME and dies with the runner, so the
-      # one artifact support asks for on every 403 is the one thing the job log
-      # never had. Remove when the ticket closes.
-      - name: npm debug logfile
-        if: failure()
-        run: |
-          for f in "$HOME"/.npm/_logs/*-debug-*.log; do
-            [ -f "$f" ] || continue
-            echo "===== $f ====="
-            cat "$f"
-          done
+      # Trusted publishing: no NODE_AUTH_TOKEN anywhere in this job — npm
+      # authenticates with a token whenever one is present and attempts OIDC
+      # only in its absence.
+      - run: npm publish --access public --provenance --tag "${{ needs.version.outputs.tag }}"
 
       - uses: slackapi/slack-github-action@v4
         with:
