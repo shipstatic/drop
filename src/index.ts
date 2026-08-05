@@ -21,5 +21,11 @@
 export type { DropOutcome, ProcessFilesOptions } from './process';
 export { processFiles } from './process';
 export type { DropPhase, DropStatus, ProcessedFile } from './types';
-export type { DropOptions, DropReturn, DropzonePropsOptions } from './useDrop';
+export type {
+  DropInputProps,
+  DropOptions,
+  DropReturn,
+  DropzonePropsOptions,
+  PickerMode,
+} from './useDrop';
 export { useDrop } from './useDrop';

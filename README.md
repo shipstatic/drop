@@ -94,10 +94,10 @@ interface DropReturn {
 
   // Prop getters
   getDropzoneProps: (options?: { clickable?: boolean }) => { ... };
-  getInputProps: () => { ... };
+  getInputProps: (mode?: PickerMode) => { ... };  // 'folder' (default) | 'files'
 
   // Actions
-  open: () => void;                              // trigger the file picker
+  open: (mode?: PickerMode) => void;             // trigger a picker (default: folder)
   processFiles: (files: File[]) => Promise<void>; // advanced — see below
   reset: () => void;
 
@@ -141,18 +141,28 @@ useEffect(() => {
 </div>
 ```
 
-Drag-only, with your own trigger:
+Drag-only, with your own triggers:
 
 ```tsx
 <div {...drop.getDropzoneProps({ clickable: false })}>
-  <input {...drop.getInputProps()} />
-  <button onClick={drop.open}>Select folder</button>
+  <input {...drop.getInputProps('folder')} />
+  <input {...drop.getInputProps('files')} />
+  <button onClick={() => drop.open('folder')}>Select folder</button>
+  <button onClick={() => drop.open('files')}>Select files</button>
 </div>
 ```
 
 `getDropzoneProps()` handles `webkitGetAsEntry` internally, which is what preserves folder structure. Calling `processFiles()` yourself loses it — the browser invalidates `dataTransfer.items` at the first `await`, so entries must be captured synchronously.
 
-**The hidden input is a folder picker.** It always carries `webkitdirectory`, so clicking opens a directory chooser. Individual files arrive by drag & drop.
+### Two pickers
+
+`PickerMode` is `'folder' | 'files'`, and **folder is the default** — a bare `getInputProps()` / `open()`, and the dropzone's own click, open the folder picker.
+
+An `<input>` is either a folder picker or a file picker, so each mode owns its own element and its own ref: a UI offering both renders **both inputs**, and `open(mode)` clicks whichever is mounted. Exactly one attribute differs — `webkitdirectory` in folder mode, `accept` in files mode.
+
+Wrap `open` in a handler rather than passing it by reference (`onClick={() => drop.open('files')}`): React hands a click handler a `MouseEvent`, which would otherwise arrive as the mode.
+
+**Selecting is not a second code path.** A picked file set — loose files or a ZIP — runs the identical pipeline as a dropped one, with the same paths, the same source name and the same verdict. The `accept` list is a *hint* that biases what the file dialog shows first; it decides nothing, since every dialog offers an all-files escape and drag & drop ignores `accept` outright. What files may be deployed is one rule, applied downstream of both entry points.
 
 ## Validation
 

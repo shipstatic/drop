@@ -14,7 +14,7 @@
  * ```
  */
 import type { Ship } from '@shipstatic/ship';
-import { FileValidationStatus } from '@shipstatic/types';
+import { FileValidationStatus, WEB_FILE_ACCEPT } from '@shipstatic/types';
 import { useCallback, useMemo, useRef, useState } from 'react';
 import { traverseFileTree } from './entries';
 import { setRelativePath } from './files';
@@ -35,6 +35,41 @@ export interface DropOptions {
 export interface DropzonePropsOptions {
   /** Whether clicking the dropzone opens the file picker (default: true) */
   clickable?: boolean;
+}
+
+/**
+ * Which picker `getInputProps()` describes and `open()` opens.
+ *
+ * **Folder is the default**, so a bare `getInputProps()` / `open()` — and the
+ * dropzone's own click — address the folder picker exactly as they always have.
+ *
+ * The singular/plural mix is deliberate: you pick one folder or many files, and
+ * these are the words the buttons above them carry.
+ */
+export type PickerMode = 'folder' | 'files';
+
+/**
+ * The hidden input to spread onto an `<input>`.
+ *
+ * One shape for both modes, because exactly one attribute distinguishes them:
+ * `webkitdirectory` makes the dialog a folder picker, and `accept` biases a file
+ * picker's default view. Never both — a folder picker ignores `accept`, so
+ * emitting it there would advertise a filter that does not apply.
+ */
+export interface DropInputProps {
+  ref: React.RefObject<HTMLInputElement | null>;
+  type: 'file';
+  style: { display: string };
+  multiple: boolean;
+  /** Folder mode only — the attribute that makes it a folder picker. */
+  webkitdirectory?: string;
+  /**
+   * Files mode only. A HINT, not a gate: every dialog offers an all-files
+   * escape and drag-and-drop ignores `accept` outright, so the verdict on any
+   * file is `validateFiles` downstream — the same one the dropzone reaches.
+   */
+  accept?: string;
+  onChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
 }
 
 export interface DropReturn {
@@ -64,18 +99,16 @@ export interface DropReturn {
     onDrop: (e: React.DragEvent) => void;
     onClick?: () => void;
   };
-  /** Props to spread on the hidden file input element */
-  getInputProps: () => {
-    ref: React.RefObject<HTMLInputElement | null>;
-    type: 'file';
-    style: { display: string };
-    multiple: boolean;
-    webkitdirectory: string;
-    onChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
-  };
+  /**
+   * Props to spread on a hidden file input element, one per picker mode.
+   *
+   * Each mode owns its own element and its own ref, so a UI offering both
+   * renders both inputs — `open(mode)` clicks whichever is mounted.
+   */
+  getInputProps: (mode?: PickerMode) => DropInputProps;
 
-  /** Programmatically trigger the file picker */
-  open: () => void;
+  /** Programmatically trigger a picker (default: the folder picker) */
+  open: (mode?: PickerMode) => void;
   /** Process files directly (advanced — loses folder traversal) */
   processFiles: (files: File[]) => Promise<void>;
   /** Reset state and clear all files */
@@ -110,7 +143,11 @@ export function useDrop({ ship }: DropOptions): DropReturn {
 
   // Synchronous re-entry guard — React state is too late to gate a second drop
   const isProcessingRef = useRef(false);
-  const inputRef = useRef<HTMLInputElement>(null);
+  // One ref per picker: an <input> is either a folder picker or a file picker,
+  // and toggling `webkitdirectory` on a live node to reuse a single element
+  // would mean writing an attribute behind React's back.
+  const folderInputRef = useRef<HTMLInputElement>(null);
+  const filesInputRef = useRef<HTMLInputElement>(null);
 
   const isProcessing = state.phase === 'processing';
   const hasError = state.phase === 'error';
@@ -229,8 +266,17 @@ export function useDrop({ ship }: DropOptions): DropReturn {
     [processFiles],
   );
 
-  const open = useCallback(() => {
-    inputRef.current?.click();
+  // `files` is the exception, so any other value — including a stray argument —
+  // resolves to the folder picker, and the default is written once.
+  const open = useCallback((mode?: PickerMode) => {
+    const input = mode === 'files' ? filesInputRef.current : folderInputRef.current;
+    if (!input) {
+      console.warn(
+        `No ${mode === 'files' ? 'files' : 'folder'} input is mounted. Spread getInputProps('${mode === 'files' ? 'files' : 'folder'}') onto an <input> to open this picker.`,
+      );
+      return;
+    }
+    input.click();
   }, []);
 
   const getDropzoneProps = useCallback(
@@ -240,19 +286,21 @@ export function useDrop({ ship }: DropOptions): DropReturn {
         onDragOver: handleDragOver,
         onDragLeave: handleDragLeave,
         onDrop: handleDrop,
-        ...(clickable && { onClick: open }),
+        // Wrapped rather than passed by reference: `open` takes a mode, and a
+        // click handler would hand it a MouseEvent.
+        ...(clickable && { onClick: () => open() }),
       };
     },
     [handleDragOver, handleDragLeave, handleDrop, open],
   );
 
   const getInputProps = useCallback(
-    () => ({
-      ref: inputRef,
+    (mode?: PickerMode): DropInputProps => ({
+      ref: mode === 'files' ? filesInputRef : folderInputRef,
       type: 'file' as const,
       style: { display: 'none' },
       multiple: true,
-      webkitdirectory: '',
+      ...(mode === 'files' ? { accept: WEB_FILE_ACCEPT } : { webkitdirectory: '' }),
       onChange: handleInputChange,
     }),
     [handleInputChange],

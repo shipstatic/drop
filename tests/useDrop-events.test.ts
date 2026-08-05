@@ -1,5 +1,7 @@
+import { WEB_FILE_ACCEPT } from '@shipstatic/types';
 import { act, renderHook } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
+import type { DropReturn, PickerMode } from '../src/useDrop';
 import { useDrop } from '../src/useDrop';
 import {
   dataTransferItem,
@@ -11,6 +13,7 @@ import {
   inputChangeEvent,
   READ_ENTRIES_BATCH_SIZE,
   shipStub,
+  zipOf,
 } from './fixtures/builders';
 
 /**
@@ -43,6 +46,27 @@ describe('getDropzoneProps', () => {
     expect(setup().result.current.getDropzoneProps({}).onClick).toBeDefined();
   });
 
+  it('opens the FOLDER picker on a dropzone click', () => {
+    // `onClick` wraps `open()` rather than passing it by reference, because
+    // React hands a click handler a MouseEvent — and `open` now takes a mode.
+    // Passed by reference, that event would be the argument, and since it is
+    // not the string 'folder', a naive `mode === 'folder'` check would have
+    // opened the FILES picker on every dropzone click.
+    const { result } = setup();
+    const inputs = (['folder', 'files'] as const).map((mode) => {
+      const input = document.createElement('input');
+      (result.current.getInputProps(mode).ref as { current: HTMLInputElement | null }).current =
+        input;
+      return vi.spyOn(input, 'click');
+    });
+
+    act(() => result.current.getDropzoneProps().onClick?.());
+
+    const [folder, files] = inputs;
+    expect(folder).toHaveBeenCalledTimes(1);
+    expect(files).not.toHaveBeenCalled();
+  });
+
   it('is stable across renders', () => {
     const { result, rerender } = setup();
     const first = result.current.getDropzoneProps;
@@ -58,9 +82,42 @@ describe('getInputProps', () => {
     expect(props.type).toBe('file');
     expect(props.style).toEqual({ display: 'none' });
     expect(props.multiple).toBe(true);
-    // Always a folder picker — individual files arrive by drag & drop
+    // Folder is the default, so a bare call is what it always was
     expect(props.webkitdirectory).toBe('');
     expect(props.ref).toBeDefined();
+  });
+
+  it('describes the same input for an explicit folder mode', () => {
+    const { result } = setup();
+    expect(result.current.getInputProps('folder')).toEqual(result.current.getInputProps());
+  });
+
+  it('drops webkitdirectory in files mode — the one attribute that differs', () => {
+    const props = setup().result.current.getInputProps('files');
+
+    expect(props.type).toBe('file');
+    expect(props.style).toEqual({ display: 'none' });
+    expect(props.multiple).toBe(true);
+    expect(props.webkitdirectory).toBeUndefined();
+  });
+
+  it('offers the shared accept hint in files mode, and never in folder mode', () => {
+    const { result } = setup();
+
+    // The list is the platform's, not this package's — a local list would be a
+    // second source of truth for what a picker shows.
+    expect(result.current.getInputProps('files').accept).toBe(WEB_FILE_ACCEPT);
+    // A folder picker ignores `accept`; emitting it would advertise a filter
+    // that does not apply.
+    expect(result.current.getInputProps('folder').accept).toBeUndefined();
+  });
+
+  it('gives each mode its own ref, so both inputs can be mounted at once', () => {
+    const { result } = setup();
+
+    expect(result.current.getInputProps('folder').ref).not.toBe(
+      result.current.getInputProps('files').ref,
+    );
   });
 
   it('is stable across renders', () => {
@@ -384,20 +441,146 @@ describe('getInputProps onChange', () => {
 });
 
 describe('open', () => {
+  /** Simulate React attaching the ref for a mode, and report the click spy. */
+  const mount = (result: { current: DropReturn }, mode?: PickerMode) => {
+    const input = document.createElement('input');
+    (result.current.getInputProps(mode).ref as { current: HTMLInputElement | null }).current =
+      input;
+    return vi.spyOn(input, 'click');
+  };
+
   it('clicks the input the ref is attached to', () => {
     const { result } = setup();
-    const input = document.createElement('input');
-    const click = vi.spyOn(input, 'click');
+    const click = mount(result);
 
-    // Simulate React attaching the ref
-    (result.current.getInputProps().ref as { current: HTMLInputElement | null }).current = input;
     act(() => result.current.open());
 
     expect(click).toHaveBeenCalledTimes(1);
   });
 
+  it('opens the folder picker by default and for an explicit folder mode', () => {
+    const { result } = setup();
+    const folder = mount(result, 'folder');
+    const files = mount(result, 'files');
+
+    act(() => result.current.open());
+    act(() => result.current.open('folder'));
+
+    expect(folder).toHaveBeenCalledTimes(2);
+    expect(files).not.toHaveBeenCalled();
+  });
+
+  it('opens the files picker only when asked', () => {
+    const { result } = setup();
+    const folder = mount(result, 'folder');
+    const files = mount(result, 'files');
+
+    act(() => result.current.open('files'));
+
+    expect(files).toHaveBeenCalledTimes(1);
+    expect(folder).not.toHaveBeenCalled();
+  });
+
   it('is a no-op when no input is mounted', () => {
     const { result } = setup();
     expect(() => act(() => result.current.open())).not.toThrow();
+  });
+
+  it('names the missing mode, because a silent no-op is the whole hazard', () => {
+    const { result } = setup();
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+    act(() => result.current.open('files'));
+
+    expect(warn).toHaveBeenCalledWith(expect.stringContaining("getInputProps('files')"));
+  });
+});
+
+/**
+ * The load-bearing guarantee of the second picker: a selection is not a second
+ * input path with rules of its own. `filePath()` falls back to `file.name` when
+ * the browser set no `webkitRelativePath` — which is exactly what the drop
+ * handler writes for a root file — so both arrive at the same pipeline with the
+ * same paths, and every rule downstream is source-blind.
+ */
+describe('a picked file set deploys identically to a dropped one', () => {
+  // Fresh Files per run: `stripCommonPrefix` mutates `webkitRelativePath`, so
+  // reusing instances would let the first run decide the second's paths.
+  const flatSite = () => [
+    file('index.html', '<html><body>hi</body></html>', 'text/html'),
+    file('style.css', 'body{margin:0}', 'text/css'),
+  ];
+
+  const observable = (drop: DropReturn) => ({
+    phase: drop.phase,
+    sourceName: drop.sourceName,
+    needsBuild: drop.needsBuild,
+    status: drop.status,
+    deployPaths: drop.validFiles.map((f) => f.path).sort(),
+    // What Ship actually reads off the raw File objects
+    uploadPaths: drop
+      .getFilesForUpload()
+      .map((f) => f.webkitRelativePath)
+      .sort(),
+  });
+
+  const pick = async (files: File[]) => {
+    const { result } = setup();
+    await act(async () => {
+      result.current.getInputProps('files').onChange(inputChangeEvent(files));
+    });
+    return observable(result.current);
+  };
+
+  const drop = async (files: File[]) => {
+    const { result } = setup();
+    await act(async () => {
+      await result.current
+        .getDropzoneProps()
+        .onDrop(dropEvent({ items: files.map((f) => dataTransferItem({ asFile: f })) }));
+    });
+    return observable(result.current);
+  };
+
+  it('agrees on loose web files', async () => {
+    const picked = await pick(flatSite());
+
+    expect(picked).toEqual(await drop(flatSite()));
+    expect(picked.deployPaths).toEqual(['index.html', 'style.css']);
+    expect(picked.uploadPaths).toEqual(['index.html', 'style.css']);
+  });
+
+  it('agrees on a single ZIP — extracted either way', async () => {
+    const archive = () => [
+      zipOf({ 'index.html': '<html>hi</html>', 'assets/app.js': 'console.log(1)' }, 'my-site.zip'),
+    ];
+    const picked = await pick(archive());
+
+    expect(picked).toEqual(await drop(archive()));
+    expect(picked.sourceName).toBe('my-site');
+    expect(picked.deployPaths).toEqual(['assets/app.js', 'index.html']);
+  });
+
+  it('agrees on a rejection — a blocked extension fails the same way', async () => {
+    const withExe = () => [
+      file('index.html', '<html>hi</html>', 'text/html'),
+      file('setup.exe', 'MZ'),
+    ];
+    const picked = await pick(withExe());
+
+    // The picker's `accept` hint is not the gate; `validateFiles` is, and it is
+    // downstream of BOTH entry points. Drag-and-drop ignores `accept` outright,
+    // so any divergence here would be a rule the two paths did not share.
+    expect(picked).toEqual(await drop(withExe()));
+    expect(picked.phase).toBe('error');
+    expect(picked.status?.errors?.join()).toContain('setup.exe');
+  });
+
+  it('agrees that a set with no root index.html is not deployable', async () => {
+    const noEntry = () => [file('style.css', 'body{}', 'text/css')];
+    const picked = await pick(noEntry());
+
+    expect(picked).toEqual(await drop(noEntry()));
+    expect(picked.phase).toBe('error');
   });
 });

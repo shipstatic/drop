@@ -45,7 +45,7 @@ that are deliberately NOT public — `filePath`, `setRelativePath`, `applyStatus
 publishing them puts semver around implementation detail. `export *` from the leaf
 modules would do exactly that; `tests/index.test.ts` fences both directions.
 
-**Two** runtime values are public: `useDrop` and `processFiles`.
+**Two** runtime values are public: `useDrop` and `processFiles`. The types beside them (`DropOptions`, `DropReturn`, `DropzonePropsOptions`, `PickerMode`, `DropInputProps`) are named rather than inline, so a consumer wrapping the hook can hold the shapes it spreads.
 
 The file-status vocabulary is deliberately NOT among them. `FileValidationStatus`
 belongs to `@shipstatic/types` and is already re-exported by `@shipstatic/ship`,
@@ -93,6 +93,12 @@ are pure functions:
 | `filterJunk(paths, {allowUnbuilt})` | Filter .DS_Store, Thumbs.db, dot files (`.well-known` allowed); THROWS on unbuilt markers |
 | `optimizeDeployPaths(paths)` | Common-prefix stripping — the one source of truth for deploy paths |
 | `pluralize`, `formatFileSize` | Message formatting |
+
+From `@shipstatic/types` it takes `FileValidationStatus`, `hasUnbuiltMarker`,
+`isShipError` and `WEB_FILE_ACCEPT` (the files-picker `accept` hint). That
+package is a **devDependency and is bundled** — tsup externalizes only
+`dependencies`/`peerDependencies` — so a constant added there reaches drop's
+dist inlined, at no runtime-dependency cost to consumers.
 
 The only I/O collaborator is `ship.getLimits()` — and `DropOptions.ship` is typed
 as `Pick<Ship, 'getLimits'>`, mirroring the SDK's own resource-factory doctrine
@@ -183,14 +189,67 @@ The web app reads `drop.needsBuild` and passes `build: true, prerender: true` to
   <input {...drop.getInputProps()} />   // Hidden file input with folder support
 </div>
 
-// Drag-only (no click-to-open):
+// Drag-only (no click-to-open), offering both pickers:
 <div {...drop.getDropzoneProps({ clickable: false })}>
-  <input {...drop.getInputProps()} />
-  <button onClick={drop.open}>Select folder</button>
+  <input {...drop.getInputProps('folder')} />
+  <input {...drop.getInputProps('files')} />
+  <button onClick={() => drop.open('folder')}>Select folder</button>
+  <button onClick={() => drop.open('files')}>Select files</button>
 </div>
 ```
 
 `getDropzoneProps()` handles `webkitGetAsEntry` internally for proper folder traversal. Manual `processFiles()` callers lose this.
+
+### The picker has a mode, so the mode is an argument
+
+`PickerMode` is `'folder' | 'files'`, and **folder is the default** — a bare
+`getInputProps()` / `open()`, and the dropzone's own click, address the folder
+picker exactly as they always have. The addition is purely additive.
+
+Each mode owns its own element and its own ref, so a UI offering both renders
+**two inputs**; `open(mode)` clicks whichever is mounted, and warns by name when
+it is not (a missing input is otherwise a silent no-op — the one footgun the
+two-element shape introduces).
+
+Exactly one attribute distinguishes them: `webkitdirectory` in folder mode,
+`accept` in files mode. Never both — a folder picker ignores `accept`, so
+emitting it there would advertise a filter that does not apply.
+
+`getDropzoneProps`'s `onClick` **wraps** `open()` rather than passing it by
+reference. React hands a click handler a `MouseEvent`, so by reference that
+event becomes the mode argument — which is why `open` treats `'files'` as the
+exception and everything else as folder, and why the dropzone click has its own
+test.
+
+Three shapes were considered and declined. **Four members**
+(`getFolderInputProps`/`openFolder` + `getFilesInputProps`/`openFiles`) spends
+two names on one axis and leaves the existing `open()` ambiguous forever.
+**Toggling `webkitdirectory`** on one live node before `.click()` writes an
+attribute behind React's back that a re-render then reverts. **Minting a
+detached `<input>` inside `open()`** would delete `getInputProps` entirely and
+reads as simpler, but it takes away the element consumers style, label and
+query in tests — and a headless hook that creates DOM has stopped being
+headless.
+
+### The picker filter is a hint, and the platform owns the rule
+
+Files mode carries `accept={WEB_FILE_ACCEPT}` from `@shipstatic/types` — the
+same list `web/my` and `web/www` would otherwise each invent. It biases what a
+file dialog shows first and **decides nothing**: every dialog offers an
+all-files escape, and drag-and-drop ignores `accept` outright.
+
+The verdict on any file is `validateFiles`, downstream of both entry points, so
+a picked `.exe` and a dropped `.exe` fail identically with the platform's own
+message. That equivalence is not a convention — `tests/useDrop-events.test.ts`
+("a picked file set deploys identically to a dropped one") asserts phase, status,
+deploy paths, `webkitRelativePath`, and source name are equal across the two
+paths for loose files, a ZIP, a blocked extension, and a missing entry point.
+
+Do not read `accept` as authority in either direction. It can express only an
+allowlist while the platform's rule is a blocklist, so it is necessarily
+*narrower* than what the platform hosts; treating it as the rule would reject
+files the platform serves. `@shipstatic/types` fences the one invariant that
+matters — the picker never offers what the platform will refuse.
 
 ## Status Values
 
@@ -227,7 +286,7 @@ If ANY file fails validation, ALL non-excluded files are marked `validation_fail
 ## Key Gotchas
 
 - **DataTransfer synchronous access** — `dataTransfer.items` must be accessed synchronously in drop handlers; they're garbage collected after the first `await`. The hook collects every entry first, then traverses. Manual `processFiles()` callers lose folder structure.
-- **File Input is folder-only** — The hidden input always has `webkitdirectory` set. Clicking opens a **folder picker**, not a file picker. Individual file uploads require drag-and-drop.
+- **The hidden input has two modes** — `getInputProps()` defaults to a **folder** picker (`webkitdirectory`); `getInputProps('files')` is a plain multi-file picker. A UI offering both renders both inputs, and `open('files')` on an unmounted one warns rather than failing silently. Individual files also still arrive by drag-and-drop, and take the identical path (see "The picker has a mode").
 - **`stripCommonPrefix` mutates File objects** — Returns new `ProcessedFile` objects (immutable), but **mutates** `File.webkitRelativePath` directly. Intentional — Ship SDK reads `webkitRelativePath` from raw File objects.
 - **`webkitRelativePath`** — Don't mutate it between Drop and SDK; Ship SDK reads it for deployment paths.
 - **`readEntries` batches at 100** — Real Chromium returns at most 100 directory entries per call and signals the end with an empty batch, so the reader must loop. A single call silently truncates every folder over 100 files.
@@ -236,7 +295,7 @@ If ANY file fails validation, ALL non-excluded files are marked `validation_fail
 ## Testing
 
 ```bash
-pnpm test:ci        # 10 files, 226 tests, ~2s
+pnpm test:ci        # 11 files, 229 tests, ~2s
 pnpm coverage       # + the ratchet (what CI runs)
 pnpm test:browser   # 19 tests, real Chromium
 pnpm typecheck      # src AND tests, 0 errors
@@ -318,7 +377,7 @@ the whole pipeline — needs no fake and is certified for real in `tests-browser
 |---|---|
 | `architecture/test-integrity.test.ts` | A test file that reaches NO production code — the tautology class. A tautology neither raises nor lowers coverage, so no ratchet can see it. Reach resolves transitively through local helpers. Its only exceptions are the two fences themselves, which read the tree as data. |
 | `architecture/test-naming.test.ts` | Layout drift: a filename describing the test instead of its subject (`-branches`), a mirror file with no `src/` counterpart, an aspect split not recorded in the fence, a recorded entry gone stale, or a `src/` module with no mirror test. |
-| `coverage.thresholds` | Coverage decay. A ratchet — it only goes up. Currently 99/93/99/99 against a measured 99.59 / 94.41 / 100 / 99.52. |
+| `coverage.thresholds` | Coverage decay. A ratchet — it only goes up. Currently 99/93/99/99 against a measured 99.56 / 94.31 / 100 / 99.49. |
 
 **Recorded aspect splits** — one subject, more than one mirror file. Legal under
 the layout law (`<module>-<aspect>.test.ts`), and the naming fence fails the

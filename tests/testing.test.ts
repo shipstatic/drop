@@ -1,4 +1,4 @@
-import { FileValidationStatus } from '@shipstatic/types';
+import { FileValidationStatus, WEB_FILE_ACCEPT } from '@shipstatic/types';
 import { describe, expect, it, vi } from 'vitest';
 import {
   createMockDrop,
@@ -117,6 +117,17 @@ describe('createMockDrop', () => {
     expect(drop.getDropzoneProps().onClick).toBeDefined();
     expect(drop.getDropzoneProps({ clickable: false }).onClick).toBeUndefined();
     expect(drop.getInputProps().webkitdirectory).toBe('');
+  });
+
+  it('mirrors the real getter across both picker modes', () => {
+    // A consumer rendering two inputs must be able to test that it did. A mock
+    // that answered a folder input for both modes would let a UI that opens the
+    // wrong picker pass its own suite.
+    const drop = createMockDrop();
+
+    expect(drop.getInputProps('files').webkitdirectory).toBeUndefined();
+    expect(drop.getInputProps('files').accept).toBe(WEB_FILE_ACCEPT);
+    expect(drop.getInputProps('folder').accept).toBeUndefined();
   });
 
   it('every default action and handler is callable without throwing', () => {
