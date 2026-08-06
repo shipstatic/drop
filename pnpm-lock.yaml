@@ -22,8 +22,8 @@ importers:
         specifier: 2.5.5
         version: 2.5.5
       '@shipstatic/types':
-        specifier: 2.5.0-beta.18
-        version: 2.5.0-beta.18
+        specifier: 2.5.0-beta.19
+        version: 2.5.0-beta.19
       '@testing-library/react':
         specifier: ^16.3.2
         version: 16.3.2(@testing-library/dom@10.4.1)(@types/react-dom@19.2.3(@types/react@19.2.17))(@types/react@19.2.17)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
@@ -652,8 +652,8 @@ packages:
     engines: {node: '>=20.0.0'}
     hasBin: true
 
-  '@shipstatic/types@2.5.0-beta.18':
-    resolution: {integrity: sha512-7Ixhrd4fQs+b4yWIddpiMO1LnZK1cRXrfniNGCWBtkGjYtZgZ/NN6MvPbclDDA7vQ/25hPvHPZ5DM0a7hyOzZQ==}
+  '@shipstatic/types@2.5.0-beta.19':
+    resolution: {integrity: sha512-aUlOXJr1GU70c2NrSShaRHR/xSEmyLTao/Nbhi2FZHkSPSo0IowrirNpJQKRHgd5+Lakm8WE1uXOS+g3fRqPmw==}
     engines: {node: '>=20.0.0'}
 
   '@sindresorhus/is@4.6.0':
@@ -2054,7 +2054,7 @@ snapshots:
       yoctocolors: 2.2.0
       zod: 4.4.3
 
-  '@shipstatic/types@2.5.0-beta.18': {}
+  '@shipstatic/types@2.5.0-beta.19': {}
 
   '@sindresorhus/is@4.6.0': {}
 
