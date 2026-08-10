@@ -43,6 +43,7 @@
   "scripts": {
     "clean": "rm -rf dist",
     "build": "pnpm run clean && tsup",
+    "prepack": "pnpm run build",
     "dev": "tsup --watch",
     "test": "vitest --project main",
     "test:ci": "vitest --run --project main",
@@ -107,5 +108,9 @@
     "typescript": "^5.9.3",
     "vite": "^8.1.5",
     "vitest": "4.1.10"
+  },
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
   }
 }
