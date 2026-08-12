@@ -248,8 +248,16 @@ paths for loose files, a ZIP, a blocked extension, and a missing entry point.
 Do not read `accept` as authority in either direction. It can express only an
 allowlist while the platform's rule is a blocklist, so it is necessarily
 *narrower* than what the platform hosts; treating it as the rule would reject
-files the platform serves. `@shipstatic/types` fences the one invariant that
-matters — the picker never offers what the platform will refuse.
+files the platform serves. `cloudflare/api` fences the one invariant that
+matters — the picker never offers what the platform will refuse — because the
+blocklist is the API's, not this package's.
+
+**Which is also why the blocklist reaches drop as DATA.** `validateFiles` reads
+`PlatformLimits.blockedExtensions` off the limits `processFiles` already
+receives, so drop refuses exactly what the platform named at that moment and
+nothing it merely used to name. `PLATFORM_LIMITS` in the builders carries a
+SAMPLE list for that reason — enough to prove the pipeline honours what it was
+given, deliberately not a copy of the platform's real policy.
 
 ## Status Values
 
