@@ -21,6 +21,18 @@ import { strToU8, zipSync } from 'fflate';
 // ============================================================================
 
 /**
+ * A SAMPLE of the platform's blocklist — deliberately not a copy of it.
+ *
+ * The list is the API's (wire: `cloudflare/api/src/lib/blocklist.ts`, served by
+ * `GET /limits`) and it evolves there. `validateFiles` reads whatever the
+ * platform delivered, so what this suite needs is a non-empty list proving the
+ * pipeline honours what it was GIVEN — not a second copy of the real policy,
+ * which would make this file a holder of a fact whose whole point is having
+ * one owner.
+ */
+const BLOCKED_EXTENSIONS_SAMPLE = ['exe', 'msi', 'dll', 'bat', 'dmg'];
+
+/**
  * Production free-plan limits. Mirrors `DEPLOYMENT` in
  * `cloudflare/api/src/lib/config.ts` and the SDK's `ACCOUNT_LIMITS.free`.
  */
@@ -28,6 +40,7 @@ export const PLATFORM_LIMITS: PlatformLimits = {
   maxFileSize: 20 * 1024 * 1024,
   maxFilesCount: 500,
   maxTotalSize: 50 * 1024 * 1024,
+  blockedExtensions: BLOCKED_EXTENSIONS_SAMPLE,
 };
 
 /** Generous limits for tests where caps are not the subject. */
@@ -35,6 +48,7 @@ export const GENEROUS_LIMITS: PlatformLimits = {
   maxFileSize: 100 * 1024 * 1024,
   maxFilesCount: 10_000,
   maxTotalSize: 500 * 1024 * 1024,
+  blockedExtensions: BLOCKED_EXTENSIONS_SAMPLE,
 };
 
 // ============================================================================
