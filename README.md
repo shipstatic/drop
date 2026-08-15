@@ -18,7 +18,7 @@ React 18 or 19 is a peer dependency.
 import { useDrop } from '@shipstatic/drop';
 import Ship from '@shipstatic/ship';
 
-const ship = new Ship({ token: 'deploy-...' });
+const ship = new Ship({ token: 'deploy-your-token' });
 
 function Uploader() {
   const drop = useDrop({ ship });
