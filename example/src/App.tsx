@@ -3,7 +3,7 @@ import Ship from '@shipstatic/ship';
 import { useState } from 'react';
 
 const ship = new Ship({
-  // token: 'deploy-...'
+  // token: 'deploy-your-token'
 });
 
 function App() {
