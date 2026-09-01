@@ -1,6 +1,6 @@
 # @shipstatic/drop
 
-Headless file processing for Ship SDK deployments.
+Headless file processing for ShipStatic deployments.
 
 A React hook that prepares files for deployment with [@shipstatic/ship](https://www.npmjs.com/package/@shipstatic/ship): drag & drop with folder support, ZIP extraction, path normalization, and validation against your account's real platform limits. No UI, full styling control.
 
@@ -273,11 +273,17 @@ vi.mock('@shipstatic/drop', () => ({ useDrop: mockUseDrop({ phase: 'ready' }) })
 
 ## Gotchas
 
-- **`webkitRelativePath` is the handoff.** Drop writes each file's deploy path there, and the Ship SDK reads it. Don't modify it in between.
+- **`webkitRelativePath` is the handoff.** Drop writes each file's deploy path there, and the ShipStatic SDK reads it. Don't modify it in between.
 - **`stripCommonPrefix` mutates File objects.** It returns new `ProcessedFile`s but rewrites `webkitRelativePath` on the underlying `File` — deliberately, because that's what the SDK reads.
 - **Unreadable entries are skipped silently.** A folder with permission-denied files still deploys; the failures are logged to the console with no programmatic signal.
 - **No MD5 here.** Ship computes checksums during upload.
 - **`type` is the browser's report.** The platform derives `Content-Type` server-side from the path, so drop bundles no MIME database.
+
+## Also available
+
+Part of [ShipStatic](https://shipstatic.com). This package is a building
+block; the ways to actually deploy something are listed at
+[shipstatic.com](https://shipstatic.com).
 
 ## License
 

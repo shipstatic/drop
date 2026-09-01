@@ -1,7 +1,7 @@
 {
   "name": "@shipstatic/drop",
   "version": "2.7.0",
-  "description": "Headless React hook for file dropping, processing, ZIP extraction, and validation - purpose-built for Ship SDK",
+  "description": "Headless React hook that prepares files for ShipStatic deployments: drag and drop with folder support, ZIP extraction, path normalization, and validation.",
   "type": "module",
   "main": "./dist/index.cjs",
   "module": "./dist/index.js",
@@ -56,20 +56,24 @@
     "format": "biome format --write ."
   },
   "keywords": [
+    "shipstatic",
+    "deploy",
+    "hosting",
+    "static-site",
+    "static-hosting",
+    "web-hosting",
+    "website",
     "react",
     "react-hook",
     "dropzone",
     "file-drop",
-    "file-processing",
-    "headless",
     "zip-extraction",
     "file-validation",
-    "ship-sdk",
-    "deployment"
+    "headless"
   ],
   "author": "ShipStatic",
   "license": "MIT",
-  "homepage": "https://github.com/shipstatic/drop",
+  "homepage": "https://shipstatic.com",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/shipstatic/drop.git"
