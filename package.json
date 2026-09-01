@@ -1,6 +1,6 @@
 {
   "name": "@shipstatic/drop",
-  "version": "2.7.1",
+  "version": "2.7.2",
   "description": "Headless React hook that prepares files for ShipStatic deployments: drag and drop with folder support, ZIP extraction, path normalization, and validation.",
   "type": "module",
   "main": "./dist/index.cjs",

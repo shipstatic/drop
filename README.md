@@ -12,7 +12,7 @@ npm install @shipstatic/drop @shipstatic/ship
 
 React 18 or 19 is a peer dependency.
 
-## Quick Start
+## Quick start
 
 ```tsx
 import { useDrop } from '@shipstatic/drop';
