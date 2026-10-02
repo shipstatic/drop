@@ -141,8 +141,14 @@ const initialState: DropState = {
 export function useDrop({ ship }: DropOptions): DropReturn {
   const [state, setState] = useState<DropState>(initialState);
 
-  // Synchronous re-entry guard — React state is too late to gate a second drop
-  const isProcessingRef = useRef(false);
+  // The preparation run in flight, if any. One controller per run does three
+  // jobs: its presence is the synchronous re-entry guard (React state is too
+  // late to gate a second drop), its signal stops the limits read when the run
+  // is cancelled, and its `aborted` flag is how a run that was cancelled knows
+  // to say nothing more. Preparation outlives a cancel (an archive being
+  // inflated, a request already sent), so without that last one a retired run
+  // would finish over whatever the person selected next.
+  const runRef = useRef<AbortController | null>(null);
   // One ref per picker: an <input> is either a folder picker or a file picker,
   // and toggling `webkitdirectory` on a live node to reuse a single element
   // would mean writing an attribute behind React's back.
@@ -162,13 +168,14 @@ export function useDrop({ ship }: DropOptions): DropReturn {
 
   const processFiles = useCallback(
     async (newFiles: File[]) => {
-      if (isProcessingRef.current) {
+      if (runRef.current) {
         console.warn('File processing already in progress. Ignoring duplicate call.');
         return;
       }
       if (!newFiles || newFiles.length === 0) return;
 
-      isProcessingRef.current = true;
+      const run = new AbortController();
+      runRef.current = run;
       setState({
         ...initialState,
         phase: 'processing',
@@ -177,9 +184,12 @@ export function useDrop({ ship }: DropOptions): DropReturn {
 
       try {
         const outcome = await runPipeline(newFiles, {
-          limits: await ship.getLimits(),
-          onStatus: (status) => setState((prev) => ({ ...prev, status })),
+          limits: await ship.getLimits({ signal: run.signal }),
+          onStatus: (status) => {
+            if (!run.signal.aborted) setState((prev) => ({ ...prev, status }));
+          },
         });
+        if (run.signal.aborted) return;
 
         setState({
           phase: outcome.phase,
@@ -189,16 +199,33 @@ export function useDrop({ ship }: DropOptions): DropReturn {
           status: outcome.status,
           needsBuild: outcome.needsBuild,
         });
+      } catch (error) {
+        // The pipeline never throws, so this is the limits read: the platform
+        // could not be asked what it accepts. Said in the error state like any
+        // other failed preparation, in the client's own words; a cancelled
+        // run's rejection is the cancel itself and says nothing.
+        if (run.signal.aborted) return;
+        setState({
+          ...initialState,
+          phase: 'error',
+          status: {
+            title: 'Processing Failed',
+            details: error instanceof Error ? error.message : String(error),
+          },
+        });
       } finally {
-        isProcessingRef.current = false;
+        // Only its own slot: a run cancelled long ago must not free the guard
+        // of the run that replaced it.
+        if (runRef.current === run) runRef.current = null;
       }
     },
     [ship],
   );
 
   const reset = useCallback(() => {
+    runRef.current?.abort();
+    runRef.current = null;
     setState(initialState);
-    isProcessingRef.current = false;
   }, []);
 
   // Dragging is orthogonal to the phase: the flag flips, the phase is untouched.

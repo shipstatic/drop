@@ -64,7 +64,19 @@ It takes `PlatformLimits` — **not** a `Ship` instance — and never throws;
 expected and unexpected failures alike come back as an `error` outcome.
 
 `useDrop` is then a state machine over it: guard → `setState(processing)` →
-`await processFiles(...)` → `setState(outcome)`. Nothing else.
+read the limits → `await processFiles(...)` → `setState(outcome)`. Nothing
+else.
+
+**A run has a lifetime, and one `AbortController` per run is all of it.** Its
+presence is the re-entry guard; its signal stops the limits read when the run
+is cancelled (`reset()`); and its `aborted` flag is how a cancelled run knows
+to say nothing more. Preparation outlives a cancel (an archive being inflated,
+a request already sent), so a run that could still write state after `reset()`
+would finish over whatever was selected next, and the person would upload
+files they did not choose. The limits read is the one step that can throw (the
+pipeline never does), and its failure is the `error` phase in the client's own
+words, never a hook left on "Processing...". Held in `tests/useDrop.test.ts`,
+"a run's lifetime".
 
 **Keep new pipeline rules in `process.ts`.** The split is what makes them
 testable without a renderer: a rule inside the hook can only be reached by

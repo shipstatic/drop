@@ -321,6 +321,135 @@ describe('useDrop — reset', () => {
   });
 });
 
+/**
+ * Preparation is asynchronous and can be cancelled, so a run has a lifetime of
+ * its own: it may fail before it starts, and it may still be working after the
+ * person has moved on. Both ends are held here, because the second one ends
+ * with somebody uploading files they did not choose.
+ */
+describe('useDrop — a run’s lifetime', () => {
+  /** A client whose every limits read waits for its own release, and sees its own signal. */
+  function queuedShip() {
+    const reads: { release: () => void; fail: (error: Error) => void; signal?: AbortSignal }[] = [];
+    const ship = {
+      getLimits: ({ signal }: { signal?: AbortSignal } = {}) =>
+        new Promise((resolve, reject) => {
+          reads.push({ release: () => resolve(GENEROUS_LIMITS), fail: reject, signal });
+        }),
+    } as unknown as Ship;
+    return { ship, reads };
+  }
+
+  it('says so when the limits cannot be read, and is ready to try again', async () => {
+    const getLimits = vi
+      .fn()
+      .mockRejectedValueOnce(new Error('Network error. Check your connection.'))
+      .mockResolvedValue(GENEROUS_LIMITS);
+    const { result } = setup({ ship: { getLimits } as never });
+
+    await act(async () => {
+      await result.current.processFiles(builtSite());
+    });
+
+    // Never left on "Processing...": the failure is the state.
+    expect(result.current.phase).toBe('error');
+    expect(result.current.status).toEqual({
+      title: 'Processing Failed',
+      details: 'Network error. Check your connection.',
+    });
+
+    await act(async () => {
+      await result.current.processFiles(builtSite('retry'));
+    });
+    expect(result.current.phase).toBe('ready');
+    expect(result.current.sourceName).toBe('retry');
+  });
+
+  it('a cancelled run never replaces the selection made after it', async () => {
+    const { ship, reads } = queuedShip();
+    const { result } = setup({ ship });
+
+    // The first selection is still preparing when it is cancelled.
+    let first!: Promise<void>;
+    act(() => {
+      first = result.current.processFiles(builtSite('wrong-folder'));
+    });
+    act(() => result.current.reset());
+
+    // The second is selected and finishes.
+    let second!: Promise<void>;
+    act(() => {
+      second = result.current.processFiles(builtSite('right-folder'));
+    });
+    await act(async () => {
+      reads[1]?.release();
+      await second;
+    });
+    expect(result.current.sourceName).toBe('right-folder');
+
+    // Only now does the first one's read come back.
+    await act(async () => {
+      reads[0]?.release();
+      await first;
+    });
+
+    expect(result.current.phase).toBe('ready');
+    expect(result.current.sourceName).toBe('right-folder');
+  });
+
+  it('a cancelled run finishing does not free the run that replaced it', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const { ship, reads } = queuedShip();
+    const { result } = setup({ ship });
+
+    let first!: Promise<void>;
+    act(() => {
+      first = result.current.processFiles(builtSite('first'));
+    });
+    act(() => result.current.reset());
+    act(() => {
+      void result.current.processFiles(builtSite('second'));
+    });
+
+    // The cancelled run ends while the second is still in flight.
+    await act(async () => {
+      reads[0]?.release();
+      await first;
+    });
+
+    // The guard is still the second run's: a third selection is ignored.
+    await act(async () => {
+      await result.current.processFiles(builtSite('third'));
+    });
+    expect(warn).toHaveBeenCalledWith(
+      'File processing already in progress. Ignoring duplicate call.',
+    );
+    expect(result.current.phase).toBe('processing');
+  });
+
+  it('cancelling stops the limits read, and its rejection says nothing', async () => {
+    const { ship, reads } = queuedShip();
+    const { result } = setup({ ship });
+
+    let run!: Promise<void>;
+    act(() => {
+      run = result.current.processFiles(builtSite());
+    });
+    expect(reads[0]?.signal?.aborted).toBe(false);
+
+    act(() => result.current.reset());
+    expect(reads[0]?.signal?.aborted).toBe(true);
+
+    // The client rejects an aborted read; that is the cancel, not an error.
+    await act(async () => {
+      reads[0]?.fail(new DOMException('The operation was aborted.', 'AbortError'));
+      await run;
+    });
+    expect(result.current.phase).toBe('idle');
+    expect(result.current.status).toBeNull();
+  });
+});
+
 describe('useDrop — deploy paths', () => {
   it('strips the shared root folder from every path', async () => {
     const { result } = setup();
