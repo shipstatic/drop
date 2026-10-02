@@ -5,8 +5,12 @@ import { describe, expect, it, vi } from 'vitest';
 import { type DropOptions, useDrop } from '../src/useDrop';
 import {
   builtSite,
+  dataTransferItem,
+  dropEvent,
   fileAt,
+  fileEntry,
   GENEROUS_LIMITS,
+  heldDirEntry,
   PLATFORM_LIMITS,
   shipStub,
   zipOf,
@@ -447,6 +451,130 @@ describe('useDrop — a run’s lifetime', () => {
     });
     expect(result.current.phase).toBe('idle');
     expect(result.current.status).toBeNull();
+  });
+});
+
+/**
+ * A dropped folder is read before its files exist, and that read is part of
+ * the run: the selection was made at the drop. These go through the dropzone's
+ * own handler, since `processFiles` starts after the files are in hand.
+ */
+describe('useDrop — a dropped folder is a run from the drop', () => {
+  const folder = (name: string) => {
+    const held = heldDirEntry(name, [fileEntry('index.html', '<html>')]);
+    return { ...held, event: dropEvent({ items: [dataTransferItem({ entry: held.entry })] }) };
+  };
+
+  it('is processing while the folder is read, and a second selection waits its turn', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const { result } = setup();
+    const dropped = folder('site');
+
+    let drop!: Promise<void>;
+    act(() => {
+      drop = result.current.getDropzoneProps().onDrop(dropped.event) as unknown as Promise<void>;
+    });
+    expect(result.current.phase).toBe('processing');
+
+    await act(async () => {
+      await result.current.processFiles(builtSite('other'));
+    });
+    expect(warn).toHaveBeenCalledWith(
+      'File processing already in progress. Ignoring duplicate call.',
+    );
+
+    await act(async () => {
+      dropped.release();
+      await drop;
+    });
+    expect(result.current.phase).toBe('ready');
+    expect(result.current.sourceName).toBe('site');
+  });
+
+  it('a folder still being read when it is cancelled never replaces the next selection', async () => {
+    const { result } = setup();
+    const wrong = folder('wrong-folder');
+
+    let drop!: Promise<void>;
+    act(() => {
+      drop = result.current.getDropzoneProps().onDrop(wrong.event) as unknown as Promise<void>;
+    });
+    act(() => result.current.reset());
+    expect(result.current.phase).toBe('idle');
+
+    await act(async () => {
+      await result.current.processFiles(builtSite('right-folder'));
+    });
+    expect(result.current.sourceName).toBe('right-folder');
+
+    // Only now does the browser finish reading the first folder.
+    await act(async () => {
+      wrong.release();
+      await drop;
+    });
+
+    expect(result.current.phase).toBe('ready');
+    expect(result.current.sourceName).toBe('right-folder');
+  });
+
+  it('a folder with nothing in it returns to idle and frees the next selection', async () => {
+    const { result } = setup();
+    const empty = heldDirEntry('empty', []);
+
+    await act(async () => {
+      const drop = result.current
+        .getDropzoneProps()
+        .onDrop(dropEvent({ items: [dataTransferItem({ entry: empty.entry })] }));
+      empty.release();
+      await drop;
+    });
+    expect(result.current.phase).toBe('idle');
+
+    await act(async () => {
+      await result.current.processFiles(builtSite('next'));
+    });
+    expect(result.current.sourceName).toBe('next');
+  });
+
+  it('a cancelled folder that turns out empty does not clear the next selection', async () => {
+    const { result } = setup();
+    const empty = heldDirEntry('empty', []);
+
+    let drop!: Promise<void>;
+    act(() => {
+      drop = result.current
+        .getDropzoneProps()
+        .onDrop(
+          dropEvent({ items: [dataTransferItem({ entry: empty.entry })] }),
+        ) as unknown as Promise<void>;
+    });
+    act(() => result.current.reset());
+    await act(async () => {
+      await result.current.processFiles(builtSite('kept'));
+    });
+
+    await act(async () => {
+      empty.release();
+      await drop;
+    });
+    expect(result.current.phase).toBe('ready');
+    expect(result.current.sourceName).toBe('kept');
+  });
+
+  it('a drop that carries no files leaves the current selection alone', async () => {
+    const { result } = setup();
+    await act(async () => {
+      await result.current.processFiles(builtSite('kept'));
+    });
+
+    await act(async () => {
+      await result.current
+        .getDropzoneProps()
+        .onDrop(dropEvent({ items: [dataTransferItem({ kind: 'string' })] }));
+    });
+
+    expect(result.current.phase).toBe('ready');
+    expect(result.current.sourceName).toBe('kept');
   });
 });
 

@@ -171,6 +171,36 @@ export function dirEntry(name: string, children: FileSystemEntry[]): FileSystemE
   } as unknown as FileSystemEntry;
 }
 
+/**
+ * A directory whose first read waits for `release()`: a folder the browser is
+ * still reading. It is what makes the time between a drop and its files
+ * observable, which a reader that answers at once never shows.
+ */
+export function heldDirEntry(
+  name: string,
+  children: FileSystemEntry[],
+): { entry: FileSystemEntry; release: () => void } {
+  let release!: () => void;
+  const gate = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  const directory = dirEntry(name, children) as unknown as FileSystemDirectoryEntry;
+  const entry = {
+    isFile: false,
+    isDirectory: true,
+    name,
+    createReader: () => {
+      const reader = directory.createReader();
+      return {
+        readEntries: (onSuccess: (entries: FileSystemEntry[]) => void) => {
+          void gate.then(() => reader.readEntries(onSuccess));
+        },
+      };
+    },
+  } as unknown as FileSystemEntry;
+  return { entry, release };
+}
+
 /** Build an entry tree from a nested spec: `{ dist: { 'index.html': '<html>' } }`. */
 export function entryTree(spec: EntrySpec): FileSystemEntry[] {
   return Object.entries(spec).map(([name, value]) =>

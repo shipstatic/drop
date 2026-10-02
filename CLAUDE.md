@@ -63,17 +63,25 @@ detection, junk filtering, path normalization, entry-point and limit validation.
 It takes `PlatformLimits` — **not** a `Ship` instance — and never throws;
 expected and unexpected failures alike come back as an `error` outcome.
 
-`useDrop` is then a state machine over it: guard → `setState(processing)` →
-read the limits → `await processFiles(...)` → `setState(outcome)`. Nothing
-else.
+`useDrop` is then a state machine over it, one function (`prepare`) for
+every way a selection arrives: guard → `setState(processing)` → collect the
+files and read the limits, together → `await processFiles(...)` →
+`setState(outcome)`.
+Nothing else.
 
-**A run has a lifetime, and one `AbortController` per run is all of it.** Its
-presence is the re-entry guard; its signal stops the limits read when the run
-is cancelled (`reset()`); and its `aborted` flag is how a cancelled run knows
-to say nothing more. Preparation outlives a cancel (an archive being inflated,
-a request already sent), so a run that could still write state after `reset()`
-would finish over whatever was selected next, and the person would upload
-files they did not choose. The limits read is the one step that can throw (the
+**A run has a lifetime, and one `AbortController` per run is all of it.** A
+run is one selection from the moment it is made, so it begins BEFORE a
+dropped folder is read: a picker hands its files over at once, a drop
+captures its entries synchronously and reads the folders inside the run. The
+controller's presence is the re-entry guard; its signal stops the limits read
+when the run is cancelled (`reset()`); and its `aborted` flag is how a
+cancelled run knows to say nothing more. Preparation outlives a cancel (a
+folder being read, an archive being inflated, a request already sent), so a
+run that could still write state after `reset()` would finish over whatever
+was selected next, and the person would upload files they did not choose.
+The folder read is not itself stopped on a cancel: it writes nothing, and the
+check after it is the whole control. A drop that carries no files starts no
+run and leaves the current selection alone. The limits read is the one step that can throw (the
 pipeline never does), and its failure is the `error` phase in the client's own
 words, never a hook left on "Processing...". Held in `tests/useDrop.test.ts`,
 "a run's lifetime".

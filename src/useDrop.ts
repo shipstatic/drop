@@ -141,13 +141,16 @@ const initialState: DropState = {
 export function useDrop({ ship }: DropOptions): DropReturn {
   const [state, setState] = useState<DropState>(initialState);
 
-  // The preparation run in flight, if any. One controller per run does three
-  // jobs: its presence is the synchronous re-entry guard (React state is too
-  // late to gate a second drop), its signal stops the limits read when the run
-  // is cancelled, and its `aborted` flag is how a run that was cancelled knows
-  // to say nothing more. Preparation outlives a cancel (an archive being
-  // inflated, a request already sent), so without that last one a retired run
-  // would finish over whatever the person selected next.
+  // The preparation run in flight, if any. A run is one selection from the
+  // moment it is made: collecting its files (a dropped folder is read
+  // asynchronously), reading the limits, the pipeline. One controller per run
+  // does three jobs: its presence is the synchronous re-entry guard (React
+  // state is too late to gate a second drop), its signal stops the limits read
+  // when the run is cancelled, and its `aborted` flag is how a run that was
+  // cancelled knows to say nothing more. Preparation outlives a cancel (a
+  // folder being read, an archive being inflated, a request already sent), so
+  // without that last one a retired run would finish over whatever the person
+  // selected next.
   const runRef = useRef<AbortController | null>(null);
   // One ref per picker: an <input> is either a folder picker or a file picker,
   // and toggling `webkitdirectory` on a live node to reuse a single element
@@ -166,13 +169,14 @@ export function useDrop({ ship }: DropOptions): DropReturn {
 
   const getFilesForUpload = useCallback(() => validFiles.map((f) => f.file), [validFiles]);
 
-  const processFiles = useCallback(
-    async (newFiles: File[]) => {
+  // One selection, start to finish. `collect` is how its files arrive: at once
+  // from a picker, or after a dropped folder has been read.
+  const prepare = useCallback(
+    async (collect: () => Promise<File[]>) => {
       if (runRef.current) {
         console.warn('File processing already in progress. Ignoring duplicate call.');
         return;
       }
-      if (!newFiles || newFiles.length === 0) return;
 
       const run = new AbortController();
       runRef.current = run;
@@ -183,8 +187,21 @@ export function useDrop({ ship }: DropOptions): DropReturn {
       });
 
       try {
-        const outcome = await runPipeline(newFiles, {
-          limits: await ship.getLimits({ signal: run.signal }),
+        // The files and the limits are independent, so they are gathered
+        // together: the platform is asked while a dropped folder is read.
+        const [files, limits] = await Promise.all([
+          collect(),
+          ship.getLimits({ signal: run.signal }),
+        ]);
+        if (run.signal.aborted) return;
+        // A folder with nothing in it: there is no selection after all.
+        if (files.length === 0) {
+          setState(initialState);
+          return;
+        }
+
+        const outcome = await runPipeline(files, {
+          limits,
           onStatus: (status) => {
             if (!run.signal.aborted) setState((prev) => ({ ...prev, status }));
           },
@@ -200,10 +217,11 @@ export function useDrop({ ship }: DropOptions): DropReturn {
           needsBuild: outcome.needsBuild,
         });
       } catch (error) {
-        // The pipeline never throws, so this is the limits read: the platform
-        // could not be asked what it accepts. Said in the error state like any
-        // other failed preparation, in the client's own words; a cancelled
-        // run's rejection is the cancel itself and says nothing.
+        // Folder reading skips what it cannot read and the pipeline never
+        // throws, so this is the limits read: the platform could not be asked
+        // what it accepts. Said in the error state like any other failed
+        // preparation, in the client's own words; a cancelled run's rejection
+        // is the cancel itself and says nothing.
         if (run.signal.aborted) return;
         setState({
           ...initialState,
@@ -220,6 +238,14 @@ export function useDrop({ ship }: DropOptions): DropReturn {
       }
     },
     [ship],
+  );
+
+  const processFiles = useCallback(
+    async (newFiles: File[]) => {
+      if (!newFiles || newFiles.length === 0) return;
+      await prepare(async () => newFiles);
+    },
+    [prepare],
   );
 
   const reset = useCallback(() => {
@@ -247,9 +273,9 @@ export function useDrop({ ship }: DropOptions): DropReturn {
       const files: File[] = [];
       const directories: { entry: FileSystemEntry; path: string }[] = [];
 
-      // `dataTransfer.items` is only valid synchronously — the browser
-      // invalidates the list at the first await, so every entry is captured here
-      // and traversed afterwards.
+      // The drag data is only valid synchronously: the browser invalidates it
+      // at the first await, so every entry is captured here and the folders are
+      // read afterwards, inside the run.
       for (const item of Array.from(e.dataTransfer.items)) {
         if (item.kind !== 'file') continue;
         try {
@@ -271,16 +297,19 @@ export function useDrop({ ship }: DropOptions): DropReturn {
         }
       }
 
-      await Promise.all(directories.map((d) => traverseFileTree(d.entry, files, d.path)));
-
       // Browsers without webkitGetAsEntry still populate dataTransfer.files
-      if (files.length === 0 && e.dataTransfer.files.length > 0) {
-        files.push(...Array.from(e.dataTransfer.files));
-      }
+      const plain = Array.from(e.dataTransfer.files);
 
-      if (files.length > 0) await processFiles(files);
+      // A drop that carries no files is not a selection, and leaves the
+      // current one alone.
+      if (directories.length === 0 && files.length === 0 && plain.length === 0) return;
+
+      await prepare(async () => {
+        await Promise.all(directories.map((d) => traverseFileTree(d.entry, files, d.path)));
+        return files.length > 0 ? files : plain;
+      });
     },
-    [processFiles],
+    [prepare],
   );
 
   const handleInputChange = useCallback(
