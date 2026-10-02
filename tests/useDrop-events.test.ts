@@ -313,14 +313,18 @@ describe('onDrop', () => {
     expect(result.current.files).toEqual([]);
   });
 
-  it('falls back to dataTransfer.files when the entry API is absent', async () => {
+  it('takes the file itself from an item without the entry API', async () => {
     const { result } = setup();
 
     await act(async () => {
       await result.current.getDropzoneProps().onDrop(
         dropEvent({
-          items: [dataTransferItem({ noEntryApi: true })],
-          files: [file('index.html', '<html>', 'text/html')],
+          items: [
+            dataTransferItem({
+              noEntryApi: true,
+              asFile: file('index.html', '<html>', 'text/html'),
+            }),
+          ],
         }),
       );
     });

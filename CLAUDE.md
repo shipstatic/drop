@@ -80,8 +80,15 @@ folder being read, an archive being inflated, a request already sent), so a
 run that could still write state after `reset()` would finish over whatever
 was selected next, and the person would upload files they did not choose.
 The folder read is not itself stopped on a cancel: it writes nothing, and the
-check after it is the whole control. A drop that carries no files starts no
-run and leaves the current selection alone. The limits read is the one step that can throw (the
+check after it is the whole control. Nor is the pipeline, which is why it says
+its status before its first wait (`tests/process.test.ts`): a cancelled run
+then has no status left to say, and its outcome is dropped at the check after
+it. A drop that carries no files starts no run and leaves the current
+selection alone. A dropped folder with nothing in it to read is the `error`
+phase, in a sentence of the hook's own ("Empty Folder"), since the pipeline
+is never asked about no files. `dataTransfer.files` is not read at all: every
+file arrives through its item, and a browser lists a dropped folder there as
+an entry that is not a file. The limits read is the one step that can throw (the
 pipeline never does), and its failure is the `error` phase in the client's own
 words, never a hook left on "Processing...". Held in `tests/useDrop.test.ts`,
 "a run's lifetime".

@@ -11,6 +11,7 @@ import {
   fileEntry,
   GENEROUS_LIMITS,
   heldDirEntry,
+  heldZip,
   PLATFORM_LIMITS,
   shipStub,
   zipOf,
@@ -431,6 +432,34 @@ describe('useDrop — a run’s lifetime', () => {
     expect(result.current.phase).toBe('processing');
   });
 
+  it('a cancelled archive still inflating never replaces the selection made after it', async () => {
+    const { result } = setup();
+    const wrong = heldZip({ 'index.html': '<html>' }, 'wrong.zip');
+
+    // The limits are read and the pipeline is inside the archive when the
+    // run is cancelled: nothing can stop it there.
+    let first!: Promise<void>;
+    await act(async () => {
+      first = result.current.processFiles([wrong.zip]);
+    });
+    expect(result.current.status?.title).toBe('Extracting...');
+    act(() => result.current.reset());
+
+    await act(async () => {
+      await result.current.processFiles(builtSite('right-folder'));
+    });
+    const chosen = result.current.status;
+
+    await act(async () => {
+      wrong.release();
+      await first;
+    });
+
+    expect(result.current.phase).toBe('ready');
+    expect(result.current.sourceName).toBe('right-folder');
+    expect(result.current.status).toEqual(chosen);
+  });
+
   it('cancelling stops the limits read, and its rejection says nothing', async () => {
     const { ship, reads } = queuedShip();
     const { result } = setup({ ship });
@@ -517,18 +546,28 @@ describe('useDrop — a dropped folder is a run from the drop', () => {
     expect(result.current.sourceName).toBe('right-folder');
   });
 
-  it('a folder with nothing in it returns to idle and frees the next selection', async () => {
+  it('a folder with nothing in it says so, and frees the next selection', async () => {
     const { result } = setup();
     const empty = heldDirEntry('empty', []);
 
     await act(async () => {
-      const drop = result.current
-        .getDropzoneProps()
-        .onDrop(dropEvent({ items: [dataTransferItem({ entry: empty.entry })] }));
+      // A browser lists a dropped folder in `dataTransfer.files` too, as an
+      // entry that is not a file. It is never what gets prepared.
+      const drop = result.current.getDropzoneProps().onDrop(
+        dropEvent({
+          items: [dataTransferItem({ entry: empty.entry })],
+          files: [new File([], 'empty')],
+        }),
+      );
       empty.release();
       await drop;
     });
-    expect(result.current.phase).toBe('idle');
+    expect(result.current.phase).toBe('error');
+    expect(result.current.status).toEqual({
+      title: 'Empty Folder',
+      details: 'It has no files to deploy.',
+    });
+    expect(result.current.files).toEqual([]);
 
     await act(async () => {
       await result.current.processFiles(builtSite('next'));

@@ -7,6 +7,7 @@ import {
   file,
   fileAt,
   GENEROUS_LIMITS,
+  heldZip,
   PLATFORM_LIMITS,
   zipOf,
 } from './fixtures/builders';
@@ -346,6 +347,23 @@ describe('processFiles — status reporting', () => {
     });
 
     expect(seen).toEqual([{ title: 'Extracting...', details: 'Extracting my-site.zip...' }]);
+  });
+
+  it('says its status before its first wait, so a cancelled run has none left to say', async () => {
+    // The hook relies on this: it cannot stop a pipeline that is already
+    // running, and it does not filter what a cancelled one reports. A status
+    // emitted after a wait would be written over the next selection.
+    const seen: DropStatus[] = [];
+    const held = heldZip({ 'index.html': '<html>' });
+    const running = processFiles([held.zip], {
+      limits: GENEROUS_LIMITS,
+      onStatus: (status) => seen.push(status),
+    });
+    expect(seen).toHaveLength(1);
+
+    held.release();
+    await running;
+    expect(seen).toHaveLength(1);
   });
 
   it('reports nothing for non-archive input', async () => {

@@ -97,6 +97,29 @@ export function zipOf(entries: Record<string, string>, name = 'my-site.zip'): Fi
   return new File([new Uint8Array(packed)], name, { type: 'application/zip' });
 }
 
+/**
+ * An archive whose bytes wait for `release()`: a ZIP still being read. It is
+ * what holds the real pipeline open, so a run can be cancelled inside it.
+ */
+export function heldZip(
+  entries: Record<string, string>,
+  name = 'my-site.zip',
+): { zip: File; release: () => void } {
+  let release!: () => void;
+  const gate = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  const zip = zipOf(entries, name);
+  const read = zip.arrayBuffer.bind(zip);
+  Object.defineProperty(zip, 'arrayBuffer', {
+    value: async () => {
+      await gate;
+      return read();
+    },
+  });
+  return { zip, release };
+}
+
 // ============================================================================
 // Ship stub — the ONE collaborator a test cannot supply for real
 // ============================================================================

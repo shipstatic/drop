@@ -194,17 +194,22 @@ export function useDrop({ ship }: DropOptions): DropReturn {
           ship.getLimits({ signal: run.signal }),
         ]);
         if (run.signal.aborted) return;
-        // A folder with nothing in it: there is no selection after all.
+        // A dropped folder with nothing in it to read. The pipeline is never
+        // asked: there is no file to give a verdict on.
         if (files.length === 0) {
-          setState(initialState);
+          setState({
+            ...initialState,
+            phase: 'error',
+            status: { title: 'Empty Folder', details: 'It has no files to deploy.' },
+          });
           return;
         }
 
         const outcome = await runPipeline(files, {
           limits,
-          onStatus: (status) => {
-            if (!run.signal.aborted) setState((prev) => ({ ...prev, status }));
-          },
+          // The pipeline says its status before its first wait, so a
+          // cancelled run has none left to say.
+          onStatus: (status) => setState((prev) => ({ ...prev, status })),
         });
         if (run.signal.aborted) return;
 
@@ -297,16 +302,13 @@ export function useDrop({ ship }: DropOptions): DropReturn {
         }
       }
 
-      // Browsers without webkitGetAsEntry still populate dataTransfer.files
-      const plain = Array.from(e.dataTransfer.files);
-
       // A drop that carries no files is not a selection, and leaves the
       // current one alone.
-      if (directories.length === 0 && files.length === 0 && plain.length === 0) return;
+      if (directories.length === 0 && files.length === 0) return;
 
       await prepare(async () => {
         await Promise.all(directories.map((d) => traverseFileTree(d.entry, files, d.path)));
-        return files.length > 0 ? files : plain;
+        return files;
       });
     },
     [prepare],
