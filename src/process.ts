@@ -24,7 +24,7 @@ import { extractZipToFiles, isZipFile } from './zip';
  * The two headings an error outcome can carry, in plain words. `details` and
  * `errors` beneath them are Ship's sentences, shown verbatim.
  */
-/** The drop was understood and the platform will not take it. */
+/** The drop was understood and the platform will not take it, an empty folder included. */
 export const CANT_DEPLOY = "Can't deploy this";
 /** The drop could not be read or the platform could not be asked what it accepts. */
 export const COULDNT_PREPARE = "Couldn't prepare the files";
@@ -195,11 +195,15 @@ export async function processFiles(
 
     // Atomic validation: any error fails the whole set. Each issue is Ship's
     // sentence as written: it already names its file, so nothing is prefixed.
+    // One issue is the message itself; several are listed under their count,
+    // since `errors` is a breakdown and one item is not one.
     if (!validation.canDeploy) {
+      const issues = validation.errors.map((e) => e.message);
       return failure({
         title: CANT_DEPLOY,
-        details: `${pluralize(validation.errors.length, 'file', 'files', true)} refused`,
-        errors: validation.errors.map((e) => e.message),
+        ...(issues.length === 1
+          ? { details: issues[0] }
+          : { details: `${issues.length} files refused`, errors: issues }),
         files: validated,
         sourceName,
       });

@@ -564,8 +564,8 @@ describe('useDrop — a dropped folder is a run from the drop', () => {
     });
     expect(result.current.phase).toBe('error');
     expect(result.current.status).toEqual({
-      title: 'Empty Folder',
-      details: 'It has no files to deploy.',
+      title: "Can't deploy this",
+      details: 'The folder has no files.',
     });
     expect(result.current.files).toEqual([]);
 

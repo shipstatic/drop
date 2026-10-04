@@ -577,7 +577,7 @@ describe('a picked file set deploys identically to a dropped one', () => {
     // so any divergence here would be a rule the two paths did not share.
     expect(picked).toEqual(await drop(withExe()));
     expect(picked.phase).toBe('error');
-    expect(picked.status?.errors?.join()).toContain('setup.exe');
+    expect(picked.status?.details).toContain('setup.exe');
   });
 
   it('agrees that a set with no root index.html is not deployable', async () => {

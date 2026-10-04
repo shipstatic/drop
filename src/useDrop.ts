@@ -18,7 +18,7 @@ import { FileValidationStatus, WEB_FILE_ACCEPT } from '@shipstatic/types';
 import { useCallback, useMemo, useRef, useState } from 'react';
 import { traverseFileTree } from './entries';
 import { setRelativePath } from './files';
-import { COULDNT_PREPARE, processFiles as runPipeline } from './process';
+import { CANT_DEPLOY, COULDNT_PREPARE, processFiles as runPipeline } from './process';
 import type { DropPhase, DropStatus, ProcessedFile } from './types';
 
 export interface DropOptions {
@@ -195,12 +195,13 @@ export function useDrop({ ship }: DropOptions): DropReturn {
         ]);
         if (run.signal.aborted) return;
         // A dropped folder with nothing in it to read. The pipeline is never
-        // asked: there is no file to give a verdict on.
+        // asked, since there is no file to give a verdict on; the heading is
+        // the pipeline's own, because the platform cannot take an empty drop.
         if (files.length === 0) {
           setState({
             ...initialState,
             phase: 'error',
-            status: { title: 'Empty Folder', details: 'It has no files to deploy.' },
+            status: { title: CANT_DEPLOY, details: 'The folder has no files.' },
           });
           return;
         }

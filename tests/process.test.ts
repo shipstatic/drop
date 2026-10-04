@@ -259,20 +259,25 @@ describe('processFiles — limit validation', () => {
 
     expect(outcome.phase).toBe('error');
     expect(outcome.status.title).toBe("Can't deploy this");
-    expect(outcome.status.details).toBe('1 file refused');
-    expect(outcome.status.errors?.[0]).toContain('big.txt');
+    // One issue is the message itself, with no list beneath it.
+    expect(outcome.status.details).toContain('big.txt');
+    expect(outcome.status.errors).toBeUndefined();
     expect(outcome.files.every((f) => f.status === FileValidationStatus.VALIDATION_FAILED)).toBe(
       true,
     );
     expect(ready(outcome)).toEqual([]);
   });
 
-  it("shows Ship's sentence verbatim, under a plain heading, and prefixes nothing", async () => {
+  it("shows Ship's sentences verbatim, under a plain heading, and prefixes nothing", async () => {
     // The SDK is where a refusal is worded; drop delivers it and adds no
     // words. A prefixed path would name the file twice, since the sentence
-    // already carries it.
+    // already carries it. Two refused files, so the list is a breakdown.
     const limits = { ...PLATFORM_LIMITS, maxFileSize: 100 };
-    const files = [fileAt('index.html', '<html>', 'text/html'), fileAt('big.txt', 'x'.repeat(200))];
+    const files = [
+      fileAt('index.html', '<html>', 'text/html'),
+      fileAt('big.txt', 'x'.repeat(200)),
+      fileAt('payload.exe', 'MZ'),
+    ];
     const outcome = await run(files, limits);
 
     const { errors } = validateFiles(
@@ -280,10 +285,24 @@ describe('processFiles — limit validation', () => {
       limits,
     );
     expect(outcome.status.title).toBe("Can't deploy this");
+    expect(outcome.status.details).toBe('2 files refused');
     expect(outcome.status.errors).toEqual(errors.map((e) => e.message));
     expect(outcome.status.errors).toEqual([
       'File "big.txt" is too large. Maximum 100 Bytes allowed.',
+      'File "payload.exe" has an extension that is not allowed.',
     ]);
+  });
+
+  it('says one refusal as the message itself, a set-level one included', async () => {
+    // "1 file refused" would be false of a refusal about the set: the total
+    // or the count names no file. One issue is the sentence, with no list.
+    const outcome = await run(
+      [fileAt('index.html', '<html>', 'text/html'), fileAt('a.txt', 'x'.repeat(60))],
+      { ...PLATFORM_LIMITS, maxFileSize: 100, maxTotalSize: 64 },
+    );
+    expect(outcome.status.title).toBe("Can't deploy this");
+    expect(outcome.status.details).toBe('Files add up to 66 Bytes. Maximum 64 Bytes allowed.');
+    expect(outcome.status.errors).toBeUndefined();
   });
 
   it('rejects a blocked extension', async () => {
@@ -293,7 +312,7 @@ describe('processFiles — limit validation', () => {
     ]);
 
     expect(outcome.phase).toBe('error');
-    expect(outcome.status.errors?.[0]).toContain('payload.exe');
+    expect(outcome.status.details).toContain('payload.exe');
   });
 
   it('excludes empty files as warnings while staying ready', async () => {
@@ -344,7 +363,7 @@ describe('processFiles — limit validation', () => {
     expect(outcome.phase).toBe('error');
   });
 
-  it('reports the FULL deploy path in errors, not the basename', async () => {
+  it('reports the FULL deploy path in the refusal, not the basename', async () => {
     // The pipeline sends `{ name: path }` to the validator. A basename-only
     // projection would still fail this file, but would name it "payload.exe"
     // with no indication of where it lives — and would validate a different
@@ -355,7 +374,7 @@ describe('processFiles — limit validation', () => {
     ]);
 
     expect(outcome.phase).toBe('error');
-    expect(outcome.status.errors?.[0]).toContain('vendor/payload.exe');
+    expect(outcome.status.details).toContain('vendor/payload.exe');
   });
 });
 

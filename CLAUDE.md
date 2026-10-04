@@ -85,8 +85,8 @@ its status before its first wait (`tests/process.test.ts`): a cancelled run
 then has no status left to say, and its outcome is dropped at the check after
 it. A drop that carries no files starts no run and leaves the current
 selection alone. A dropped folder with nothing in it to read is the `error`
-phase, in a sentence of the hook's own ("Empty Folder"), since the pipeline
-is never asked about no files. `dataTransfer.files` is not read at all: every
+phase under the pipeline's own heading ("Can't deploy this", "The folder has
+no files."), since the pipeline is never asked about no files. `dataTransfer.files` is not read at all: every
 file arrives through its item, and a browser lists a dropped folder there as
 an entry that is not a file. The limits read is the one step that can throw (the
 pipeline never does), and its failure is the `error` phase in the client's own
@@ -315,17 +315,22 @@ If ANY file fails validation, ALL non-excluded files are marked `validation_fail
 ### The words are Ship's
 
 The SDK is where a refusal is worded, and drop shows the sentence verbatim.
-`status.errors` and `status.warnings` are `validateFiles`' messages as written,
-with no `path:` prefix: each sentence already names its file once, so a prefix
-named it twice (`big.txt: File "big.txt" too large`). Drop authors only the two
-headings an error outcome can carry, in plain words rather than developer
+`status.details` and `status.errors` carry `validateFiles`' messages as
+written, with no `path:` prefix: each sentence already names its file once, so
+a prefix named it twice (`big.txt: File "big.txt" too large`). One refusal is
+the `details` itself; several are listed in `errors` under their count ("2
+files refused"), because `errors` is a breakdown and one item is not one, and
+because a refusal about the set (the count, the total) names no file for a
+count to be true of. Warnings are listed the same way. Drop authors only the
+two headings an error outcome can carry, in plain words rather than developer
 vocabulary: `Can't deploy this` when the drop was understood and the platform
 will not take it (a refused file, a missing entry point, an unbuilt project,
-an empty input), and `Couldn't prepare the files` when the drop could not be
-read or the platform could not be asked what it accepts (`process.ts`,
-`CANT_DEPLOY` / `COULDNT_PREPARE`; the hook's limits-read failure uses the
-second). `tests/process.test.ts` holds an error list equal to Ship's own, and
-the headings by their literal words.
+an empty folder, an empty input), and `Couldn't prepare the files` when the
+drop could not be read or the platform could not be asked what it accepts
+(`process.ts`, `CANT_DEPLOY` / `COULDNT_PREPARE`; the hook reads both). The
+headings are sentence case, as every status title is. `tests/process.test.ts`
+holds an error list equal to Ship's own, the one-issue form, and the headings
+by their literal words.
 
 ## Design Decisions
 
