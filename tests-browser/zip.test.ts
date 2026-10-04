@@ -113,7 +113,7 @@ describe('the pipeline on real browser primitives', () => {
     });
 
     expect(outcome.phase).toBe('error');
-    expect(outcome.status.title).toBe('Validation Failed');
+    expect(outcome.status.title).toBe("Can't deploy this");
   });
 
   it('carries stripped deploy paths onto the raw Files for the SDK', async () => {

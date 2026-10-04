@@ -312,6 +312,21 @@ reason: the SDK computes checksums, and drop never uploads.
 
 If ANY file fails validation, ALL non-excluded files are marked `validation_failed`. Empty files (0 bytes) are marked `excluded` with warnings (not errors) and don't block deployment. Use `drop.reset()` to clear and retry.
 
+### The words are Ship's
+
+The SDK is where a refusal is worded, and drop shows the sentence verbatim.
+`status.errors` and `status.warnings` are `validateFiles`' messages as written,
+with no `path:` prefix: each sentence already names its file once, so a prefix
+named it twice (`big.txt: File "big.txt" too large`). Drop authors only the two
+headings an error outcome can carry, in plain words rather than developer
+vocabulary: `Can't deploy this` when the drop was understood and the platform
+will not take it (a refused file, a missing entry point, an unbuilt project,
+an empty input), and `Couldn't prepare the files` when the drop could not be
+read or the platform could not be asked what it accepts (`process.ts`,
+`CANT_DEPLOY` / `COULDNT_PREPARE`; the hook's limits-read failure uses the
+second). `tests/process.test.ts` holds an error list equal to Ship's own, and
+the headings by their literal words.
+
 ## Design Decisions
 
 - **No MD5 calculation** — Ship SDK calculates MD5 during deployment; duplicate calculation wastes cycles.

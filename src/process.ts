@@ -20,6 +20,15 @@ import { applyStatus, createProcessedFile, filePath, stripCommonPrefix } from '.
 import type { DropStatus, ProcessedFile } from './types';
 import { extractZipToFiles, isZipFile } from './zip';
 
+/**
+ * The two headings an error outcome can carry, in plain words. `details` and
+ * `errors` beneath them are Ship's sentences, shown verbatim.
+ */
+/** The drop was understood and the platform will not take it. */
+export const CANT_DEPLOY = "Can't deploy this";
+/** The drop could not be read or the platform could not be asked what it accepts. */
+export const COULDNT_PREPARE = "Couldn't prepare the files";
+
 export interface ProcessFilesOptions {
   /** Platform limits, from `ship.getLimits()` */
   limits: PlatformLimits;
@@ -150,7 +159,7 @@ export async function processFiles(
           ? 'No index.html found — every web project needs an index.html entry point'
           : 'No index.html at root — the entry point must be in the top-level directory';
         return failure({
-          title: 'Validation Failed',
+          title: CANT_DEPLOY,
           details,
           sourceName,
           needsBuild,
@@ -184,19 +193,20 @@ export async function processFiles(
       statusMessage: validation.files[i]?.statusMessage ?? file.statusMessage,
     }));
 
-    // Atomic validation: any error fails the whole set
+    // Atomic validation: any error fails the whole set. Each issue is Ship's
+    // sentence as written: it already names its file, so nothing is prefixed.
     if (!validation.canDeploy) {
       return failure({
-        title: 'Validation Failed',
-        details: `${pluralize(validation.errors.length, 'file', 'files', true)} failed validation`,
-        errors: validation.errors.map((e) => `${e.file}: ${e.message}`),
+        title: CANT_DEPLOY,
+        details: `${pluralize(validation.errors.length, 'file', 'files', true)} refused`,
+        errors: validation.errors.map((e) => e.message),
         files: validated,
         sourceName,
       });
     }
 
     const readyCount = validated.filter((f) => f.status === FileValidationStatus.READY).length;
-    const warnings = validation.warnings.map((w) => `${w.file}: ${w.message}`);
+    const warnings = validation.warnings.map((w) => w.message);
 
     if (readyCount > 0) {
       let details = `${pluralize(readyCount, 'file', 'files', true)} ready`;
@@ -212,35 +222,27 @@ export async function processFiles(
       };
     }
 
-    // Nothing deployable. Warnings alone (e.g. every file empty) is not an error
-    // state — no ready files already disables the deploy action.
-    if (validation.errors.length === 0 && validation.warnings.length > 0) {
-      return {
-        phase: 'ready',
-        files: validated,
-        sourceName,
-        needsBuild: false,
-        status: {
-          title: 'All files excluded',
-          details: `${pluralize(validation.warnings.length, 'file', 'files', true)} excluded (empty files cannot be deployed)`,
-          warnings,
-        },
-      };
-    }
-
-    return failure({
-      title: 'No Valid Files',
-      details: 'None of the provided files could be processed.',
+    // Nothing deployable, and nothing refused: every file was excluded (every
+    // file empty). Not an error state, since no ready files already disables
+    // the deploy action.
+    return {
+      phase: 'ready',
       files: validated,
       sourceName,
-    });
+      needsBuild: false,
+      status: {
+        title: 'All files excluded',
+        details: `${pluralize(validation.warnings.length, 'file', 'files', true)} excluded (empty files cannot be deployed)`,
+        warnings,
+      },
+    };
   } catch (error) {
     // A ShipError here is a validation rejection thrown by filterJunk (unbuilt
     // project); anything else is an unexpected processing failure.
     const message = error instanceof Error ? error.message : String(error);
     const isValidation = isShipError(error);
     return failure({
-      title: isValidation ? 'Validation Failed' : 'Processing Failed',
+      title: isValidation ? CANT_DEPLOY : COULDNT_PREPARE,
       details: isValidation ? message : `Failed to process files: ${message}`,
       sourceName,
     });

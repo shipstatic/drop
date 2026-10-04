@@ -91,7 +91,7 @@ describe('useDrop — processing a set', () => {
     expect(result.current.phase).toBe('error');
     expect(result.current.hasError).toBe(true);
     expect(result.current.isInteractive).toBe(false);
-    expect(result.current.status?.title).toBe('Validation Failed');
+    expect(result.current.status?.title).toBe("Can't deploy this");
   });
 
   it('is processing, and not interactive, while the run is in flight', async () => {
@@ -359,7 +359,7 @@ describe('useDrop — a run’s lifetime', () => {
     // Never left on "Processing...": the failure is the state.
     expect(result.current.phase).toBe('error');
     expect(result.current.status).toEqual({
-      title: 'Processing Failed',
+      title: "Couldn't prepare the files",
       details: 'Network error. Check your connection.',
     });
 

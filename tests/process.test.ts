@@ -1,3 +1,4 @@
+import { validateFiles } from '@shipstatic/ship';
 import { FileValidationStatus } from '@shipstatic/types';
 import { describe, expect, it, vi } from 'vitest';
 import { type DropOutcome, detectSourceName, processFiles } from '../src/process';
@@ -120,14 +121,14 @@ describe('processFiles — entry point', () => {
     const outcome = await run([fileAt('app.js', 'x', 'text/javascript')]);
 
     expect(outcome.phase).toBe('error');
-    expect(outcome.status.title).toBe('Validation Failed');
+    expect(outcome.status.title).toBe("Can't deploy this");
     expect(outcome.status.details).toBe(
       'No index.html at root — the entry point must be in the top-level directory',
     );
     expect(outcome.files.every((f) => f.status === FileValidationStatus.VALIDATION_FAILED)).toBe(
       true,
     );
-    expect(outcome.status.title).toBe('Validation Failed');
+    expect(outcome.status.title).toBe("Can't deploy this");
   });
 
   it('rejects index.html that is not at the root of a built site', async () => {
@@ -179,7 +180,7 @@ describe('processFiles — junk filtering', () => {
     const outcome = await run([fileAt('package.json', '{}'), fileAt('src/app.js', 'x')]);
 
     expect(outcome.phase).toBe('error');
-    expect(outcome.status.title).toBe('Validation Failed');
+    expect(outcome.status.title).toBe("Can't deploy this");
     expect(outcome.status.errors).toBeUndefined();
   });
 });
@@ -257,13 +258,32 @@ describe('processFiles — limit validation', () => {
     );
 
     expect(outcome.phase).toBe('error');
-    expect(outcome.status.title).toBe('Validation Failed');
-    expect(outcome.status.details).toBe('1 file failed validation');
+    expect(outcome.status.title).toBe("Can't deploy this");
+    expect(outcome.status.details).toBe('1 file refused');
     expect(outcome.status.errors?.[0]).toContain('big.txt');
     expect(outcome.files.every((f) => f.status === FileValidationStatus.VALIDATION_FAILED)).toBe(
       true,
     );
     expect(ready(outcome)).toEqual([]);
+  });
+
+  it("shows Ship's sentence verbatim, under a plain heading, and prefixes nothing", async () => {
+    // The SDK is where a refusal is worded; drop delivers it and adds no
+    // words. A prefixed path would name the file twice, since the sentence
+    // already carries it.
+    const limits = { ...PLATFORM_LIMITS, maxFileSize: 100 };
+    const files = [fileAt('index.html', '<html>', 'text/html'), fileAt('big.txt', 'x'.repeat(200))];
+    const outcome = await run(files, limits);
+
+    const { errors } = validateFiles(
+      files.map((f) => ({ name: f.name, size: f.size })),
+      limits,
+    );
+    expect(outcome.status.title).toBe("Can't deploy this");
+    expect(outcome.status.errors).toEqual(errors.map((e) => e.message));
+    expect(outcome.status.errors).toEqual([
+      'File "big.txt" is too large. Maximum 100 Bytes allowed.',
+    ]);
   });
 
   it('rejects a blocked extension', async () => {
@@ -285,7 +305,8 @@ describe('processFiles — limit validation', () => {
     expect(outcome.phase).toBe('ready');
     expect(ready(outcome).map((f) => f.path)).toEqual(['index.html']);
     expect(outcome.status.details).toBe('1 file ready (1 empty file excluded)');
-    expect(outcome.status.warnings?.[0]).toContain('empty.txt');
+    // A warning is Ship's sentence verbatim too, with no prefix.
+    expect(outcome.status.warnings).toEqual(['File "empty.txt" is empty, so it is excluded.']);
   });
 
   it('stays ready — not errored — when every file is excluded', async () => {
@@ -302,7 +323,7 @@ describe('processFiles — limit validation', () => {
   it('reports an empty input set as a validation failure', async () => {
     const outcome = await run([]);
     expect(outcome.phase).toBe('error');
-    expect(outcome.status.title).toBe('Validation Failed');
+    expect(outcome.status.title).toBe("Can't deploy this");
   });
 
   it('enforces the file-count cap', async () => {
@@ -396,7 +417,7 @@ describe('processFiles — failure containment', () => {
     const outcome = await run([exploding]);
 
     expect(outcome.phase).toBe('error');
-    expect(outcome.status.title).toBe('Processing Failed');
+    expect(outcome.status.title).toBe("Couldn't prepare the files");
     expect(outcome.status.details).toBe('Failed to process files: boom');
   });
 

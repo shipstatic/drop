@@ -18,7 +18,7 @@ import { FileValidationStatus, WEB_FILE_ACCEPT } from '@shipstatic/types';
 import { useCallback, useMemo, useRef, useState } from 'react';
 import { traverseFileTree } from './entries';
 import { setRelativePath } from './files';
-import { processFiles as runPipeline } from './process';
+import { COULDNT_PREPARE, processFiles as runPipeline } from './process';
 import type { DropPhase, DropStatus, ProcessedFile } from './types';
 
 export interface DropOptions {
@@ -232,7 +232,7 @@ export function useDrop({ ship }: DropOptions): DropReturn {
           ...initialState,
           phase: 'error',
           status: {
-            title: 'Processing Failed',
+            title: COULDNT_PREPARE,
             details: error instanceof Error ? error.message : String(error),
           },
         });
