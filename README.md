@@ -276,7 +276,7 @@ vi.mock('@shipstatic/drop', () => ({ useDrop: mockUseDrop({ phase: 'ready' }) })
 - **`webkitRelativePath` is the handoff.** Drop writes each file's deploy path there, and the ShipStatic SDK reads it. Don't modify it in between.
 - **`stripCommonPrefix` mutates File objects.** It returns new `ProcessedFile`s but rewrites `webkitRelativePath` on the underlying `File` — deliberately, because that's what the SDK reads.
 - **Unreadable entries are skipped silently.** A folder with permission-denied files still deploys; the failures are logged to the console with no programmatic signal.
-- **No MD5 here.** Ship computes checksums during upload.
+- **No MD5 here.** Ship computes each file's MD5 for its manifest.
 - **`type` is the browser's report.** The platform derives `Content-Type` server-side from the path, so drop bundles no MIME database.
 
 ## Also available
