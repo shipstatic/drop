@@ -17,7 +17,7 @@ import type { FileValidationStatusType } from '@shipstatic/types';
  * A file prepared for deployment.
  *
  * `path` is the deploy identity; `name` is the basename, for display. Ship
- * computes checksums during upload, so no `md5` lives here.
+ * computes each file's MD5 for its manifest, so no `md5` lives here.
  */
 export interface ProcessedFile {
   /** Unique identifier for React keys and tracking */
