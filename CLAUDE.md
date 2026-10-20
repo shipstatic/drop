@@ -240,7 +240,9 @@ upload as this does.
 - **Read as git reads it.** `ignore` does the matching. Each nested
   `.gitignore` is rewritten to the root of the drop and added shallowest first,
   so a deeper file wins as in git, and a folder git excludes keeps excluding
-  what its own `.gitignore` re-includes. It runs on raw paths before the
+  what its own `.gitignore` re-includes. The folder's name is escaped before
+  it joins a pattern: git never sees it, while `ignore` would read `[slug]`,
+  `#1-app` or `!important` as glob syntax and switch every rule off. It runs on raw paths before the
   common folder is stripped, and before the junk filter, which drops every
   `.gitignore` as a dot file. `tests/source.test.ts` holds the result to git
   itself: each case is a real repository, and `git ls-files --others
@@ -416,7 +418,7 @@ by their literal words.
 ## Testing
 
 ```bash
-pnpm test:ci        # 12 files, 279 tests, ~2s
+pnpm test:ci        # 12 files, 286 tests, ~2s
 pnpm coverage       # + the ratchet (what CI runs)
 pnpm test:browser   # 19 tests, real Chromium
 pnpm typecheck      # src AND tests, 0 errors

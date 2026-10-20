@@ -52,12 +52,17 @@ export function rebase(line: string, base: string): string | null {
   if (pattern === '' || pattern.startsWith('#')) return null;
   if (base === '') return pattern;
 
+  // The folder is a literal path, never a pattern: a name such as `[slug]`,
+  // `#1-app` or `!important` would otherwise be read as glob syntax.
+  const folder = base.replace(/[\\*?[\]]/g, '\\$&').replace(/^[#!]/, '\\$&');
   const negated = pattern.startsWith('!');
   let body = negated ? pattern.slice(1) : pattern;
   const directoryOnly = body.endsWith('/');
   if (directoryOnly) body = body.slice(0, -1);
 
-  const rebased = body.includes('/') ? `${base}/${body.replace(/^\//, '')}` : `${base}/**/${body}`;
+  const rebased = body.includes('/')
+    ? `${folder}/${body.replace(/^\//, '')}`
+    : `${folder}/**/${body}`;
   return `${negated ? '!' : ''}${rebased}${directoryOnly ? '/' : ''}`;
 }
 

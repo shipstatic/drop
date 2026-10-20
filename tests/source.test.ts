@@ -64,6 +64,9 @@ async function dropKeeps(tree: Tree): Promise<string[]> {
 describe('projectSource keeps what git keeps', () => {
   // The rule is git's, so the test asks git: every case is written to disk as
   // a repository, and drop must keep exactly the files git does not ignore.
+  // Folder names matter as much as patterns: git reads each .gitignore from
+  // its own folder and never sees the folder's name, while drop writes that
+  // name into every pattern it rewrites.
   const cases: Record<string, Tree> = {
     'a Vite app, its old build ignored': {
       'app/.gitignore': 'node_modules\ndist\n*.local\n',
@@ -134,6 +137,47 @@ describe('projectSource keeps what git keeps', () => {
       'r/dist/a': 'x',
       'r/out/b': 'x',
       'r/src/c': 'x',
+    },
+    'a dropped folder whose name starts with a hash': {
+      '#1-my-app/.gitignore': 'dist\n',
+      '#1-my-app/package.json': '{}',
+      '#1-my-app/dist/index.html': '<html>',
+      '#1-my-app/src/main.ts': 'x',
+    },
+    'a dropped folder whose name starts with an exclamation mark': {
+      '!important/.gitignore': 'dist\n',
+      '!important/package.json': '{}',
+      '!important/dist/index.html': '<html>',
+      '!important/src/main.ts': 'x',
+    },
+    'a dropped folder whose name holds brackets': {
+      'site [v2]/.gitignore': 'dist\n',
+      'site [v2]/package.json': '{}',
+      'site [v2]/dist/index.html': '<html>',
+      'site [v2]/src/main.ts': 'x',
+    },
+    'a dropped folder whose name holds a question mark': {
+      'what?/.gitignore': 'dist\n',
+      'what?/package.json': '{}',
+      'what?/dist/index.html': '<html>',
+      'what?/src/main.ts': 'x',
+    },
+    'a dropped folder whose name holds an asterisk': {
+      'src*/.gitignore': 'dist\n',
+      'src*/package.json': '{}',
+      'src*/dist/index.html': '<html>',
+      'src*/src/main.ts': 'x',
+    },
+    'a dropped folder whose name holds a backslash': {
+      'a\\b/.gitignore': 'dist\n',
+      'a\\b/package.json': '{}',
+      'a\\b/dist/index.html': '<html>',
+      'a\\b/src/main.ts': 'x',
+    },
+    'a .gitignore inside a [slug] route folder': {
+      'app/src/routes/[slug]/.gitignore': 'draft.md\n',
+      'app/src/routes/[slug]/draft.md': 'x',
+      'app/src/routes/[slug]/+page.svelte': 'x',
     },
     'a drop whose root is the repository': {
       '.gitignore': 'dist\n',
