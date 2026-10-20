@@ -10,6 +10,13 @@
  */
 import { setRelativePath } from './files';
 
+/**
+ * What a person is told when a dropped item gives neither a folder nor a file,
+ * which leaves no name to give.
+ */
+export const UNREADABLE_DROP =
+  "We couldn't read everything you dropped. Make sure the files are on this computer, then try again.";
+
 /** What a person is told when part of a dropped folder cannot be read. */
 export function unreadable(path: string): string {
   return `We couldn't read ${path}. Make sure it's on this computer, then try again.`;

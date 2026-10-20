@@ -16,7 +16,7 @@
 import type { Ship } from '@shipstatic/ship';
 import { FileValidationStatus, WEB_FILE_ACCEPT } from '@shipstatic/types';
 import { useCallback, useMemo, useRef, useState } from 'react';
-import { traverseFileTree } from './entries';
+import { traverseFileTree, UNREADABLE_DROP } from './entries';
 import { setRelativePath } from './files';
 import { CANT_DEPLOY, COULDNT_PREPARE, processFiles as runPipeline } from './process';
 import type { DropPhase, DropStatus, ProcessedFile } from './types';
@@ -278,36 +278,42 @@ export function useDrop({ ship }: DropOptions): DropReturn {
 
       const files: File[] = [];
       const directories: { entry: FileSystemEntry; path: string }[] = [];
+      let unreadable = false;
 
       // The drag data is only valid synchronously: the browser invalidates it
       // at the first await, so every entry is captured here and the folders are
       // read afterwards, inside the run.
       for (const item of Array.from(e.dataTransfer.items)) {
         if (item.kind !== 'file') continue;
+        let entry: FileSystemEntry | null | undefined;
         try {
-          const entry = item.webkitGetAsEntry?.();
-          if (entry?.isDirectory) {
-            directories.push({ entry, path: entry.name });
-          } else {
-            const file = item.getAsFile();
-            if (file) {
-              // Root files carry their own name as path, matching traverseFileTree
-              setRelativePath(file, file.name);
-              files.push(file);
-            }
-          }
-        } catch (error) {
-          console.warn('Error processing drop item:', error);
-          const file = item.getAsFile();
-          if (file) files.push(file);
+          entry = item.webkitGetAsEntry?.();
+        } catch {
+          // The file itself, below, is the fallback.
+        }
+        if (entry?.isDirectory) {
+          directories.push({ entry, path: entry.name });
+          continue;
+        }
+        const file = item.getAsFile();
+        if (file) {
+          // Root files carry their own name as path, matching traverseFileTree
+          setRelativePath(file, file.name);
+          files.push(file);
+        } else {
+          unreadable = true;
         }
       }
 
       // A drop that carries no files is not a selection, and leaves the
       // current one alone.
-      if (directories.length === 0 && files.length === 0) return;
+      if (directories.length === 0 && files.length === 0 && !unreadable) return;
 
+      // A drop is read whole or refused, as a dropped folder is: an item that
+      // gave neither a folder nor a file fails the run rather than leaving
+      // its siblings to deploy without it.
       await prepare(async () => {
+        if (unreadable) throw new Error(UNREADABLE_DROP);
         await Promise.all(directories.map((d) => traverseFileTree(d.entry, files, d.path)));
         return files;
       });

@@ -303,7 +303,6 @@ describe('onDrop', () => {
   });
 
   it('falls back to getAsFile when webkitGetAsEntry throws', async () => {
-    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
     const { result } = setup();
 
     await act(async () => {
@@ -319,12 +318,13 @@ describe('onDrop', () => {
       );
     });
 
-    expect(warn).toHaveBeenCalled();
     expect(result.current.files.map((f) => f.path)).toEqual(['index.html']);
   });
 
-  it('drops an item whose entry throws and whose getAsFile yields nothing', async () => {
-    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+  // A drop is read whole or refused, as a dropped folder is: an item that
+  // gives neither a folder nor a file must not leave its siblings to deploy
+  // without it.
+  it('refuses a drop holding an item that gives neither a folder nor a file', async () => {
     const { result } = setup();
 
     await act(async () => {
@@ -333,8 +333,29 @@ describe('onDrop', () => {
         .onDrop(dropEvent({ items: [dataTransferItem({ throws: true, asFile: null })] }));
     });
 
-    expect(warn).toHaveBeenCalled();
-    expect(result.current.phase).toBe('idle');
+    expect(result.current.phase).toBe('error');
+    expect(result.current.status).toEqual({
+      title: "Couldn't prepare the files",
+      details:
+        "We couldn't read everything you dropped. Make sure the files are on this computer, then try again.",
+    });
+  });
+
+  it('refuses that drop even beside a readable file', async () => {
+    const { result } = setup();
+
+    await act(async () => {
+      await result.current.getDropzoneProps().onDrop(
+        dropEvent({
+          items: [
+            dataTransferItem({ entry: null, asFile: file('index.html', '<html>', 'text/html') }),
+            dataTransferItem({ throws: true, asFile: null }),
+          ],
+        }),
+      );
+    });
+
+    expect(result.current.phase).toBe('error');
     expect(result.current.files).toEqual([]);
   });
 

@@ -424,12 +424,12 @@ by their literal words.
 - **`stripCommonPrefix` mutates File objects** — Returns new `ProcessedFile` objects (immutable), but **mutates** `File.webkitRelativePath` directly. Intentional — Ship SDK reads `webkitRelativePath` from raw File objects.
 - **`webkitRelativePath`** — Don't mutate it between Drop and SDK; Ship SDK reads it for deployment paths.
 - **`readEntries` batches at 100** — Real Chromium returns at most 100 directory entries per call and signals the end with an empty batch, so the reader must loop. A single call silently truncates every folder over 100 files.
-- **A folder read only in part is refused, naming what failed.** "We couldn't read my-app/.gitignore. Make sure it's on this computer, then try again." under "Couldn't prepare the files". Skipping it would deploy a site without the file, or send a project without its `.gitignore` and so with the files it keeps private; the folder picker fails the same way, at upload. Held in `tests/entries.test.ts` and `tests/useDrop-events.test.ts`.
+- **A drop read only in part is refused, naming what failed when it can.** A folder entry that cannot be read: "We couldn't read my-app/.gitignore. Make sure it's on this computer, then try again." A dropped item that gives neither a folder nor a file, which leaves no name: "We couldn't read everything you dropped. ..." Both under "Couldn't prepare the files"; `getAsFile()` stays the fallback where it recovers the file. Skipping it would deploy a site without the file, or send a project without its `.gitignore` and so with the files it keeps private; the folder picker fails the same way, at upload. Held in `tests/entries.test.ts` and `tests/useDrop-events.test.ts`.
 
 ## Testing
 
 ```bash
-pnpm test:ci        # 12 files, 317 tests, ~10s
+pnpm test:ci        # 12 files, 318 tests, ~10s
 pnpm coverage       # + the ratchet (what CI runs)
 pnpm test:browser   # 19 tests, real Chromium
 pnpm typecheck      # src AND tests, 0 errors
@@ -511,7 +511,7 @@ the whole pipeline — needs no fake and is certified for real in `tests-browser
 |---|---|
 | `architecture/test-integrity.test.ts` | A test file that reaches NO production code — the tautology class. A tautology neither raises nor lowers coverage, so no ratchet can see it. Reach resolves transitively through local helpers. Its only exceptions are the two fences themselves, which read the tree as data. |
 | `architecture/test-naming.test.ts` | Layout drift: a filename describing the test instead of its subject (`-branches`), a mirror file with no `src/` counterpart, an aspect split not recorded in the fence, a recorded entry gone stale, or a `src/` module with no mirror test. |
-| `coverage.thresholds` | Coverage decay. A ratchet: it only goes up. Currently 99/93/99/99 against a measured 100 / 96.01 / 100 / 100. |
+| `coverage.thresholds` | Coverage decay. A ratchet: it only goes up. Currently 99/93/99/99 against a measured 100 / 96.03 / 100 / 100. |
 
 **Recorded aspect splits** — one subject, more than one mirror file. Legal under
 the layout law (`<module>-<aspect>.test.ts`), and the naming fence fails the
