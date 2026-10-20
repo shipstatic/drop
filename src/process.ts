@@ -158,7 +158,7 @@ export async function processFiles(
         needsBuild: true,
         status: {
           title: 'Ready',
-          details: `${pluralize(ready.length, 'file', 'files', true)} ready — project will be built`,
+          details: `${pluralize(ready.length, 'file', 'files', true)} ready. We'll build the project.`,
         },
       };
     }

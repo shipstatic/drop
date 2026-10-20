@@ -59,6 +59,9 @@ export function rebase(line: string, base: string): string | null {
   let body = negated ? pattern.slice(1) : pattern;
   const directoryOnly = body.endsWith('/');
   if (directoryOnly) body = body.slice(0, -1);
+  // A line such as `!` or `/` names nothing, and git reads it as no pattern.
+  // Rewritten, it would name the whole folder.
+  if (body.replace(/^\//, '') === '') return null;
 
   const rebased = body.includes('/')
     ? `${folder}/${body.replace(/^\//, '')}`

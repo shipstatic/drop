@@ -179,6 +179,17 @@ describe('projectSource keeps what git keeps', () => {
       'app/src/routes/[slug]/draft.md': 'x',
       'app/src/routes/[slug]/+page.svelte': 'x',
     },
+    'lines that name nothing: a bare ! and a bare /': {
+      'app/.gitignore': 'dist/\n!\n/\n!/\n',
+      'app/dist/index.html': '<html>',
+      'app/src/main.ts': 'x',
+    },
+    'a folder named with an asterisk beside one its pattern would match': {
+      'app*/.gitignore': 'dist\n',
+      'app*/dist/a': 'x',
+      'apple/dist/b': 'x',
+      'apple/c': 'x',
+    },
     'a drop whose root is the repository': {
       '.gitignore': 'dist\n',
       'dist/a': 'x',
@@ -193,6 +204,16 @@ describe('projectSource keeps what git keeps', () => {
 
   it.each(Object.entries(cases))('%s', async (_, tree) => {
     expect(await dropKeeps(tree)).toEqual(gitKeeps(tree));
+  });
+
+  // Renaming the folder that holds a project changes nothing about what it
+  // sends. The wrapper starts with `!` and holds every other character a glob
+  // reads, so a folder name that leaks into a pattern turns some case red.
+  it.each(Object.entries(cases))('%s, inside a folder named like a pattern', async (_, tree) => {
+    const wrapped = Object.fromEntries(
+      Object.entries(tree).map(([path, content]) => [`![#] *?/${path}`, content]),
+    );
+    expect(await dropKeeps(wrapped)).toEqual(gitKeeps(wrapped));
   });
 });
 
@@ -239,11 +260,16 @@ describe('rebase', () => {
     ['dist\\ ', 'app', 'app/**/dist\\ '],
     ['dist\\  ', 'app', 'app/**/dist\\ '],
     ['dist', '', 'dist'],
+    ['dist', '[slug]', '\\[slug\\]/**/dist'],
+    ['dist', '#app', '\\#app/**/dist'],
   ])('rewrites %j in %j as %j', (line, base, expected) => {
     expect(rebase(line, base)).toBe(expected);
   });
 
-  it.each([[''], ['# a comment'], ['   ']])('reads %j as no pattern', (line) => {
-    expect(rebase(line, 'app')).toBeNull();
-  });
+  it.each([[''], ['# a comment'], ['   '], ['!'], ['/'], ['!/']])(
+    'reads %j as no pattern',
+    (line) => {
+      expect(rebase(line, 'app')).toBeNull();
+    },
+  );
 });

@@ -187,7 +187,7 @@ describe('processFiles — unbuilt projects', () => {
 
     expect(outcome.phase).toBe('ready');
     expect(outcome.needsBuild).toBe(true);
-    expect(outcome.status.details).toBe('3 files ready — project will be built');
+    expect(outcome.status.details).toBe("3 files ready. We'll build the project.");
     expect(outcome.files.every((f) => f.status === FileValidationStatus.READY)).toBe(true);
   });
 
@@ -225,7 +225,7 @@ describe('processFiles — unbuilt projects', () => {
       'package.json',
       'src/main.js',
     ]);
-    expect(outcome.status.details).toBe('3 files ready — project will be built');
+    expect(outcome.status.details).toBe("3 files ready. We'll build the project.");
   });
 
   it("honours a ZIP's .gitignore", async () => {
@@ -265,7 +265,7 @@ describe('processFiles — unbuilt projects', () => {
 
     expect(outcome.phase).toBe('ready');
     expect(outcome.needsBuild).toBe(true);
-    expect(outcome.status.details).toBe('3 files ready — project will be built');
+    expect(outcome.status.details).toBe("3 files ready. We'll build the project.");
     expect(outcome.files.map((f) => f.path).sort()).toEqual([
       'astro.config.mjs',
       'package.json',

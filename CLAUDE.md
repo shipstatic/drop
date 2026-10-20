@@ -242,7 +242,15 @@ upload as this does.
   so a deeper file wins as in git, and a folder git excludes keeps excluding
   what its own `.gitignore` re-includes. The folder's name is escaped before
   it joins a pattern: git never sees it, while `ignore` would read `[slug]`,
-  `#1-app` or `!important` as glob syntax and switch every rule off. It runs on raw paths before the
+  `#1-app` or `!important` as glob syntax and switch every rule off. A line that
+  names nothing (`!`, `/`) is no pattern, as in git; rewritten it would name
+  the whole folder. Every git case runs twice, the second time inside a folder
+  named `![#] *?`, so a folder name that leaks into a pattern turns it red.
+- **The second matcher shape is refused:** one `ignore` per `.gitignore`,
+  asked with paths relative to its folder. `ignore` checks a path's parents
+  only inside one matcher, so across matchers a nested `!generated/` could not
+  re-include what a root `generated/` excludes, which git allows; doing it
+  right means git's precedence rewritten by hand or `ignore`'s private API. It runs on raw paths before the
   common folder is stripped, and before the junk filter, which drops every
   `.gitignore` as a dot file. `tests/source.test.ts` holds the result to git
   itself: each case is a real repository, and `git ls-files --others
@@ -251,8 +259,8 @@ upload as this does.
   `core.ignorecase` pinned on.
 - **Only for a project sent for building.** A built site is served as it was
   dropped; nothing starts from a clean copy of it.
-- **Silent**, like the `node_modules` rule: "N files ready, project will be
-  built" counts what is sent. Most people who drop a project never wrote its
+- **Silent**, like the `node_modules` rule: "N files ready. We'll build the
+  project." counts what is sent. Most people who drop a project never wrote its
   `.gitignore`, so a line about it raises a question rather than answering one.
 - **`ignore` is pinned exactly** (`7.0.12`), unlike `fflate`: a caret range
   hands every consumer's next install whatever was published that day.
@@ -418,7 +426,7 @@ by their literal words.
 ## Testing
 
 ```bash
-pnpm test:ci        # 12 files, 286 tests, ~2s
+pnpm test:ci        # 12 files, 315 tests, ~10s
 pnpm coverage       # + the ratchet (what CI runs)
 pnpm test:browser   # 19 tests, real Chromium
 pnpm typecheck      # src AND tests, 0 errors
@@ -500,7 +508,7 @@ the whole pipeline — needs no fake and is certified for real in `tests-browser
 |---|---|
 | `architecture/test-integrity.test.ts` | A test file that reaches NO production code — the tautology class. A tautology neither raises nor lowers coverage, so no ratchet can see it. Reach resolves transitively through local helpers. Its only exceptions are the two fences themselves, which read the tree as data. |
 | `architecture/test-naming.test.ts` | Layout drift: a filename describing the test instead of its subject (`-branches`), a mirror file with no `src/` counterpart, an aspect split not recorded in the fence, a recorded entry gone stale, or a `src/` module with no mirror test. |
-| `coverage.thresholds` | Coverage decay. A ratchet: it only goes up. Currently 99/93/99/99 against a measured 100 / 95.89 / 100 / 100. |
+| `coverage.thresholds` | Coverage decay. A ratchet: it only goes up. Currently 99/93/99/99 against a measured 100 / 95.93 / 100 / 100. |
 
 **Recorded aspect splits** — one subject, more than one mirror file. Legal under
 the layout law (`<module>-<aspect>.test.ts`), and the naming fence fails the
