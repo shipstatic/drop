@@ -211,6 +211,47 @@ describe('processFiles — unbuilt projects', () => {
     expect(outcome.files.some((f) => f.path.includes('node_modules'))).toBe(false);
   });
 
+  it("leaves behind what the project's .gitignore lists, an old build first", async () => {
+    const outcome = await run([
+      ...sourceProject(),
+      fileAt('my-app/.gitignore', 'node_modules\ndist\n'),
+      fileAt('my-app/dist/index.html', '<html>old</html>', 'text/html'),
+      fileAt('my-app/dist/assets/app.js', 'old'),
+    ]);
+
+    expect(outcome.phase).toBe('ready');
+    expect(outcome.files.map((f) => f.path).sort()).toEqual([
+      'index.html',
+      'package.json',
+      'src/main.js',
+    ]);
+    expect(outcome.status.details).toBe('3 files ready — project will be built');
+  });
+
+  it("honours a ZIP's .gitignore", async () => {
+    const outcome = await run([
+      zipOf({
+        'my-app/.gitignore': 'dist\n',
+        'my-app/package.json': '{}',
+        'my-app/src/main.js': 'x',
+        'my-app/dist/index.html': '<html>',
+      }),
+    ]);
+
+    expect(outcome.files.map((f) => f.path).sort()).toEqual(['package.json', 'src/main.js']);
+  });
+
+  it('serves a built site as dropped, whatever a .gitignore in it says', async () => {
+    const outcome = await run([
+      fileAt('site/.gitignore', 'drafts/\n'),
+      fileAt('site/index.html', '<html>', 'text/html'),
+      fileAt('site/drafts/post.html', '<html>', 'text/html'),
+    ]);
+
+    expect(outcome.needsBuild).toBe(false);
+    expect(outcome.files.map((f) => f.path).sort()).toEqual(['drafts/post.html', 'index.html']);
+  });
+
   // Astro, Next.js, SvelteKit and Eleventy have no index.html until they are
   // built, so a project's source is never held to the entry-point rule.
   const astroProject = (root: string) => [

@@ -188,7 +188,7 @@ const ready = drop.files.filter(f => f.status === FileValidationStatus.READY);
 
 ## Build on upload
 
-Drop recognises an unbuilt project (source files with `package.json` / `node_modules`) and sets `needsBuild`. `node_modules` is skipped during traversal and stripped from folder-picker selections. A project's source isn't the site, so neither the entry-point check nor deploy validation applies to it: Astro, Next.js, SvelteKit and Eleventy have no `index.html` until they are built. Every file goes straight to `ready`, and the build gives the verdict.
+Drop recognises an unbuilt project (source files with `package.json` / `node_modules`) and sets `needsBuild`. The project is sent as its repository holds it: `node_modules` stays behind (it is skipped during traversal and stripped from folder-picker selections), and so does whatever the project's `.gitignore` lists, read the way git reads it, so an old `dist/` never rides along. A project's source isn't the site, so neither the entry-point check nor deploy validation applies to it: Astro, Next.js, SvelteKit and Eleventy have no `index.html` until they are built. Every file goes straight to `ready`, and the build gives the verdict.
 
 Pass the signal through to the SDK:
 

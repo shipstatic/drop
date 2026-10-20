@@ -9,6 +9,7 @@ import {
   dropEvent,
   entryTree,
   file,
+  fileAt,
   fileEntry,
   inputChangeEvent,
   READ_ENTRIES_BATCH_SIZE,
@@ -578,6 +579,36 @@ describe('a picked file set deploys identically to a dropped one', () => {
     expect(picked).toEqual(await drop(withExe()));
     expect(picked.phase).toBe('error');
     expect(picked.status?.details).toContain('setup.exe');
+  });
+
+  it("agrees on a project's source: what its .gitignore lists stays behind", async () => {
+    const project = {
+      '.gitignore': 'dist\n',
+      'package.json': '{}',
+      src: { 'main.ts': 'x' },
+      dist: { 'index.html': '<html>' },
+    };
+    // The folder picker hands every file over with its path; a drop hands the
+    // folder over as an entry, read by the traversal.
+    const pickedFolder = () => [
+      fileAt('my-app/.gitignore', 'dist\n'),
+      fileAt('my-app/package.json', '{}'),
+      fileAt('my-app/src/main.ts', 'x'),
+      fileAt('my-app/dist/index.html', '<html>'),
+    ];
+    const picked = await pick(pickedFolder());
+
+    const { result } = setup();
+    const [tree] = entryTree({ 'my-app': project });
+    await act(async () => {
+      await result.current
+        .getDropzoneProps()
+        .onDrop(dropEvent({ items: [dataTransferItem({ entry: tree })] }));
+    });
+
+    expect(picked).toEqual(observable(result.current));
+    expect(picked.needsBuild).toBe(true);
+    expect(picked.deployPaths).toEqual(['package.json', 'src/main.ts']);
   });
 
   it('agrees that a set with no root index.html is not deployable', async () => {

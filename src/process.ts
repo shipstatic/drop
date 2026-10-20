@@ -4,8 +4,8 @@
  *
  * It takes `PlatformLimits` rather than a `Ship` client, which is what makes it
  * a plain function: source-name detection, ZIP extraction, unbuilt-project
- * detection, junk filtering, path normalization, entry-point and limit
- * validation, all reachable by direct call. `useDrop` is a state machine over
+ * detection and the project's source, junk filtering, path normalization,
+ * entry-point and limit validation, all reachable by direct call. `useDrop` is a state machine over
  * this; a non-React consumer can call it directly.
  */
 import { filterJunk, pluralize, validateFiles } from '@shipstatic/ship';
@@ -17,6 +17,7 @@ import {
   type ValidatableFile,
 } from '@shipstatic/types';
 import { applyStatus, createProcessedFile, filePath, stripCommonPrefix } from './files';
+import { projectSource } from './source';
 import type { DropStatus, ProcessedFile } from './types';
 import { extractZipToFiles, isZipFile } from './zip';
 
@@ -127,16 +128,11 @@ export async function processFiles(
     }
 
     // Step 2: unbuilt-project detection. When the server will build, source
-    // files are legitimate input rather than a mistake.
+    // files are legitimate input rather than a mistake, and the project is
+    // sent as its repository holds it. Read before the junk filter, which
+    // drops every `.gitignore` as a dot file.
     const needsBuild = files.some((f) => hasUnbuiltMarker(filePath(f)));
-
-    // Strip node_modules for build uploads. Drag-drop skips it during traversal;
-    // the folder picker (webkitdirectory) hands it over anyway.
-    if (needsBuild) {
-      files = files.filter(
-        (f) => !filePath(f).replace(/\\/g, '/').split('/').includes('node_modules'),
-      );
-    }
+    if (needsBuild) files = await projectSource(files);
 
     // Step 3: junk filtering (throws ShipError on an unbuilt project unless allowed)
     const kept = new Set(filterJunk(files.map(filePath), { allowUnbuilt: needsBuild }));

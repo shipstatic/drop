@@ -14,7 +14,7 @@ Claude Code instructions for the **Drop** package.
 
 ## Architecture
 
-Seven flat modules, no barrel directories. The layout is the design: one file per
+Eight flat modules, no barrel directories. The layout is the design: one file per
 concern, each named for what it holds.
 
 ```
@@ -22,6 +22,7 @@ src/
 ├── index.ts      # CURATED exports — the public API is a decision
 ├── useDrop.ts    # The hook — React state, DOM events, prop getters
 ├── process.ts    # THE PIPELINE — pure, no React, no Ship instance
+├── source.ts     # What a project sent for building carries (.gitignore read as git does)
 ├── entries.ts    # FileSystemEntry traversal — the one un-fakeable collaborator
 ├── files.ts      # File ↔ ProcessedFile + the path rules
 ├── zip.ts        # ZIP extraction (fflate) + path sanitization
@@ -41,7 +42,8 @@ objects" a true statement rather than an aspiration. Don't merge it back into
 `src/index.ts` names its exports one by one. The modules behind it export helpers
 that are deliberately NOT public — `filePath`, `setRelativePath`, `applyStatus`,
 `createProcessedFile`, `stripCommonPrefix`, `toValidatable`, `detectSourceName`,
-`traverseFileTree`, `extractZipToFiles`, `isZipFile`, `normalizePath` — because
+`traverseFileTree`, `extractZipToFiles`, `isZipFile`, `normalizePath`,
+`projectSource`, `rebase`, because
 publishing them puts semver around implementation detail. `export *` from the leaf
 modules would do exactly that; `tests/index.test.ts` fences both directions.
 
@@ -57,7 +59,7 @@ to wonder whether they differed. Use the platform's name; don't re-badge it.
 
 `processFiles()` in `process.ts` owns every rule between "here are some
 Files" and "here is a verdict": source-name detection, ZIP extraction, unbuilt
-detection, junk filtering, path normalization, entry-point and limit validation.
+detection and the project's source, junk filtering, path normalization, entry-point and limit validation.
 It takes `PlatformLimits` — **not** a `Ship` instance — and never throws;
 expected and unexpected failures alike come back as an `error` outcome.
 
@@ -181,7 +183,7 @@ disagree. Consumers run side effects from a `useEffect` on `phase`, which is wha
 1. Detect source name (ZIP name > folder name > filename)
 2. Extract ZIP if a SINGLE ZIP was dropped
 3. Detect unbuilt project (hasUnbuiltMarker) → needsBuild
-4. Strip node_modules files if needsBuild
+4. If needsBuild: keep the project's source (`projectSource`: no node_modules, nothing .gitignore lists)
 5. Filter junk (allowUnbuilt when needsBuild)
 6. Create ProcessedFile[] with paths
 7. Strip common directory prefix (always — see Design Decisions)
@@ -202,7 +204,8 @@ normal case.
 Drop detects unbuilt projects (source code with `package.json`/`node_modules`) and surfaces a `needsBuild: boolean` signal. When true:
 
 - `traverseFileTree` skips `node_modules` directories entirely (performance — 50K+ files)
-- Remaining `node_modules` files (from the `webkitdirectory` folder picker) are stripped
+- `projectSource` (`source.ts`) keeps the project as its repository holds it
+  (below)
 - `filterJunk` runs with `allowUnbuilt: true` (no throw on markers)
 - Neither the entry-point check nor deploy validation applies: a project's
   source isn't the site
@@ -217,6 +220,57 @@ site is and refuses a build that produced none (`builds/build.sh`, exit 4), so
 its sentence is the refusal the person sees. Held in `tests/process.test.ts`,
 "processFiles — unbuilt projects", from both sides: an Astro-shaped project
 is ready, and a built site with no `index.html` at its root is still refused.
+
+**A project sent for building is the project as its repository holds it,** with
+three things left out: dot files (the junk filter, the platform's security rule
+for every upload), `node_modules` (the build installs it), and whatever the
+project's `.gitignore` lists (the project marks it as generated). Every host
+that builds from git works this way, and `railway up` honours `.gitignore` on
+upload as this does.
+
+- **Why, first:** which site gets published. When a build's log names no
+  output folder, `builds/build.sh` takes the first known folder holding an
+  `index.html`, `dist` first, so an old `dist/` beside a project that builds
+  to `out/` was published in place of the new build, with no error. Then
+  size, and then files kept out of git (a key, a service account) that no
+  longer leave the person's machine.
+- **The cost, accepted:** an app that imports an ignored file fails its
+  build, and the build names the file. A clean CI checkout fails the same way.
+- **Read as git reads it.** `ignore` does the matching. Each nested
+  `.gitignore` is rewritten to the root of the drop and added shallowest first,
+  so a deeper file wins as in git, and a folder git excludes keeps excluding
+  what its own `.gitignore` re-includes. It runs on raw paths before the
+  common folder is stripped, and before the junk filter, which drops every
+  `.gitignore` as a dot file. `tests/source.test.ts` holds the result to git
+  itself: each case is a real repository, and `git ls-files --others
+  --exclude-standard` runs with every personal and system setting shut out
+  (`core.excludesFile`, `HOME` and `XDG_CONFIG_HOME` included) and
+  `core.ignorecase` pinned on.
+- **Only for a project sent for building.** A built site is served as it was
+  dropped; nothing starts from a clean copy of it.
+- **Silent**, like the `node_modules` rule: "N files ready, project will be
+  built" counts what is sent. Most people who drop a project never wrote its
+  `.gitignore`, so a line about it raises a question rather than answering one.
+- **`ignore` is pinned exactly** (`7.0.12`), unlike `fflate`: a caret range
+  hands every consumer's next install whatever was published that day.
+
+**Refused, and why:**
+
+- **Leaving out folders by name** (`dist/`, `build/`, `out/`). Vue CLI 2 keeps
+  webpack config in `build/`, and `public/` is source in Vite, Next and CRA, so
+  the builder's own search list cannot be a list of things to leave out.
+- **Skipping ignored folders during the traversal.** The traversal skips only
+  `node_modules`, and only for speed; the rule lives in `projectSource` once,
+  and "a picked file set deploys identically to a dropped one" holds it.
+- **Reading git's index, `.git/info/exclude` or a global excludes file.** A
+  file committed despite `.gitignore` is left out, and the build names it; a
+  clean copy carries neither of the other two.
+- **Matching with case**, as git does on Linux: these projects are made on Mac
+  and Windows machines, where git ignores case.
+
+**It lives in drop because drop is the only client that sends a project**
+(the CLI refuses a project folder, `npm/ship/src/node/core/node-files.ts`). It
+moves to the SDK the day a second client sends one.
 
 The web app reads `drop.needsBuild` and passes `build: true, prerender: true` to the SDK. Drop doesn't know about `build`/`prerender` — it only detects and signals.
 
@@ -361,7 +415,7 @@ by their literal words.
 ## Testing
 
 ```bash
-pnpm test:ci        # 11 files, 242 tests, ~2s
+pnpm test:ci        # 12 files, 278 tests, ~2s
 pnpm coverage       # + the ratchet (what CI runs)
 pnpm test:browser   # 19 tests, real Chromium
 pnpm typecheck      # src AND tests, 0 errors
@@ -443,7 +497,7 @@ the whole pipeline — needs no fake and is certified for real in `tests-browser
 |---|---|
 | `architecture/test-integrity.test.ts` | A test file that reaches NO production code — the tautology class. A tautology neither raises nor lowers coverage, so no ratchet can see it. Reach resolves transitively through local helpers. Its only exceptions are the two fences themselves, which read the tree as data. |
 | `architecture/test-naming.test.ts` | Layout drift: a filename describing the test instead of its subject (`-branches`), a mirror file with no `src/` counterpart, an aspect split not recorded in the fence, a recorded entry gone stale, or a `src/` module with no mirror test. |
-| `coverage.thresholds` | Coverage decay. A ratchet — it only goes up. Currently 99/93/99/99 against a measured 100 / 94.35 / 100 / 100. |
+| `coverage.thresholds` | Coverage decay. A ratchet: it only goes up. Currently 99/93/99/99 against a measured 100 / 94.92 / 100 / 100. |
 
 **Recorded aspect splits** — one subject, more than one mirror file. Legal under
 the layout law (`<module>-<aspect>.test.ts`), and the naming fence fails the

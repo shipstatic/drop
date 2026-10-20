@@ -1,0 +1,203 @@
+import { execFileSync } from 'node:child_process';
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { dirname, join } from 'node:path';
+import { describe, expect, it } from 'vitest';
+import { filePath } from '../src/files';
+import { projectSource, rebase } from '../src/source';
+import { fileAt } from './fixtures/builders';
+
+/** A project as paths and contents. */
+type Tree = Record<string, string>;
+
+/**
+ * What git leaves out of a repository holding this tree: every file it does
+ * not ignore, as `git ls-files --others --exclude-standard` lists them.
+ *
+ * Nothing on the machine may take part. Global and system config are off,
+ * HOME and XDG_CONFIG_HOME are empty folders (git reads a personal
+ * `~/.config/git/ignore` by default, whatever the config says), and
+ * `core.excludesFile` points nowhere. `core.ignorecase` is pinned on, because
+ * `git init` turns it on for macOS's file system and leaves it off on Linux,
+ * and drop matches without case as git does where these projects are made.
+ */
+function gitKeeps(tree: Tree): string[] {
+  const repo = mkdtempSync(join(tmpdir(), 'drop-source-repo-'));
+  const home = mkdtempSync(join(tmpdir(), 'drop-source-home-'));
+  try {
+    for (const [path, content] of Object.entries(tree)) {
+      mkdirSync(join(repo, dirname(path)), { recursive: true });
+      writeFileSync(join(repo, path), content);
+    }
+    const env = {
+      ...process.env,
+      HOME: home,
+      XDG_CONFIG_HOME: home,
+      GIT_CONFIG_GLOBAL: '/dev/null',
+      GIT_CONFIG_NOSYSTEM: '1',
+    };
+    const git = (...args: string[]) => execFileSync('git', args, { cwd: repo, env }).toString();
+    git('init', '-q');
+    const listed = git(
+      '-c',
+      'core.ignorecase=true',
+      '-c',
+      'core.excludesFile=/dev/null',
+      'ls-files',
+      '--others',
+      '--exclude-standard',
+      '-z',
+    );
+    return listed.split('\0').filter(Boolean).sort();
+  } finally {
+    rmSync(repo, { recursive: true, force: true });
+    rmSync(home, { recursive: true, force: true });
+  }
+}
+
+/** What drop sends of the same tree. */
+async function dropKeeps(tree: Tree): Promise<string[]> {
+  const files = Object.entries(tree).map(([path, content]) => fileAt(path, content));
+  return (await projectSource(files)).map(filePath).sort();
+}
+
+describe('projectSource keeps what git keeps', () => {
+  // The rule is git's, so the test asks git: every case is written to disk as
+  // a repository, and drop must keep exactly the files git does not ignore.
+  const cases: Record<string, Tree> = {
+    'a Vite app, its old build ignored': {
+      'app/.gitignore': 'node_modules\ndist\n*.local\n',
+      'app/package.json': '{}',
+      'app/index.html': '<html>',
+      'app/src/main.ts': 'x',
+      'app/dist/index.html': '<html>',
+      'app/dist/assets/a.js': 'x',
+      'app/.env.local': 'KEY=1',
+    },
+    'a folder named build that is source, beside an ignored dist': {
+      'p/.gitignore': '/dist/\n',
+      'p/package.json': '{}',
+      'p/build/webpack.base.conf.js': 'x',
+      'p/dist/app.js': 'x',
+    },
+    'a nested file re-including a folder the root excluded': {
+      'r/.gitignore': 'generated/\n',
+      'r/src/.gitignore': '!generated/\n',
+      'r/src/generated/a.js': 'x',
+      'r/generated/b.js': 'x',
+    },
+    'a .gitignore inside an ignored folder, which git never reads': {
+      'r/.gitignore': 'out/\n',
+      'r/out/.gitignore': '!keep.txt\n',
+      'r/out/keep.txt': 'x',
+      'r/a.txt': 'x',
+    },
+    "a folder's contents ignored, one file re-included": {
+      'r/.gitignore': 'build/*\n!build/keep.txt\n',
+      'r/build/keep.txt': 'x',
+      'r/build/x.js': 'x',
+    },
+    'patterns anchored in a nested file': {
+      'r/sub/.gitignore': 'logs/*.log\n',
+      'r/sub/logs/a.log': 'x',
+      'r/sub/x/logs/b.log': 'x',
+      'r/logs/c.log': 'x',
+    },
+    'a leading slash anchors to its own folder': {
+      'r/sub/.gitignore': '/tmp\n',
+      'r/sub/tmp/a': 'x',
+      'r/sub/deep/tmp/b': 'x',
+      'r/tmp/c': 'x',
+    },
+    'a trailing slash is not a slash, and matches only a folder': {
+      'r/sub/.gitignore': 'cache/\n',
+      'r/sub/cache/a': 'x',
+      'r/sub/deep/cache/b': 'x',
+      'r/sub/cache.txt': 'x',
+    },
+    'globs, an escaped hash, comments and blank lines': {
+      'r/.gitignore': '# generated\n\n**/tmp/**\n\\#hash\n*.mp4\n!keep.mp4\n',
+      'r/a/tmp/x': 'x',
+      'r/#hash': 'x',
+      'r/v.mp4': 'x',
+      'r/keep.mp4': 'x',
+      'r/b/v.mp4': 'x',
+      'r/b/page.html': 'x',
+    },
+    'trailing spaces after a pattern': {
+      'r/.gitignore': 'dist   \n',
+      'r/dist/a': 'x',
+      'r/src/b': 'x',
+    },
+    'Windows line endings and a byte order mark': {
+      'r/.gitignore': '\uFEFFdist\r\nout/\r\n',
+      'r/dist/a': 'x',
+      'r/out/b': 'x',
+      'r/src/c': 'x',
+    },
+    'a drop whose root is the repository': {
+      '.gitignore': 'dist\n',
+      'dist/a': 'x',
+      'src/b': 'x',
+    },
+    'names in a different case': {
+      'r/.gitignore': 'DIST\n',
+      'r/dist/a': 'x',
+      'r/Src/b': 'x',
+    },
+  };
+
+  it.each(Object.entries(cases))('%s', async (_, tree) => {
+    expect(await dropKeeps(tree)).toEqual(gitKeeps(tree));
+  });
+});
+
+describe('projectSource', () => {
+  it('leaves node_modules behind with no .gitignore to say so', async () => {
+    const kept = await dropKeeps({
+      'app/package.json': '{}',
+      'app/node_modules/react/index.js': 'x',
+      'app/src/main.js': 'x',
+    });
+    expect(kept).toEqual(['app/package.json', 'app/src/main.js']);
+  });
+
+  it('keeps every file of a project with no .gitignore', async () => {
+    const kept = await dropKeeps({
+      'app/package.json': '{}',
+      'app/dist/index.html': '<html>',
+      'app/src/main.js': 'x',
+    });
+    expect(kept).toEqual(['app/dist/index.html', 'app/package.json', 'app/src/main.js']);
+  });
+
+  it('reads paths given with Windows separators', async () => {
+    const files = [
+      fileAt('app\\.gitignore', 'dist\n'),
+      fileAt('app\\dist\\index.html', '<html>'),
+      fileAt('app\\src\\main.js', 'x'),
+    ];
+    const kept = (await projectSource(files)).map(filePath);
+    expect(kept).toEqual(['app\\.gitignore', 'app\\src\\main.js']);
+  });
+});
+
+describe('rebase', () => {
+  it.each([
+    ['dist', 'app', 'app/**/dist'],
+    ['dist/', 'app', 'app/**/dist/'],
+    ['/dist', 'app', 'app/dist'],
+    ['/dist/', 'app', 'app/dist/'],
+    ['src/gen', 'app', 'app/src/gen'],
+    ['**/tmp', 'app', 'app/**/tmp'],
+    ['!keep.txt', 'app', '!app/**/keep.txt'],
+    ['dist  ', 'app', 'app/**/dist'],
+    ['dist', '', 'dist'],
+  ])('rewrites %j in %j as %j', (line, base, expected) => {
+    expect(rebase(line, base)).toBe(expected);
+  });
+
+  it.each([[''], ['# a comment'], ['   ']])('reads %j as no pattern', (line) => {
+    expect(rebase(line, 'app')).toBeNull();
+  });
+});
