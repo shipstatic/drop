@@ -166,7 +166,7 @@ export async function processFiles(
     // Step 6: a built site serves index.html from its root.
     if (finalFiles.length > 0 && !finalFiles.some((f) => f.path === 'index.html')) {
       const details =
-        "There's no index.html at the top of what you dropped. It's the page visitors see first, so your site needs one there.";
+        "There's no index.html at the top of what you chose. It's the page visitors see first, so your site needs one there.";
       return failure({
         title: CANT_DEPLOY,
         details,
@@ -237,7 +237,7 @@ export async function processFiles(
     const message = error instanceof Error ? error.message : String(error);
     return failure({
       title: COULDNT_PREPARE,
-      details: `Failed to process files: ${message}`,
+      details: message,
       sourceName,
     });
   }

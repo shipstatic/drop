@@ -123,8 +123,8 @@ are pure functions:
 | `optimizeDeployPaths(paths)` | Common-prefix stripping — the one source of truth for deploy paths |
 | `pluralize`, `formatFileSize` | Message formatting |
 
-From `@shipstatic/types` it takes `FileValidationStatus`, `hasUnbuiltMarker`,
-`isShipError` and `WEB_FILE_ACCEPT` (the files-picker `accept` hint). That
+From `@shipstatic/types` it takes `FileValidationStatus`, `hasUnbuiltMarker`
+and `WEB_FILE_ACCEPT` (the files-picker `accept` hint). That
 package is a **devDependency and is bundled** — tsup externalizes only
 `dependencies`/`peerDependencies` — so a constant added there reaches drop's
 dist inlined, at no runtime-dependency cost to consumers.

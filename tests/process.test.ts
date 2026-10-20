@@ -123,7 +123,7 @@ describe('processFiles — entry point', () => {
     expect(outcome.phase).toBe('error');
     expect(outcome.status.title).toBe("Can't deploy this");
     expect(outcome.status.details).toBe(
-      "There's no index.html at the top of what you dropped. It's the page visitors see first, so your site needs one there.",
+      "There's no index.html at the top of what you chose. It's the page visitors see first, so your site needs one there.",
     );
     expect(outcome.files.every((f) => f.status === FileValidationStatus.VALIDATION_FAILED)).toBe(
       true,
@@ -480,7 +480,7 @@ describe('processFiles — failure containment', () => {
 
     expect(outcome.phase).toBe('error');
     expect(outcome.status.title).toBe("Couldn't prepare the files");
-    expect(outcome.status.details).toBe('Failed to process files: boom');
+    expect(outcome.status.details).toBe('boom');
   });
 
   it('preserves the source name on an error outcome', async () => {
