@@ -217,9 +217,10 @@ they are built (see `builds/test-projects`), so a check on the source refuses
 every clean copy of them, a GitHub "Download ZIP" included, and passes only a
 folder that still carries an old build. The build service decides what the
 site is and refuses a build that produced none (`builds/build.sh`, exit 4), so
-its sentence is the refusal the person sees. Held in `tests/process.test.ts`,
-"processFiles — unbuilt projects", from both sides: an Astro-shaped project
-is ready, and a built site with no `index.html` at its root is still refused.
+its sentence is the refusal the person sees. Held in `tests/process.test.ts`
+from both sides: under "processFiles — unbuilt projects" an Astro-shaped
+project is ready, and under "processFiles — entry point" a built site with no
+`index.html` at its root is still refused.
 
 **A project sent for building is the project as its repository holds it,** with
 three things left out: dot files (the junk filter, the platform's security rule
@@ -415,7 +416,7 @@ by their literal words.
 ## Testing
 
 ```bash
-pnpm test:ci        # 12 files, 278 tests, ~2s
+pnpm test:ci        # 12 files, 279 tests, ~2s
 pnpm coverage       # + the ratchet (what CI runs)
 pnpm test:browser   # 19 tests, real Chromium
 pnpm typecheck      # src AND tests, 0 errors
@@ -497,7 +498,7 @@ the whole pipeline — needs no fake and is certified for real in `tests-browser
 |---|---|
 | `architecture/test-integrity.test.ts` | A test file that reaches NO production code — the tautology class. A tautology neither raises nor lowers coverage, so no ratchet can see it. Reach resolves transitively through local helpers. Its only exceptions are the two fences themselves, which read the tree as data. |
 | `architecture/test-naming.test.ts` | Layout drift: a filename describing the test instead of its subject (`-branches`), a mirror file with no `src/` counterpart, an aspect split not recorded in the fence, a recorded entry gone stale, or a `src/` module with no mirror test. |
-| `coverage.thresholds` | Coverage decay. A ratchet: it only goes up. Currently 99/93/99/99 against a measured 100 / 94.92 / 100 / 100. |
+| `coverage.thresholds` | Coverage decay. A ratchet: it only goes up. Currently 99/93/99/99 against a measured 100 / 95.89 / 100 / 100. |
 
 **Recorded aspect splits** — one subject, more than one mirror file. Legal under
 the layout law (`<module>-<aspect>.test.ts`), and the naming fence fails the

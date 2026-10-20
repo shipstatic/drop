@@ -46,7 +46,9 @@ function segments(file: File): string[] {
  */
 export function rebase(line: string, base: string): string | null {
   // Trailing spaces end a pattern unless a backslash escapes the last one.
-  const pattern = line.replace(/(?<!\\) +$/, '');
+  // No lookbehind: Safari parses one only from 16.4, and a bundle carrying one
+  // fails to load before that.
+  const pattern = line.replace(/(\\ )? *$/, (_, escaped: string | undefined) => escaped ?? '');
   if (pattern === '' || pattern.startsWith('#')) return null;
   if (base === '') return pattern;
 

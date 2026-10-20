@@ -192,6 +192,8 @@ describe('rebase', () => {
     ['**/tmp', 'app', 'app/**/tmp'],
     ['!keep.txt', 'app', '!app/**/keep.txt'],
     ['dist  ', 'app', 'app/**/dist'],
+    ['dist\\ ', 'app', 'app/**/dist\\ '],
+    ['dist\\  ', 'app', 'app/**/dist\\ '],
     ['dist', '', 'dist'],
   ])('rewrites %j in %j as %j', (line, base, expected) => {
     expect(rebase(line, base)).toBe(expected);

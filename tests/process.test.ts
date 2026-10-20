@@ -123,7 +123,7 @@ describe('processFiles — entry point', () => {
     expect(outcome.phase).toBe('error');
     expect(outcome.status.title).toBe("Can't deploy this");
     expect(outcome.status.details).toBe(
-      'No index.html at root — the entry point must be in the top-level directory',
+      "There's no index.html at the top of what you dropped. It's the page visitors see first, so your site needs one there.",
     );
     expect(outcome.files.every((f) => f.status === FileValidationStatus.VALIDATION_FAILED)).toBe(
       true,
@@ -285,19 +285,6 @@ describe('processFiles — unbuilt projects', () => {
     expect(outcome.phase).toBe('ready');
     expect(outcome.needsBuild).toBe(true);
     expect(outcome.files).toHaveLength(3);
-  });
-
-  it('still refuses a built site with no index.html at its root', async () => {
-    const outcome = await run([
-      fileAt('my-site/about/index.html', '<html>', 'text/html'),
-      fileAt('my-site/app.js', 'x', 'text/javascript'),
-    ]);
-
-    expect(outcome.phase).toBe('error');
-    expect(outcome.needsBuild).toBe(false);
-    expect(outcome.status.details).toBe(
-      'No index.html at root — the entry point must be in the top-level directory',
-    );
   });
 
   it('does not skip deploy validation for a built site', async () => {

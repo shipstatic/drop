@@ -12,7 +12,6 @@ import { filterJunk, pluralize, validateFiles } from '@shipstatic/ship';
 import {
   FileValidationStatus,
   hasUnbuiltMarker,
-  isShipError,
   type PlatformLimits,
   type ValidatableFile,
 } from '@shipstatic/types';
@@ -134,7 +133,8 @@ export async function processFiles(
     const needsBuild = files.some((f) => hasUnbuiltMarker(filePath(f)));
     if (needsBuild) files = await projectSource(files);
 
-    // Step 3: junk filtering (throws ShipError on an unbuilt project unless allowed)
+    // Step 3: junk filtering. Its unbuilt-project refusal never fires here:
+    // `allowUnbuilt` is `needsBuild`, read from the same paths.
     const kept = new Set(filterJunk(files.map(filePath), { allowUnbuilt: needsBuild }));
 
     // Step 4: convert to ProcessedFile, then strip the common directory prefix.
@@ -165,7 +165,8 @@ export async function processFiles(
 
     // Step 6: a built site serves index.html from its root.
     if (finalFiles.length > 0 && !finalFiles.some((f) => f.path === 'index.html')) {
-      const details = 'No index.html at root — the entry point must be in the top-level directory';
+      const details =
+        "There's no index.html at the top of what you dropped. It's the page visitors see first, so your site needs one there.";
       return failure({
         title: CANT_DEPLOY,
         details,
@@ -231,13 +232,12 @@ export async function processFiles(
       },
     };
   } catch (error) {
-    // A ShipError is the SDK refusing the files in its own words; anything
-    // else is an unexpected processing failure.
+    // Every refusal above is returned, never thrown, so what lands here is a
+    // failure to read the files: a host object, an archive, a .gitignore.
     const message = error instanceof Error ? error.message : String(error);
-    const isValidation = isShipError(error);
     return failure({
-      title: isValidation ? CANT_DEPLOY : COULDNT_PREPARE,
-      details: isValidation ? message : `Failed to process files: ${message}`,
+      title: COULDNT_PREPARE,
+      details: `Failed to process files: ${message}`,
       sourceName,
     });
   }
