@@ -173,16 +173,6 @@ describe('processFiles — junk filtering', () => {
       'index.html',
     ]);
   });
-
-  it('turns an unbuilt-project rejection into a validation error, not a crash', async () => {
-    // filterJunk THROWS a ShipError for unbuilt markers. Reaching here means the
-    // needsBuild detection did not fire — e.g. a package.json with no index.html.
-    const outcome = await run([fileAt('package.json', '{}'), fileAt('src/app.js', 'x')]);
-
-    expect(outcome.phase).toBe('error');
-    expect(outcome.status.title).toBe("Can't deploy this");
-    expect(outcome.status.errors).toBeUndefined();
-  });
 });
 
 describe('processFiles — unbuilt projects', () => {
@@ -221,27 +211,52 @@ describe('processFiles — unbuilt projects', () => {
     expect(outcome.files.some((f) => f.path.includes('node_modules'))).toBe(false);
   });
 
-  it('accepts index.html anywhere in an unbuilt project', async () => {
+  // Astro, Next.js, SvelteKit and Eleventy have no index.html until they are
+  // built, so a project's source is never held to the entry-point rule.
+  const astroProject = (root: string) => [
+    fileAt(`${root}/package.json`, '{"scripts":{"build":"astro build"}}'),
+    fileAt(`${root}/astro.config.mjs`, 'export default {}'),
+    fileAt(`${root}/src/pages/index.astro`, '<h1>hi</h1>'),
+  ];
+
+  it('builds a project that has no index.html until it is built', async () => {
+    const outcome = await run(astroProject('my-site'));
+
+    expect(outcome.phase).toBe('ready');
+    expect(outcome.needsBuild).toBe(true);
+    expect(outcome.status.details).toBe('3 files ready — project will be built');
+    expect(outcome.files.map((f) => f.path).sort()).toEqual([
+      'astro.config.mjs',
+      'package.json',
+      'src/pages/index.astro',
+    ]);
+  });
+
+  it('builds the same project from a GitHub ZIP, which carries no build output', async () => {
     const outcome = await run([
-      fileAt('my-app/package.json', '{}'),
-      fileAt('my-app/public/index.html', '<html>', 'text/html'),
+      zipOf({
+        'my-site-main/package.json': '{"scripts":{"build":"astro build"}}',
+        'my-site-main/astro.config.mjs': 'export default {}',
+        'my-site-main/src/pages/index.astro': '<h1>hi</h1>',
+      }),
     ]);
 
     expect(outcome.phase).toBe('ready');
     expect(outcome.needsBuild).toBe(true);
+    expect(outcome.files).toHaveLength(3);
   });
 
-  it('still requires an index.html somewhere', async () => {
+  it('still refuses a built site with no index.html at its root', async () => {
     const outcome = await run([
-      fileAt('my-app/package.json', '{}'),
-      fileAt('my-app/src/main.js', 'x'),
+      fileAt('my-site/about/index.html', '<html>', 'text/html'),
+      fileAt('my-site/app.js', 'x', 'text/javascript'),
     ]);
 
     expect(outcome.phase).toBe('error');
+    expect(outcome.needsBuild).toBe(false);
     expect(outcome.status.details).toBe(
-      'No index.html found — every web project needs an index.html entry point',
+      'No index.html at root — the entry point must be in the top-level directory',
     );
-    expect(outcome.needsBuild).toBe(true);
   });
 
   it('does not skip deploy validation for a built site', async () => {

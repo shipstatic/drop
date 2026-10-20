@@ -185,9 +185,9 @@ disagree. Consumers run side effects from a `useEffect` on `phase`, which is wha
 5. Filter junk (allowUnbuilt when needsBuild)
 6. Create ProcessedFile[] with paths
 7. Strip common directory prefix (always — see Design Decisions)
-8. Validate entry point (index.html at root for built sites, anywhere for unbuilt)
-9. If needsBuild: skip deploy validation → ready (build service validates output)
-10. Else: validateFiles against ship.getLimits() → ready/error
+8. If needsBuild: ready as it stands (the build decides the site and validates it)
+9. Validate entry point (index.html at the root)
+10. validateFiles against ship.getLimits() → ready/error
 ```
 
 **ZIP behavior:** Single ZIP → extract contents. Multiple files including ZIPs → treat ZIPs as regular files.
@@ -204,8 +204,19 @@ Drop detects unbuilt projects (source code with `package.json`/`node_modules`) a
 - `traverseFileTree` skips `node_modules` directories entirely (performance — 50K+ files)
 - Remaining `node_modules` files (from the `webkitdirectory` folder picker) are stripped
 - `filterJunk` runs with `allowUnbuilt: true` (no throw on markers)
-- Deploy validation is skipped — source files aren't deploy output
+- Neither the entry-point check nor deploy validation applies: a project's
+  source isn't the site
 - All files go straight to `ready` status
+
+**A project's source is never held to the entry-point rule.** Astro, Next.js,
+Nuxt, SvelteKit, Gatsby, Docusaurus and Eleventy have no `index.html` until
+they are built (see `builds/test-projects`), so a check on the source refuses
+every clean copy of them, a GitHub "Download ZIP" included, and passes only a
+folder that still carries an old build. The build service decides what the
+site is and refuses a build that produced none (`builds/build.sh`, exit 4), so
+its sentence is the refusal the person sees. Held in `tests/process.test.ts`,
+"processFiles — unbuilt projects", from both sides: an Astro-shaped project
+is ready, and a built site with no `index.html` at its root is still refused.
 
 The web app reads `drop.needsBuild` and passes `build: true, prerender: true` to the SDK. Drop doesn't know about `build`/`prerender` — it only detects and signals.
 
@@ -322,8 +333,8 @@ because a refusal about the set (the count, the total) names no file for a
 count to be true of. Warnings are listed the same way. Drop authors only the
 two headings an error outcome can carry, in plain words rather than developer
 vocabulary: `Can't deploy this` when the drop was understood and the platform
-will not take it (a refused file, a missing entry point, an unbuilt project,
-an empty folder, an empty input), and `Couldn't prepare the files` when the
+will not take it (a refused file, a missing entry point, an empty folder, an
+empty input), and `Couldn't prepare the files` when the
 drop could not be read or the platform could not be asked what it accepts
 (`process.ts`, `CANT_DEPLOY` / `COULDNT_PREPARE`; the hook reads both). The
 headings are sentence case, as every status title is. `tests/process.test.ts`
@@ -350,7 +361,7 @@ by their literal words.
 ## Testing
 
 ```bash
-pnpm test:ci        # 11 files, 229 tests, ~2s
+pnpm test:ci        # 11 files, 242 tests, ~2s
 pnpm coverage       # + the ratchet (what CI runs)
 pnpm test:browser   # 19 tests, real Chromium
 pnpm typecheck      # src AND tests, 0 errors
@@ -432,7 +443,7 @@ the whole pipeline — needs no fake and is certified for real in `tests-browser
 |---|---|
 | `architecture/test-integrity.test.ts` | A test file that reaches NO production code — the tautology class. A tautology neither raises nor lowers coverage, so no ratchet can see it. Reach resolves transitively through local helpers. Its only exceptions are the two fences themselves, which read the tree as data. |
 | `architecture/test-naming.test.ts` | Layout drift: a filename describing the test instead of its subject (`-branches`), a mirror file with no `src/` counterpart, an aspect split not recorded in the fence, a recorded entry gone stale, or a `src/` module with no mirror test. |
-| `coverage.thresholds` | Coverage decay. A ratchet — it only goes up. Currently 99/93/99/99 against a measured 99.56 / 94.31 / 100 / 99.49. |
+| `coverage.thresholds` | Coverage decay. A ratchet — it only goes up. Currently 99/93/99/99 against a measured 100 / 94.35 / 100 / 100. |
 
 **Recorded aspect splits** — one subject, more than one mirror file. Legal under
 the layout law (`<module>-<aspect>.test.ts`), and the naming fence fails the

@@ -188,7 +188,7 @@ const ready = drop.files.filter(f => f.status === FileValidationStatus.READY);
 
 ## Build on upload
 
-Drop recognises an unbuilt project (source files with `package.json` / `node_modules`) and sets `needsBuild`. `node_modules` is skipped during traversal and stripped from folder-picker selections, deploy validation is skipped (source files aren't build output), and every file goes straight to `ready`.
+Drop recognises an unbuilt project (source files with `package.json` / `node_modules`) and sets `needsBuild`. `node_modules` is skipped during traversal and stripped from folder-picker selections. A project's source isn't the site, so neither the entry-point check nor deploy validation applies to it: Astro, Next.js, SvelteKit and Eleventy have no `index.html` until they are built. Every file goes straight to `ready`, and the build gives the verdict.
 
 Pass the signal through to the SDK:
 
@@ -221,7 +221,7 @@ if (outcome.phase === 'ready') {
 }
 ```
 
-It never throws — a missing entry point, an oversized file, an unbuilt project, and an unexpected failure all come back as an `error` outcome. Pass `onStatus` to report progress during extraction.
+It never throws: a missing entry point, an oversized file, and an unexpected failure all come back as an `error` outcome. Pass `onStatus` to report progress during extraction.
 
 ## Testing your components
 

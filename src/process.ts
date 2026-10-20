@@ -81,14 +81,15 @@ function failure(params: {
   errors?: string[];
   files?: ProcessedFile[];
   sourceName: string;
-  needsBuild?: boolean;
 }): DropOutcome {
-  const { title, details, errors, files = [], sourceName, needsBuild = false } = params;
+  const { title, details, errors, files = [], sourceName } = params;
+  // An error outcome is never a project to build: a project to be built is
+  // ready as it stands, and its build gives the verdict.
   return {
     phase: 'error',
     files,
     sourceName,
-    needsBuild,
+    needsBuild: false,
     // `details` carries the single user-facing message; `errors` is for per-item
     // breakdowns. Omitted when empty, otherwise consumers that render both
     // fields show the message twice.
@@ -99,9 +100,9 @@ function failure(params: {
 /**
  * Run the pipeline.
  *
- * Never throws: an unbuilt project rejected by `filterJunk`, a missing entry
- * point, a file over the limit, and an unexpected host-object failure all come
- * back as an `error` outcome. Callers need no try/catch.
+ * Never throws: a missing entry point, a file over the limit, and an
+ * unexpected host-object failure all come back as an `error` outcome. Callers
+ * need no try/catch.
  */
 export async function processFiles(
   input: File[],
@@ -147,29 +148,11 @@ export async function processFiles(
       files.filter((f) => kept.has(filePath(f))).map((f) => createProcessedFile(f)),
     );
 
-    // Step 5: entry point. A built site must serve index.html from the root; an
-    // unbuilt project may keep it anywhere, since the build decides the output.
-    if (finalFiles.length > 0) {
-      const hasIndex = needsBuild
-        ? finalFiles.some((f) => f.path === 'index.html' || f.path.endsWith('/index.html'))
-        : finalFiles.some((f) => f.path === 'index.html');
-
-      if (!hasIndex) {
-        const details = needsBuild
-          ? 'No index.html found — every web project needs an index.html entry point'
-          : 'No index.html at root — the entry point must be in the top-level directory';
-        return failure({
-          title: CANT_DEPLOY,
-          details,
-          sourceName,
-          needsBuild,
-          files: applyStatus(finalFiles, FileValidationStatus.VALIDATION_FAILED, details),
-        });
-      }
-    }
-
-    // Step 6: build uploads skip deploy validation — the build service validates
-    // its own output, and source files are not deploy output.
+    // Step 5: a project to be built is ready as it stands. The build decides
+    // what the site is, so neither the entry point nor the deploy limits apply
+    // to its source: many frameworks (Astro, Next.js, SvelteKit, Eleventy) have
+    // no index.html until they are built, and the build service refuses a build
+    // that produced no site, in its own words.
     if (needsBuild) {
       const ready = applyStatus(finalFiles, FileValidationStatus.READY);
       return {
@@ -182,6 +165,17 @@ export async function processFiles(
           details: `${pluralize(ready.length, 'file', 'files', true)} ready — project will be built`,
         },
       };
+    }
+
+    // Step 6: a built site serves index.html from its root.
+    if (finalFiles.length > 0 && !finalFiles.some((f) => f.path === 'index.html')) {
+      const details = 'No index.html at root — the entry point must be in the top-level directory';
+      return failure({
+        title: CANT_DEPLOY,
+        details,
+        sourceName,
+        files: applyStatus(finalFiles, FileValidationStatus.VALIDATION_FAILED, details),
+      });
     }
 
     // Step 7: validate against platform limits
@@ -241,8 +235,8 @@ export async function processFiles(
       },
     };
   } catch (error) {
-    // A ShipError here is a validation rejection thrown by filterJunk (unbuilt
-    // project); anything else is an unexpected processing failure.
+    // A ShipError is the SDK refusing the files in its own words; anything
+    // else is an unexpected processing failure.
     const message = error instanceof Error ? error.message : String(error);
     const isValidation = isShipError(error);
     return failure({
