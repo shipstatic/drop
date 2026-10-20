@@ -9,8 +9,8 @@ importers:
   .:
     dependencies:
       '@shipstatic/ship':
-        specifier: 3.7.0
-        version: 3.7.0
+        specifier: 3.7.1
+        version: 3.7.1
       fflate:
         specifier: ^0.8.3
         version: 0.8.3
@@ -647,8 +647,8 @@ packages:
     cpu: [x64]
     os: [win32]
 
-  '@shipstatic/ship@3.7.0':
-    resolution: {integrity: sha512-pGthFAqcbAR4ckfI5Ax/liv+ZwVhqCELEy4FEaUU1/0Gn6B/JWuOY/bGtUGJH1ebYwoqOxXRPbXFG7N9z7HiJA==}
+  '@shipstatic/ship@3.7.1':
+    resolution: {integrity: sha512-Zg6KRroQEfR4Fu+gTKtxNXxNGbgjJ7qQ6nDnh8uBsPO2Eu0L5qSKfNJS9tf+qqgKSd5vCFIF/Q6saUmGaxgoJg==}
     engines: {node: '>=20.19.0'}
     hasBin: true
 
@@ -2008,7 +2008,7 @@ snapshots:
   '@rollup/rollup-win32-x64-msvc@4.62.3':
     optional: true
 
-  '@shipstatic/ship@3.7.0':
+  '@shipstatic/ship@3.7.1':
     dependencies:
       junk: 4.0.1
       spark-md5: 3.0.2
