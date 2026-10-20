@@ -236,6 +236,19 @@ describe('projectSource', () => {
     expect(kept).toEqual(['app/dist/index.html', 'app/package.json', 'app/src/main.js']);
   });
 
+  it('refuses a .gitignore in a folder whose name holds a line break', async () => {
+    // gitignore cannot escape a line break, so the folder cannot be written
+    // into its rules; matching them wrongly would send its private files.
+    const files = [
+      fileAt('app\ncopy/.gitignore', 'secret.json\n'),
+      fileAt('app\ncopy/package.json', '{}'),
+      fileAt('app\ncopy/secret.json', '{}'),
+    ];
+    await expect(projectSource(files)).rejects.toThrow(
+      "A folder in this project has a line break in its name, so its .gitignore can't be read. Rename the folder, then try again.",
+    );
+  });
+
   it('reads paths given with Windows separators', async () => {
     const files = [
       fileAt('app\\.gitignore', 'dist\n'),

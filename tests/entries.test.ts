@@ -1,5 +1,5 @@
-import { describe, expect, it, vi } from 'vitest';
-import { traverseFileTree } from '../src/entries';
+import { describe, expect, it } from 'vitest';
+import { traverseFileTree, unreadable } from '../src/entries';
 import {
   dirEntry,
   entryTree,
@@ -74,29 +74,24 @@ describe('traverseFileTree', () => {
     expect(files.map((f) => f.webkitRelativePath)).toEqual(['project/node_modules']);
   });
 
-  it('skips an unreadable directory and warns rather than failing the drop', async () => {
-    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
-    const files: File[] = [];
-
-    await expect(
-      traverseFileTree(unreadableDirEntry('locked'), files, 'locked'),
-    ).resolves.toBeUndefined();
-
-    expect(files).toEqual([]);
-    expect(warn).toHaveBeenCalled();
+  // A folder that is read only in part would deploy a site without the
+  // missing file, or send a project without its .gitignore and so with the
+  // files that .gitignore keeps private.
+  it('refuses an unreadable directory, naming it', async () => {
+    await expect(traverseFileTree(unreadableDirEntry('locked'), [], 'locked')).rejects.toThrow(
+      unreadable('locked'),
+    );
   });
 
-  it('skips an unreadable file but keeps its readable siblings', async () => {
-    vi.spyOn(console, 'warn').mockImplementation(() => {});
+  it('refuses an unreadable file, naming its path', async () => {
     const tree = dirEntry('dist', [
-      unreadableFileEntry('locked.txt'),
       fileEntry('index.html', '<html>'),
+      unreadableFileEntry('locked.txt'),
     ]);
 
-    const files: File[] = [];
-    await traverseFileTree(tree, files, 'dist');
-
-    expect(files.map((f) => f.webkitRelativePath)).toEqual(['dist/index.html']);
+    await expect(traverseFileTree(tree, [], 'dist')).rejects.toThrow(
+      "We couldn't read dist/locked.txt. Make sure it's on this computer, then try again.",
+    );
   });
 
   it('ignores an entry that is neither file nor directory', async () => {

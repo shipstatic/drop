@@ -14,6 +14,7 @@ import {
   inputChangeEvent,
   READ_ENTRIES_BATCH_SIZE,
   shipStub,
+  unreadableFileEntry,
   zipOf,
 } from './fixtures/builders';
 
@@ -228,6 +229,29 @@ describe('onDrop', () => {
     expect(result.current.phase).toBe('ready');
     expect(result.current.sourceName).toBe('dist');
     expect(result.current.files.map((f) => f.path).sort()).toEqual(['app.js', 'index.html']);
+  });
+
+  it('refuses a folder it cannot read whole, rather than sending what a lost .gitignore kept private', async () => {
+    const { result } = setup();
+    const project = dirEntry('my-app', [
+      unreadableFileEntry('.gitignore'),
+      fileEntry('package.json', '{}'),
+      fileEntry('secret.json', '{"key":"x"}'),
+    ]);
+
+    await act(async () => {
+      await result.current
+        .getDropzoneProps()
+        .onDrop(dropEvent({ items: [dataTransferItem({ entry: project })] }));
+    });
+
+    expect(result.current.phase).toBe('error');
+    expect(result.current.files).toEqual([]);
+    expect(result.current.status).toEqual({
+      title: "Couldn't prepare the files",
+      details:
+        "We couldn't read my-app/.gitignore. Make sure it's on this computer, then try again.",
+    });
   });
 
   it('reads a dropped folder larger than one readEntries batch', async () => {

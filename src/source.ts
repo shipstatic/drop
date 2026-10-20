@@ -90,6 +90,14 @@ export async function projectSource(files: File[]): Promise<File[]> {
   const matcher = ignore({ allowRelativePaths: true });
   for (const { file, parts } of rules) {
     const base = parts.slice(0, -1).join('/');
+    // A line break ends a pattern and gitignore cannot escape one, so a folder
+    // named with one cannot be written into its rules. Refused rather than
+    // matched wrongly: wrongly means its private files are sent.
+    if (/[\r\n]/.test(base)) {
+      throw new Error(
+        "A folder in this project has a line break in its name, so its .gitignore can't be read. Rename the folder, then try again.",
+      );
+    }
     // Git skips a byte order mark and reads CRLF line endings as LF.
     const text = (await file.text()).replace(/^\uFEFF/, '');
     for (const line of text.split(/\r?\n/)) {

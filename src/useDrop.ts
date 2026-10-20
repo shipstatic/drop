@@ -223,11 +223,11 @@ export function useDrop({ ship }: DropOptions): DropReturn {
           needsBuild: outcome.needsBuild,
         });
       } catch (error) {
-        // Folder reading skips what it cannot read and the pipeline never
-        // throws, so this is the limits read: the platform could not be asked
-        // what it accepts. Said in the error state like any other failed
-        // preparation, in the client's own words; a cancelled run's rejection
-        // is the cancel itself and says nothing.
+        // The pipeline never throws, so this is a dropped folder that could
+        // not be read whole (its sentence names what), or the limits read:
+        // the platform could not be asked what it accepts. Said in the error
+        // state like any other failed preparation, in the client's own words;
+        // a cancelled run's rejection is the cancel itself and says nothing.
         if (run.signal.aborted) return;
         setState({
           ...initialState,

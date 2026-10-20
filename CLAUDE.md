@@ -88,9 +88,10 @@ selection alone. A dropped folder with nothing in it to read is the `error`
 phase under the pipeline's own heading ("Can't deploy this", "The folder has
 no files."), since the pipeline is never asked about no files. `dataTransfer.files` is not read at all: every
 file arrives through its item, and a browser lists a dropped folder there as
-an entry that is not a file. The limits read is the one step that can throw (the
-pipeline never does), and its failure is the `error` phase in the client's own
-words, never a hook left on "Processing...". Held in `tests/useDrop.test.ts`,
+an entry that is not a file. Two steps can throw (the pipeline never does): reading a dropped
+folder, which refuses one it cannot read whole, and the limits read. Either
+failure is the `error` phase in the client's own words, never a hook left on
+"Processing...". Held in `tests/useDrop.test.ts`,
 "a run's lifetime".
 
 **Keep new pipeline rules in `process.ts`.** The split is what makes them
@@ -240,7 +241,9 @@ upload as this does.
 - **Read as git reads it.** `ignore` does the matching. Each nested
   `.gitignore` is rewritten to the root of the drop and added shallowest first,
   so a deeper file wins as in git, and a folder git excludes keeps excluding
-  what its own `.gitignore` re-includes. The folder's name is escaped before
+  what its own `.gitignore` re-includes. A `.gitignore` in a folder whose name
+  holds a line break is refused: gitignore cannot escape one, so the folder
+  cannot be written into its rules. The folder's name is escaped before
   it joins a pattern: git never sees it, while `ignore` would read `[slug]`,
   `#1-app` or `!important` as glob syntax and switch every rule off. A line that
   names nothing (`!`, `/`) is no pattern, as in git; rewritten it would name
@@ -421,12 +424,12 @@ by their literal words.
 - **`stripCommonPrefix` mutates File objects** — Returns new `ProcessedFile` objects (immutable), but **mutates** `File.webkitRelativePath` directly. Intentional — Ship SDK reads `webkitRelativePath` from raw File objects.
 - **`webkitRelativePath`** — Don't mutate it between Drop and SDK; Ship SDK reads it for deployment paths.
 - **`readEntries` batches at 100** — Real Chromium returns at most 100 directory entries per call and signals the end with an empty batch, so the reader must loop. A single call silently truncates every folder over 100 files.
-- **Folder traversal silently skips errors** — Unreadable files (permissions, etc.) are logged to console but skipped. No programmatic notification to the caller.
+- **A folder read only in part is refused, naming what failed.** "We couldn't read my-app/.gitignore. Make sure it's on this computer, then try again." under "Couldn't prepare the files". Skipping it would deploy a site without the file, or send a project without its `.gitignore` and so with the files it keeps private; the folder picker fails the same way, at upload. Held in `tests/entries.test.ts` and `tests/useDrop-events.test.ts`.
 
 ## Testing
 
 ```bash
-pnpm test:ci        # 12 files, 315 tests, ~10s
+pnpm test:ci        # 12 files, 317 tests, ~10s
 pnpm coverage       # + the ratchet (what CI runs)
 pnpm test:browser   # 19 tests, real Chromium
 pnpm typecheck      # src AND tests, 0 errors
@@ -508,7 +511,7 @@ the whole pipeline — needs no fake and is certified for real in `tests-browser
 |---|---|
 | `architecture/test-integrity.test.ts` | A test file that reaches NO production code — the tautology class. A tautology neither raises nor lowers coverage, so no ratchet can see it. Reach resolves transitively through local helpers. Its only exceptions are the two fences themselves, which read the tree as data. |
 | `architecture/test-naming.test.ts` | Layout drift: a filename describing the test instead of its subject (`-branches`), a mirror file with no `src/` counterpart, an aspect split not recorded in the fence, a recorded entry gone stale, or a `src/` module with no mirror test. |
-| `coverage.thresholds` | Coverage decay. A ratchet: it only goes up. Currently 99/93/99/99 against a measured 100 / 95.93 / 100 / 100. |
+| `coverage.thresholds` | Coverage decay. A ratchet: it only goes up. Currently 99/93/99/99 against a measured 100 / 96.01 / 100 / 100. |
 
 **Recorded aspect splits** — one subject, more than one mirror file. Legal under
 the layout law (`<module>-<aspect>.test.ts`), and the naming fence fails the

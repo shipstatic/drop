@@ -10,6 +10,20 @@
  */
 import { setRelativePath } from './files';
 
+/** What a person is told when part of a dropped folder cannot be read. */
+export function unreadable(path: string): string {
+  return `We couldn't read ${path}. Make sure it's on this computer, then try again.`;
+}
+
+/** A read that either succeeds or fails naming what could not be read. */
+async function readOrRefuse<T>(path: string, read: () => Promise<T>): Promise<T> {
+  try {
+    return await read();
+  } catch {
+    throw new Error(unreadable(path));
+  }
+}
+
 /**
  * Recursively collect Files from a dropped entry, setting `webkitRelativePath`
  * so folder structure survives.
@@ -18,40 +32,46 @@ import { setRelativePath } from './files';
  * deployment, and traversing one costs real time on a source-project drop
  * (50K+ files).
  *
- * Unreadable entries are logged and skipped rather than failing the drop: a
- * partially readable folder still deploys.
+ * A file or folder that cannot be read fails the whole collection, naming it.
+ * Skipping it would deploy a site without it, or send a project without its
+ * `.gitignore` and so with every file that `.gitignore` keeps private. The
+ * folder picker fails the same way, at upload.
  */
 export async function traverseFileTree(
   entry: FileSystemEntry,
   files: File[],
   currentPath = '',
 ): Promise<void> {
-  try {
-    if (entry.isFile) {
-      const file = await new Promise<File>((resolve, reject) => {
-        (entry as FileSystemFileEntry).file(resolve, reject);
-      });
-      setRelativePath(file, currentPath ? `${currentPath}/${file.name}` : file.name);
-      files.push(file);
-      return;
-    }
+  if (entry.isFile) {
+    const path = currentPath ? `${currentPath}/${entry.name}` : entry.name;
+    const file = await readOrRefuse(
+      path,
+      () =>
+        new Promise<File>((resolve, reject) => {
+          (entry as FileSystemFileEntry).file(resolve, reject);
+        }),
+    );
+    setRelativePath(file, path);
+    files.push(file);
+    return;
+  }
 
-    if (!entry.isDirectory) return;
+  if (!entry.isDirectory) return;
 
-    for (const child of await readDirectory(entry as FileSystemDirectoryEntry)) {
-      if (child.isDirectory && child.name === 'node_modules') continue;
+  const children = await readOrRefuse(currentPath || entry.name, () =>
+    readDirectory(entry as FileSystemDirectoryEntry),
+  );
+  for (const child of children) {
+    if (child.isDirectory && child.name === 'node_modules') continue;
 
-      // Entering a directory extends the path; a file's own name is appended by
-      // the branch above, so it inherits the current path unchanged.
-      const childPath = child.isDirectory
-        ? currentPath
-          ? `${currentPath}/${child.name}`
-          : child.name
-        : currentPath;
-      await traverseFileTree(child, files, childPath);
-    }
-  } catch (error) {
-    console.warn(`Error traversing file tree for entry ${entry.name}:`, error);
+    // Entering a directory extends the path; a file's own name is appended by
+    // the branch above, so it inherits the current path unchanged.
+    const childPath = child.isDirectory
+      ? currentPath
+        ? `${currentPath}/${child.name}`
+        : child.name
+      : currentPath;
+    await traverseFileTree(child, files, childPath);
   }
 }
 
