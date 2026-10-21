@@ -128,21 +128,22 @@ export async function processFiles(
 
     // Step 2: unbuilt-project detection. When the server will build, source
     // files are legitimate input rather than a mistake, and the project is
-    // sent as its repository holds it. Read before the junk filter, which
-    // drops every `.gitignore` as a dot file.
+    // sent as its repository holds it: `projectSource` decides which files
+    // that is, once.
     const needsBuild = files.some((f) => hasUnbuiltMarker(filePath(f)));
     if (needsBuild) files = await projectSource(files);
 
-    // Step 3: junk filtering. Its unbuilt-project refusal never fires here:
-    // `allowUnbuilt` is `needsBuild`, read from the same paths.
-    const kept = new Set(filterJunk(files.map(filePath), { allowUnbuilt: needsBuild }));
+    // Step 3: junk filtering, for a built site only. A project's source is
+    // never filtered again: a build reads its dot files.
+    if (!needsBuild) {
+      const kept = new Set(filterJunk(files.map(filePath)));
+      files = files.filter((f) => kept.has(filePath(f)));
+    }
 
     // Step 4: convert to ProcessedFile, then strip the common directory prefix.
-    // Empty files are kept — validation marks them EXCLUDED with a warning
-    // rather than failing the deploy.
-    const finalFiles = stripCommonPrefix(
-      files.filter((f) => kept.has(filePath(f))).map((f) => createProcessedFile(f)),
-    );
+    // Empty files are kept: a built site's are marked EXCLUDED with a warning
+    // by validation, and a project's are source the build may import.
+    const finalFiles = stripCommonPrefix(files.map((f) => createProcessedFile(f)));
 
     // Step 5: a project to be built is ready as it stands. The build decides
     // what the site is, so neither the entry point nor the deploy limits apply

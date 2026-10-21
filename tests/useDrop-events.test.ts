@@ -653,7 +653,7 @@ describe('a picked file set deploys identically to a dropped one', () => {
 
     expect(picked).toEqual(observable(result.current));
     expect(picked.needsBuild).toBe(true);
-    expect(picked.deployPaths).toEqual(['package.json', 'src/main.ts']);
+    expect(picked.deployPaths).toEqual(['.gitignore', 'package.json', 'src/main.ts']);
   });
 
   it('agrees that a set with no root index.html is not deployable', async () => {

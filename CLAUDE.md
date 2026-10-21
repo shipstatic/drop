@@ -120,7 +120,7 @@ are pure functions:
 | Function | Purpose |
 |----------|---------|
 | `validateFiles(files, limits)` | Validate against platform limits |
-| `filterJunk(paths, {allowUnbuilt})` | Filter .DS_Store, Thumbs.db, dot files (`.well-known` allowed); THROWS on unbuilt markers |
+| `filterJunk(paths)` | A built site's junk: .DS_Store, Thumbs.db, dot files (`.well-known` allowed); THROWS on unbuilt markers. Never run on a project's source |
 | `optimizeDeployPaths(paths)` | Common-prefix stripping — the one source of truth for deploy paths |
 | `pluralize`, `formatFileSize` | Message formatting |
 
@@ -184,8 +184,8 @@ disagree. Consumers run side effects from a `useEffect` on `phase`, which is wha
 1. Detect source name (ZIP name > folder name > filename)
 2. Extract ZIP if a SINGLE ZIP was dropped
 3. Detect unbuilt project (hasUnbuiltMarker) → needsBuild
-4. If needsBuild: keep the project's source (`projectSource`: no node_modules, nothing .gitignore lists)
-5. Filter junk (allowUnbuilt when needsBuild)
+4. If needsBuild: keep the project's source (`projectSource`: no node_modules, .git or __MACOSX, nothing .gitignore lists)
+5. If a built site: filter junk
 6. Create ProcessedFile[] with paths
 7. Strip common directory prefix (always — see Design Decisions)
 8. If needsBuild: ready as it stands (the build decides the site and validates it)
@@ -207,7 +207,8 @@ Drop detects unbuilt projects (source code with `package.json`/`node_modules`) a
 - `traverseFileTree` skips `node_modules` directories entirely (performance — 50K+ files)
 - `projectSource` (`source.ts`) keeps the project as its repository holds it
   (below)
-- `filterJunk` runs with `allowUnbuilt: true` (no throw on markers)
+- `filterJunk` does not run: the source `projectSource` kept is what is sent,
+  dot files and empty files included
 - Neither the entry-point check nor deploy validation applies: a project's
   source isn't the site
 - All files go straight to `ready` status
@@ -224,11 +225,17 @@ project is ready, and under "processFiles — entry point" a built site with no
 `index.html` at its root is still refused.
 
 **A project sent for building is the project as its repository holds it,** with
-three things left out: dot files (the junk filter, the platform's security rule
-for every upload), `node_modules` (the build installs it), and whatever the
-project's `.gitignore` lists (the project marks it as generated). Every host
-that builds from git works this way, and `railway up` honours `.gitignore` on
-upload as this does.
+four things left out: `node_modules` (the build installs it), `.git` (git's own
+record, which no checkout lists), `__MACOSX` (a Mac ZIP's Finder metadata, whose
+`._` files trip a build that reads a whole folder), and whatever the project's
+`.gitignore` lists (the project marks it as generated). Everything else is sent:
+dot files a build reads (`.npmrc`, `.yarnrc.yml`, `.vitepress/`), empty files it
+imports, and a `.env` the `.gitignore` does not list (operator decision,
+2026-10-21). Nothing after `projectSource` filters the set again: the junk
+filter judges a built site's files and never a project's, the SDK carries a
+build's source as given, and the API keeps empty files on a build request.
+Every host that builds from git works this way, and `railway up` honours
+`.gitignore` on upload as this does.
 
 - **Why, first:** which site gets published. When a build's log names no
   output folder, `builds/build.sh` takes the first known folder holding an
@@ -254,8 +261,7 @@ upload as this does.
   only inside one matcher, so across matchers a nested `!generated/` could not
   re-include what a root `generated/` excludes, which git allows; doing it
   right means git's precedence rewritten by hand or `ignore`'s private API. It runs on raw paths before the
-  common folder is stripped, and before the junk filter, which drops every
-  `.gitignore` as a dot file. `tests/source.test.ts` holds the result to git
+  common folder is stripped. `tests/source.test.ts` holds the result to git
   itself: each case is a real repository, and `git ls-files --others
   --exclude-standard` runs with every personal and system setting shut out
   (`core.excludesFile`, `HOME` and `XDG_CONFIG_HOME` included) and
@@ -270,9 +276,11 @@ upload as this does.
 
 **Refused, and why:**
 
-- **Leaving out folders by name** (`dist/`, `build/`, `out/`). Vue CLI 2 keeps
-  webpack config in `build/`, and `public/` is source in Vite, Next and CRA, so
-  the builder's own search list cannot be a list of things to leave out.
+- **Leaving out output folders by name** (`dist/`, `build/`, `out/`). Vue CLI 2
+  keeps webpack config in `build/`, and `public/` is source in Vite, Next and
+  CRA, so the builder's own search list cannot be a list of things to leave
+  out. The three names that ARE left out are never project content at all:
+  what the build installs, git's record, and an archive's metadata.
 - **Skipping ignored folders during the traversal.** The traversal skips only
   `node_modules`, and only for speed; the rule lives in `projectSource` once,
   and "a picked file set deploys identically to a dropped one" holds it.
@@ -429,7 +437,7 @@ by their literal words.
 ## Testing
 
 ```bash
-pnpm test:ci        # 12 files, 318 tests, ~10s
+pnpm test:ci        # 12 files, 325 tests, ~10s
 pnpm coverage       # + the ratchet (what CI runs)
 pnpm test:browser   # 19 tests, real Chromium
 pnpm typecheck      # src AND tests, 0 errors

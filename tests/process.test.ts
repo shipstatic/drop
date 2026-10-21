@@ -211,6 +211,29 @@ describe('processFiles — unbuilt projects', () => {
     expect(outcome.files.some((f) => f.path.includes('node_modules'))).toBe(false);
   });
 
+  it('sends the dot files a build reads and the empty files it imports', async () => {
+    const outcome = await run([
+      ...sourceProject(),
+      fileAt('my-app/.npmrc', 'legacy-peer-deps=true'),
+      fileAt('my-app/.vitepress/config.mts', 'export default {}'),
+      fileAt('my-app/.yarnrc.yml', 'nodeLinker: node-modules'),
+      fileAt('my-app/src/App.css', ''),
+    ]);
+
+    expect(outcome.phase).toBe('ready');
+    expect(outcome.files.map((f) => f.path).sort()).toEqual([
+      '.npmrc',
+      '.vitepress/config.mts',
+      '.yarnrc.yml',
+      'index.html',
+      'package.json',
+      'src/App.css',
+      'src/main.js',
+    ]);
+    expect(outcome.files.every((f) => f.status === FileValidationStatus.READY)).toBe(true);
+    expect(outcome.status.details).toBe("7 files ready. We'll build the project.");
+  });
+
   it("leaves behind what the project's .gitignore lists, an old build first", async () => {
     const outcome = await run([
       ...sourceProject(),
@@ -221,11 +244,12 @@ describe('processFiles — unbuilt projects', () => {
 
     expect(outcome.phase).toBe('ready');
     expect(outcome.files.map((f) => f.path).sort()).toEqual([
+      '.gitignore',
       'index.html',
       'package.json',
       'src/main.js',
     ]);
-    expect(outcome.status.details).toBe("3 files ready. We'll build the project.");
+    expect(outcome.status.details).toBe("4 files ready. We'll build the project.");
   });
 
   it("honours a ZIP's .gitignore", async () => {
@@ -238,7 +262,11 @@ describe('processFiles — unbuilt projects', () => {
       }),
     ]);
 
-    expect(outcome.files.map((f) => f.path).sort()).toEqual(['package.json', 'src/main.js']);
+    expect(outcome.files.map((f) => f.path).sort()).toEqual([
+      '.gitignore',
+      'package.json',
+      'src/main.js',
+    ]);
   });
 
   it('serves a built site as dropped, whatever a .gitignore in it says', async () => {

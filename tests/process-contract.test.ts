@@ -124,11 +124,4 @@ describe('filterJunk — the contract drop relies on', () => {
 
     expect(() => filterJunk(['index.html', 'package.json'])).toThrow('Unbuilt project detected');
   });
-
-  it('allows unbuilt markers through when the server will build', () => {
-    expect(filterJunk(['index.html', 'package.json'], { allowUnbuilt: true })).toEqual([
-      'index.html',
-      'package.json',
-    ]);
-  });
 });

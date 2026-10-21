@@ -3,10 +3,14 @@
  * holds it.
  *
  * The build starts from a clean copy of the project, so what a clean copy
- * would not hold stays behind: `node_modules`, which the build installs, and
- * whatever the project's `.gitignore` lists, which the project itself marks as
- * generated. Dot files stay behind too, by the junk filter, as for every
- * upload.
+ * would not hold stays behind: `node_modules`, which the build installs; `.git`,
+ * git's own record, which no checkout lists; `__MACOSX`, the Finder's metadata
+ * inside a ZIP made on a Mac, whose `._` files a build that reads a whole folder
+ * would trip on; and whatever the project's `.gitignore` lists, which the
+ * project itself marks as generated. Everything else is sent, dot files and
+ * empty files included: a build reads `.npmrc` and `.vitepress/`, and imports
+ * an empty stylesheet, so nothing after this decides again. A `.env` is sent
+ * unless the `.gitignore` lists it, like any other file the project holds.
  *
  * The first reason is which site gets published, not size. An old `dist/`
  * beside the source can be found by the build service's output search before
@@ -31,6 +35,9 @@
  */
 import ignore from 'ignore';
 import { filePath } from './files';
+
+/** Folders no clean copy of a project holds (see the header). */
+const NEVER_SOURCE = new Set(['node_modules', '.git', '__MACOSX']);
 
 /** A file's path as segments, whatever separator the browser or archive used. */
 function segments(file: File): string[] {
@@ -77,9 +84,9 @@ export function rebase(line: string, base: string): string | null {
  * or a folder inside it.
  */
 export async function projectSource(files: File[]): Promise<File[]> {
-  // The folder picker hands `node_modules` over whole; it never reaches the
-  // matcher.
-  const source = files.filter((file) => !segments(file).includes('node_modules'));
+  // What a clean copy never holds, by name; the folder picker hands
+  // `node_modules` over whole, and none of these reaches the matcher.
+  const source = files.filter((file) => !segments(file).some((part) => NEVER_SOURCE.has(part)));
 
   const rules = source
     .map((file) => ({ file, parts: segments(file) }))

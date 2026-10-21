@@ -200,6 +200,27 @@ describe('projectSource keeps what git keeps', () => {
       'r/dist/a': 'x',
       'r/Src/b': 'x',
     },
+    'the dot files a build reads, and an empty stylesheet it imports': {
+      'docs/package.json': '{}',
+      'docs/.npmrc': 'legacy-peer-deps=true\n',
+      'docs/.yarnrc.yml': 'nodeLinker: node-modules\n',
+      'docs/.nvmrc': '22\n',
+      'docs/.vitepress/config.mts': 'export default {}',
+      'docs/.vitepress/theme/index.ts': 'x',
+      'docs/src/App.css': '',
+    },
+    'a .env the .gitignore does not list is source': {
+      'app/package.json': '{}',
+      'app/.env': 'VITE_TITLE=Hello\n',
+      'app/src/main.ts': 'x',
+    },
+    'a .env the .gitignore lists stays on the computer': {
+      'app/.gitignore': 'node_modules\n.env\n',
+      'app/package.json': '{}',
+      'app/.env': 'SECRET=1\n',
+      'app/.env.example': 'SECRET=\n',
+      'app/src/main.ts': 'x',
+    },
   };
 
   it.each(Object.entries(cases))('%s', async (_, tree) => {
@@ -222,6 +243,20 @@ describe('projectSource', () => {
     const kept = await dropKeeps({
       'app/package.json': '{}',
       'app/node_modules/react/index.js': 'x',
+      'app/src/main.js': 'x',
+    });
+    expect(kept).toEqual(['app/package.json', 'app/src/main.js']);
+  });
+
+  it("leaves behind .git and a ZIP's __MACOSX, which no clean copy holds", async () => {
+    // Not asked of git: git never lists its own folder, and a repository on
+    // disk cannot hold a planted one.
+    const kept = await dropKeeps({
+      'app/package.json': '{}',
+      'app/.git/HEAD': 'ref: refs/heads/main',
+      'app/.git/config': '[core]',
+      'app/vendor/lib/.git': 'gitdir: ../../.git/modules/lib',
+      '__MACOSX/app/._package.json': 'x',
       'app/src/main.js': 'x',
     });
     expect(kept).toEqual(['app/package.json', 'app/src/main.js']);
