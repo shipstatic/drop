@@ -16,11 +16,13 @@ export default defineConfig({
   target: ['chrome96', 'edge96', 'firefox95', 'safari15', 'ios15'],
   esbuildOptions(options) {
     options.logOverride = { 'unsupported-regexp': 'error' };
-    // Unicode property escapes (`/\p{Lu}/u`) run in every browser on the floor
-    // (Chrome 64, Safari 11.1, Firefox 78), but esbuild 0.25's browser table
-    // refuses them for EVERY browser version, Chrome 135 and Safari 26 included,
-    // while accepting them for es2018 and later (measured 2026-10-21). So the
-    // floor declares them, and every other regex feature stays refused.
+    // Unicode property escapes (`/\p{Lu}/u`) run on the whole floor (Chrome 64,
+    // Safari 11.1, Firefox 78). esbuild counts a browser as supporting them only
+    // once it knows the newest Unicode version's properties (16.0 and 17.0 in
+    // esbuild 0.25's table), which no shipping browser does yet, so it refuses
+    // them for every browser. Declared here; every other regex feature stays
+    // refused. What this lets through is a property name newer than a browser's
+    // Unicode data, a SyntaxError there; the dependencies use only old ones.
     options.supported = { 'regexp-unicode-property-escapes': true };
   },
   external: ['react', 'react-dom'],
