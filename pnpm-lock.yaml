@@ -9,8 +9,8 @@ importers:
   .:
     dependencies:
       '@shipstatic/ship':
-        specifier: 3.10.0-beta.3
-        version: 3.10.0-beta.3
+        specifier: 3.10.0-beta.4
+        version: 3.10.0-beta.4
       fflate:
         specifier: ^0.8.3
         version: 0.8.3
@@ -25,8 +25,8 @@ importers:
         specifier: 2.5.5
         version: 2.5.5
       '@shipstatic/types':
-        specifier: 3.15.0-beta.3
-        version: 3.15.0-beta.3
+        specifier: 3.15.0-beta.4
+        version: 3.15.0-beta.4
       '@testing-library/react':
         specifier: ^16.3.2
         version: 16.3.2(@testing-library/dom@10.4.1)(@types/react-dom@19.2.3(@types/react@19.2.17))(@types/react@19.2.17)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
@@ -650,13 +650,13 @@ packages:
     cpu: [x64]
     os: [win32]
 
-  '@shipstatic/ship@3.10.0-beta.3':
-    resolution: {integrity: sha512-M+X0FsNCDgHLyT+3bYuY4gwhPZDCTha7Er0W9nPGgkr0m0/Oe4oMberBPj09fBfgZeZtqWpgsWw6HhlleG/vpg==}
+  '@shipstatic/ship@3.10.0-beta.4':
+    resolution: {integrity: sha512-PggyEpkgcaYd8WsbbEpYsNd1ChX0dC2Wr+qNgsRDrB8DTb/FP4odGoRr5jGb+/lGgf5T8QgKbXJp2zsILB/DkA==}
     engines: {node: '>=20.19.0'}
     hasBin: true
 
-  '@shipstatic/types@3.15.0-beta.3':
-    resolution: {integrity: sha512-5ZWJe5raX9jm7PXw2xX9hm6TgoCL3WB+ECaTGDkAMjl/8jZuUWhKt2E9JupldorspUknbxXpdkCWNA/EKVV8bQ==}
+  '@shipstatic/types@3.15.0-beta.4':
+    resolution: {integrity: sha512-Gcp0XT1fPbxtuL7shje+5aPO6OZ78UXM/XqkUJxt2aq1+/w2Hlhrff6NLpV29OI+UBG8CM7+fmrFz0gJu9M7oA==}
     engines: {node: '>=20.19.0'}
 
   '@sindresorhus/is@4.6.0':
@@ -2015,13 +2015,13 @@ snapshots:
   '@rollup/rollup-win32-x64-msvc@4.62.3':
     optional: true
 
-  '@shipstatic/ship@3.10.0-beta.3':
+  '@shipstatic/ship@3.10.0-beta.4':
     dependencies:
       junk: 4.0.1
       spark-md5: 3.0.2
       zod: 4.4.3
 
-  '@shipstatic/types@3.15.0-beta.3':
+  '@shipstatic/types@3.15.0-beta.4':
     dependencies:
       zod: 4.4.3
 
