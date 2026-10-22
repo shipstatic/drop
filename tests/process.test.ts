@@ -125,7 +125,7 @@ describe('processFiles — entry point', () => {
     expect(outcome.phase).toBe('error');
     expect(outcome.status.title).toBe("Can't deploy this");
     expect(outcome.status.details).toBe(
-      "There's no index.html at the top of your site. It's the page visitors see first, so your site needs one.",
+      "There's no index.html at the top of your site. It's the page visitors see first, so your site needs one. To publish a file on its own, like an image or a PDF, add a small index.html that links to it.",
     );
     expect(outcome.files.every((f) => f.status === FileValidationStatus.VALIDATION_FAILED)).toBe(
       true,
@@ -152,7 +152,7 @@ describe('processFiles — entry point', () => {
     expect(outcome.status.details).toBe('2 things to fix');
     expect(outcome.status.errors).toEqual([
       'File "payload.exe" has an extension that is not allowed.',
-      "There's no index.html at the top of your site. It's the page visitors see first, so your site needs one.",
+      "There's no index.html at the top of your site. It's the page visitors see first, so your site needs one. If one of your pages is the main one, put it at the top and name it index.html.",
     ]);
   });
 
