@@ -189,8 +189,7 @@ disagree. Consumers run side effects from a `useEffect` on `phase`, which is wha
 6. Create ProcessedFile[] with paths
 7. Strip common directory prefix (always — see Design Decisions)
 8. If needsBuild: ready as it stands (the build decides the site and validates it)
-9. Validate entry point (index.html at the root)
-10. validateFiles against ship.getLimits() → ready/error
+9. validateFiles against ship.getLimits() → ready/error: the platform's deploy rules, each file, then the site as a whole, a home page (index.html at its root) among them
 ```
 
 **ZIP behavior:** Single ZIP → extract contents. Multiple files including ZIPs → treat ZIPs as regular files.
@@ -404,8 +403,8 @@ The SDK is where a refusal is worded, and drop shows the sentence verbatim.
 written, with no `path:` prefix: each sentence already names its file once, so
 a prefix named it twice (`big.txt: File "big.txt" too large`). One refusal is
 the `details` itself; several are listed in `errors` under their count ("2
-files refused"), because `errors` is a breakdown and one item is not one, and
-because a refusal about the set (the count, the total) names no file for a
+things to fix"), because `errors` is a breakdown and one item is not one, and
+because a refusal about the set (the count, the total, the home page) names no file for a
 count to be true of. Warnings are listed the same way. Drop authors only the
 two headings an error outcome can carry, in plain words rather than developer
 vocabulary: `Can't deploy this` when the drop was understood and the platform

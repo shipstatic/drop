@@ -111,17 +111,12 @@ describe('filterJunk — the contract drop relies on', () => {
     ]);
   });
 
-  it('throws on unbuilt markers before the dot-file filter can hide them', () => {
-    // Drop depends on the ORDER here: node_modules/.pnpm/ paths are dot-file
-    // matches, so a filter-first implementation would silently strip them and
-    // never report the project as unbuilt.
-    expect(() =>
-      filterJunk([
-        'demo/index.html',
-        'demo/node_modules/.pnpm/lodash@4/node_modules/lodash/index.js',
-      ]),
-    ).toThrow('Unbuilt project detected');
-
-    expect(() => filterJunk(['index.html', 'package.json'])).toThrow('Unbuilt project detected');
+  it('keeps the files of a project, so a pnpm store under a dot folder is never stripped', () => {
+    // Drop routes a project to the build before this filter runs; the filter
+    // itself judges nothing and keeps a project's files for the deploy rules
+    // to refuse by name, `node_modules/.pnpm/` included.
+    const pnpm = 'demo/node_modules/.pnpm/lodash@4/node_modules/lodash/index.js';
+    expect(filterJunk(['demo/index.html', pnpm])).toEqual(['demo/index.html', pnpm]);
+    expect(filterJunk(['index.html', 'package.json'])).toEqual(['index.html', 'package.json']);
   });
 });

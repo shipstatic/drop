@@ -117,13 +117,15 @@ describe('processFiles — ZIP input', () => {
 });
 
 describe('processFiles — entry point', () => {
+  // The rule and its sentence are the platform's deploy rules, through Ship's
+  // `validateFiles`, so drop says what the API and the CLI say.
   it('rejects a built site with no index.html', async () => {
     const outcome = await run([fileAt('app.js', 'x', 'text/javascript')]);
 
     expect(outcome.phase).toBe('error');
     expect(outcome.status.title).toBe("Can't deploy this");
     expect(outcome.status.details).toBe(
-      "There's no index.html at the top of what you chose. It's the page visitors see first, so your site needs one there.",
+      "There's no index.html at the top of your site. It's the page visitors see first, so your site needs one.",
     );
     expect(outcome.files.every((f) => f.status === FileValidationStatus.VALIDATION_FAILED)).toBe(
       true,
@@ -139,13 +141,26 @@ describe('processFiles — entry point', () => {
       fileAt('readme.md', '#', 'text/markdown'),
     ]);
     expect(outcome.phase).toBe('error');
+    expect(outcome.status.details).toBe(
+      "There's no index.html at the top of your site. It's the page visitors see first, so your site needs one. There's one in docs/. If that's your site, publish that folder instead.",
+    );
   });
 
-  it('does not run the entry-point check when everything was filtered away', async () => {
-    // Junk-only input leaves nothing to check; validation reports the empty set.
+  it('lists the missing home page beside the files it refuses', async () => {
+    const outcome = await run([fileAt('payload.exe', 'MZ'), fileAt('about.html', '<html>')]);
+
+    expect(outcome.status.details).toBe('2 things to fix');
+    expect(outcome.status.errors).toEqual([
+      'File "payload.exe" has an extension that is not allowed.',
+      "There's no index.html at the top of your site. It's the page visitors see first, so your site needs one.",
+    ]);
+  });
+
+  it('says there is nothing to publish when everything was filtered away', async () => {
     const outcome = await run([fileAt('.DS_Store', 'junk')]);
 
     expect(outcome.phase).toBe('error');
+    expect(outcome.status.details).toBe('There are no files to publish.');
     expect(outcome.files).toEqual([]);
   });
 });
@@ -356,7 +371,7 @@ describe('processFiles — limit validation', () => {
       limits,
     );
     expect(outcome.status.title).toBe("Can't deploy this");
-    expect(outcome.status.details).toBe('2 files refused');
+    expect(outcome.status.details).toBe('2 things to fix');
     expect(outcome.status.errors).toEqual(errors.map((e) => e.message));
     expect(outcome.status.errors).toEqual([
       'File "big.txt" is too large. Maximum 100 Bytes allowed.',
@@ -399,15 +414,12 @@ describe('processFiles — limit validation', () => {
     expect(outcome.status.warnings).toEqual(['File "empty.txt" is empty, so it is excluded.']);
   });
 
-  it('stays ready — not errored — when every file is excluded', async () => {
-    // An empty readyFiles set already disables the deploy action, so this is a
-    // reportable state rather than a failure.
+  it('refuses a site whose every file is empty: nothing is left to publish', async () => {
     const outcome = await run([fileAt('index.html', '')]);
 
-    expect(outcome.phase).toBe('ready');
-    expect(outcome.status.title).toBe('All files excluded');
+    expect(outcome.phase).toBe('error');
+    expect(outcome.status.details).toBe('There are no files to publish.');
     expect(ready(outcome)).toEqual([]);
-    expect(outcome.status.warnings).toHaveLength(1);
   });
 
   it('reports an empty input set as a validation failure', async () => {

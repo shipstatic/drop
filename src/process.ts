@@ -164,19 +164,8 @@ export async function processFiles(
       };
     }
 
-    // Step 6: a built site serves index.html from its root.
-    if (finalFiles.length > 0 && !finalFiles.some((f) => f.path === 'index.html')) {
-      const details =
-        "There's no index.html at the top of what you chose. It's the page visitors see first, so your site needs one there.";
-      return failure({
-        title: CANT_DEPLOY,
-        details,
-        sourceName,
-        files: applyStatus(finalFiles, FileValidationStatus.VALIDATION_FAILED, details),
-      });
-    }
-
-    // Step 7: validate against platform limits
+    // Step 6: the platform's deploy rules, through Ship: each file, then the
+    // site as a whole, a home page (index.html at its root) among them.
     const validation = validateFiles(finalFiles.map(toValidatable), limits);
 
     const validated = finalFiles.map((file, i) => ({
@@ -186,51 +175,37 @@ export async function processFiles(
     }));
 
     // Atomic validation: any error fails the whole set. Each issue is Ship's
-    // sentence as written: it already names its file, so nothing is prefixed.
-    // One issue is the message itself; several are listed under their count,
-    // since `errors` is a breakdown and one item is not one.
+    // sentence as written: it already names its file, or the site when it is
+    // about the site, so nothing is prefixed. One issue is the message itself;
+    // several are listed under their count, since `errors` is a breakdown and
+    // one item is not one.
     if (!validation.canDeploy) {
       const issues = validation.errors.map((e) => e.message);
       return failure({
         title: CANT_DEPLOY,
         ...(issues.length === 1
           ? { details: issues[0] }
-          : { details: `${issues.length} files refused`, errors: issues }),
+          : { details: `${issues.length} things to fix`, errors: issues }),
         files: validated,
         sourceName,
       });
     }
 
+    // Deployable means the deploy rules found files to publish, a home page
+    // among them, so at least one file is ready; empty files are excluded
+    // beside them with a warning.
     const readyCount = validated.filter((f) => f.status === FileValidationStatus.READY).length;
     const warnings = validation.warnings.map((w) => w.message);
-
-    if (readyCount > 0) {
-      let details = `${pluralize(readyCount, 'file', 'files', true)} ready`;
-      if (validation.warnings.length > 0) {
-        details += ` (${pluralize(validation.warnings.length, 'empty file', 'empty files', true)} excluded)`;
-      }
-      return {
-        phase: 'ready',
-        files: validated,
-        sourceName,
-        needsBuild: false,
-        status: { title: 'Ready', details, ...(warnings.length ? { warnings } : {}) },
-      };
+    let details = `${pluralize(readyCount, 'file', 'files', true)} ready`;
+    if (validation.warnings.length > 0) {
+      details += ` (${pluralize(validation.warnings.length, 'empty file', 'empty files', true)} excluded)`;
     }
-
-    // Nothing deployable, and nothing refused: every file was excluded (every
-    // file empty). Not an error state, since no ready files already disables
-    // the deploy action.
     return {
       phase: 'ready',
       files: validated,
       sourceName,
       needsBuild: false,
-      status: {
-        title: 'All files excluded',
-        details: `${pluralize(validation.warnings.length, 'file', 'files', true)} excluded (empty files cannot be deployed)`,
-        warnings,
-      },
+      status: { title: 'Ready', details, ...(warnings.length ? { warnings } : {}) },
     };
   } catch (error) {
     // Every refusal above is returned, never thrown, so what lands here is a
