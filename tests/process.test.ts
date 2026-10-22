@@ -422,6 +422,15 @@ describe('processFiles — limit validation', () => {
     expect(ready(outcome)).toEqual([]);
   });
 
+  it('says an empty index.html is empty, never missing', async () => {
+    const outcome = await run([fileAt('index.html', ''), fileAt('app.js', 'run()')]);
+
+    expect(outcome.phase).toBe('error');
+    expect(outcome.status.details).toBe(
+      "The index.html at the top of your site is empty. It's the page visitors see first, so it needs content.",
+    );
+  });
+
   it('reports an empty input set as a validation failure', async () => {
     const outcome = await run([]);
     expect(outcome.phase).toBe('error');
