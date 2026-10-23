@@ -273,6 +273,10 @@ Every host that builds from git works this way, and `railway up` honours
 
 **Refused, and why:**
 
+- **Checking the request size when files are dropped.** It would be a second
+  copy of the SDK's request arithmetic, and the SDK's sentence already says
+  what to do.
+
 - **Leaving out output folders by name** (`dist/`, `build/`, `out/`). Vue CLI 2
   keeps webpack config in `build/`, and `public/` is source in Vite, Next and
   CRA, so the builder's own search list cannot be a list of things to leave
