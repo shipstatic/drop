@@ -4,109 +4,120 @@ Claude Code instructions for the **Drop** package.
 
 ## Package Identity
 
-**@shipstatic/drop** is a React companion to Ship SDK. It provides what the SDK doesn't have for browser deployments: ZIP extraction, drag & drop with folder support, and React state management.
+**@shipstatic/drop** is a React companion to the Ship SDK. It provides what the
+SDK lacks for browser deployments: ZIP extraction, drag and drop with folder
+support, and React state management.
 
-**Maturity:** Stable; semver applies — breaking changes require a major version bump.
+**Maturity:** stable; semver applies, so a breaking change needs a major
+version bump.
 
-**Branches:** `main` (production) + `development` (integration). `ci.yml` runs an always-on `test` job gating the guarded `publish` job, which publishes only when `package.json` holds a version not yet on the registry, with the dist-tag derived from the version (`-` suffix → `beta`, else `latest`). See root `CLAUDE.md` "Branch & CI Model".
+**Releasing:** bump `version` in `package.json` and push. `ci.yml` runs the
+`test` job, then publishes a version not yet on the registry: a prerelease
+(any `-` suffix) to `beta` (from either branch, normally `development`), a stable one to `latest` from
+`main`. Nothing is published by hand.
 
-**Drop's scope:** Everything BEFORE `ship.deployments.upload()`. The SDK handles everything after — which is why drop has no upload vocabulary of its own (see "Status Values").
+**Drop's scope:** everything BEFORE `ship.deployments.upload()`. The SDK
+handles everything after, which is why drop has no upload vocabulary of its
+own (see "Status Values").
 
 ## Architecture
 
-Eight flat modules, no barrel directories. The layout is the design: one file per
-concern, each named for what it holds.
+Nine flat modules, no barrel directories, one file per concern:
 
 ```
 src/
-├── index.ts      # CURATED exports — the public API is a decision
-├── useDrop.ts    # The hook — React state, DOM events, prop getters
-├── process.ts    # THE PIPELINE — pure, no React, no Ship instance
+├── index.ts      # CURATED exports: the public API is a decision
+├── useDrop.ts    # The hook: React state, DOM events, prop getters
+├── process.ts    # THE PIPELINE: pure, no React, no Ship instance
 ├── source.ts     # What a project sent for building carries (.gitignore read as git does)
-├── entries.ts    # FileSystemEntry traversal — the one un-fakeable collaborator
+├── entries.ts    # FileSystemEntry traversal: the one un-fakeable collaborator
 ├── files.ts      # File ↔ ProcessedFile + the path rules
 ├── zip.ts        # ZIP extraction (fflate) + path sanitization
 ├── types.ts      # Types; the status vocabulary is Ship's verbatim
 └── testing.ts    # Consumer mock utilities (/testing subpath)
 ```
 
-`entries.ts` is alone in its file for a reason that is both architectural and
-testing-shaped: `FileSystemEntry` objects cannot be constructed in ANY browser
-(they come from a real user gesture over real OS paths). Keeping the traversal in
-one module is what makes "every other module is tested against real platform
-objects" a true statement rather than an aspiration. Don't merge it back into
+**`entries.ts` stays alone in its file.** `FileSystemEntry` objects cannot be
+constructed in ANY browser (they come from a real user gesture over real OS
+paths), so keeping the traversal in one module is what makes "every other
+module is tested against real platform objects" true. Don't merge it into
 `files.ts`.
 
 ### The public API is curated, not swept
 
-`src/index.ts` names its exports one by one. The modules behind it export helpers
-that are deliberately NOT public — `filePath`, `setRelativePath`, `applyStatus`,
-`createProcessedFile`, `stripCommonPrefix`, `toValidatable`, `detectSourceName`,
-`traverseFileTree`, `extractZipToFiles`, `isZipFile`, `normalizePath`,
-`projectSource`, `rebase`, because
-publishing them puts semver around implementation detail. `export *` from the leaf
-modules would do exactly that; `tests/index.test.ts` fences both directions.
+`src/index.ts` names its exports one by one. The helpers behind it are
+deliberately NOT public (`filePath`, `setRelativePath`, `applyStatus`,
+`createProcessedFile`, `stripCommonPrefix`, `toValidatable`,
+`detectSourceName`, `traverseFileTree`, `extractZipToFiles`, `isZipFile`,
+`normalizePath`, `projectSource`, `rebase`): publishing them puts semver
+around implementation detail. `export *` from the leaf modules is refused;
+`tests/index.test.ts` fences both directions.
 
-**Two** runtime values are public: `useDrop` and `processFiles`. The types beside them (`DropOptions`, `DropReturn`, `DropzonePropsOptions`, `PickerMode`, `DropInputProps`) are named rather than inline, so a consumer wrapping the hook can hold the shapes it spreads.
+**Two** runtime values are public: `useDrop` and `processFiles`. The types
+beside them (`DropOptions`, `DropReturn`, `DropzonePropsOptions`,
+`PickerMode`, `DropInputProps`) are named rather than inline, so a consumer
+wrapping the hook can hold the shapes it spreads.
 
-The file-status vocabulary is deliberately NOT among them. `FileValidationStatus`
-belongs to `@shipstatic/types` and is already re-exported by `@shipstatic/ship`,
-which every consumer of drop depends on. Drop once re-exported it as
-`FileValidationStatus` — a second name for one object, so a consumer of both packages had
-to wonder whether they differed. Use the platform's name; don't re-badge it.
+**The file-status vocabulary is not re-exported.** `FileValidationStatus`
+belongs to `@shipstatic/types` and is re-exported by `@shipstatic/ship`, which
+every consumer of drop depends on. A second name for one object makes a
+consumer of both wonder whether they differ: use the platform's name, never a
+re-badged one.
 
 ### The pipeline/hook split (load-bearing)
 
-`processFiles()` in `process.ts` owns every rule between "here are some
-Files" and "here is a verdict": source-name detection, ZIP extraction, unbuilt
-detection and the project's source, junk filtering, path normalization, entry-point and limit validation.
-It takes `PlatformLimits` — **not** a `Ship` instance — and never throws;
-expected and unexpected failures alike come back as an `error` outcome.
+`processFiles()` in `process.ts` owns every rule between "here are some Files"
+and "here is a verdict": source-name detection, ZIP extraction, unbuilt
+detection and the project's source, junk filtering, path normalization, entry
+point and limit validation. It takes `PlatformLimits`, **not** a `Ship`
+instance, and never throws: expected and unexpected failures alike come back
+as an `error` outcome.
 
-`useDrop` is then a state machine over it, one function (`prepare`) for
-every way a selection arrives: guard → `setState(processing)` → collect the
-files and read the limits, together → `await processFiles(...)` →
-`setState(outcome)`.
+`useDrop` is a state machine over it, one function (`prepare`) for every way a
+selection arrives: guard → `setState(processing)` → collect the files and read
+the limits, together → `await processFiles(...)` → `setState(outcome)`.
 Nothing else.
 
-**A run has a lifetime, and one `AbortController` per run is all of it.** A
-run is one selection from the moment it is made, so it begins BEFORE a
-dropped folder is read: a picker hands its files over at once, a drop
-captures its entries synchronously and reads the folders inside the run. The
-controller's presence is the re-entry guard; its signal stops the limits read
-when the run is cancelled (`reset()`); and its `aborted` flag is how a
-cancelled run knows to say nothing more. Preparation outlives a cancel (a
-folder being read, an archive being inflated, a request already sent), so a
-run that could still write state after `reset()` would finish over whatever
-was selected next, and the person would upload files they did not choose.
-The folder read is not itself stopped on a cancel: it writes nothing, and the
-check after it is the whole control. Nor is the pipeline, which is why it says
-its status before its first wait (`tests/process.test.ts`): a cancelled run
-then has no status left to say, and its outcome is dropped at the check after
-it. A drop that carries no files starts no run and leaves the current
-selection alone. A dropped folder with nothing in it to read is the `error`
-phase under the pipeline's own heading ("Can't deploy this", "The folder has
-no files."), since the pipeline is never asked about no files. `dataTransfer.files` is not read at all: every
-file arrives through its item, and a browser lists a dropped folder there as
-an entry that is not a file. Two steps can throw (the pipeline never does): reading a dropped
-folder, which refuses one it cannot read whole, and the limits read. Either
-failure is the `error` phase in the client's own words, never a hook left on
-"Processing...". Held in `tests/useDrop.test.ts`,
-"a run's lifetime".
+**Keep new pipeline rules in `process.ts`.** A rule inside the hook can only be
+reached by rendering and faking a client; in the pipeline it is a pure
+function test (see "Testing canon").
 
-**Keep new pipeline rules in `process.ts`.** The split is what makes them
-testable without a renderer: a rule inside the hook can only be reached by
-rendering and faking a client, which is how a 5:1 test-to-source ratio and ten
-files mocking a package of pure functions came about (see "Testing canon").
+### A run has a lifetime, and one `AbortController` per run is all of it
+
+- **A run is one selection from the moment it is made**, so it begins BEFORE a
+  dropped folder is read: a picker hands its files over at once, a drop
+  captures its entries synchronously and reads the folders inside the run.
+- **The controller's presence is the re-entry guard**; its signal stops the
+  limits read on a cancel (`reset()`); its `aborted` flag is how a cancelled
+  run knows to say nothing more. Preparation outlives a cancel (a folder being
+  read, an archive inflating, a request sent), so a run that could still write
+  state after `reset()` would finish over the next selection, and the person
+  would upload files they did not choose.
+- **The folder read is not stopped on a cancel**: it writes nothing, and the
+  check after it is the whole control. Nor is the pipeline, which is why it
+  says its status before its first wait (`tests/process.test.ts`): a cancelled
+  run then has nothing left to say, and its outcome is dropped at the check.
+- **A drop carrying no files starts no run** and leaves the current selection
+  alone. A dropped folder with nothing in it to read is the `error` phase
+  under the pipeline's own heading ("Can't deploy this", "The folder has no
+  files."), since the pipeline is never asked about no files.
+- **`dataTransfer.files` is never read.** Every file arrives through its item,
+  and a browser lists a dropped folder there as an entry that is not a file.
+- **Two steps can throw** (the pipeline never does): reading a dropped folder,
+  which refuses one it cannot read whole, and the limits read. Either is the
+  `error` phase in the client's own words, never a hook left on
+  "Processing...".
+
+Held in `tests/useDrop.test.ts`, "a run's lifetime".
 
 ## Quick Reference
 
 ```bash
 pnpm test                  # watch (main project, jsdom)
 pnpm test:ci               # single run
-pnpm coverage              # the suite + the ratchet — what CI runs
-pnpm test:browser          # capability tier — real Chromium via playwright
-pnpm typecheck             # tsc over src AND tests, 0 errors
+pnpm coverage              # the suite + the ratchet: what CI runs
+pnpm test:browser          # capability tier: real Chromium via playwright
+pnpm typecheck             # tsc over src AND tests
 pnpm lint                  # biome check .
 pnpm check:package         # publint + attw over the built artifact
 pnpm build                 # tsup (ESM + CJS + dts)
@@ -114,29 +125,28 @@ pnpm build                 # tsup (ESM + CJS + dts)
 
 ## Ship SDK Integration
 
-Drop delegates every algorithm it can to the SDK, and mocks none of them — they
-are pure functions:
+Drop delegates every algorithm it can to the SDK, and mocks none of them (they
+are pure functions):
 
 | Function | Purpose |
 |----------|---------|
-| `validateFiles(files, limits)` | Validate against platform limits |
+| `validateFiles(files, limits)` | Validate against the platform's deploy rules and limits |
 | `filterJunk(paths)` | A built site's junk: .DS_Store, Thumbs.db, dot files (`.well-known` allowed); THROWS on unbuilt markers. Never run on a project's source |
-| `optimizeDeployPaths(paths)` | Common-prefix stripping — the one source of truth for deploy paths |
+| `optimizeDeployPaths(paths)` | Common-prefix stripping: the one source of truth for deploy paths |
 | `pluralize`, `formatFileSize` | Message formatting |
 
 From `@shipstatic/types` it takes `FileValidationStatus`, `hasUnbuiltMarker`
-and `WEB_FILE_ACCEPT` (the files-picker `accept` hint). That
-package is a **devDependency and is bundled** — tsup externalizes only
-`dependencies`/`peerDependencies` — so a constant added there reaches drop's
-dist inlined, at no runtime-dependency cost to consumers.
+and `WEB_FILE_ACCEPT`. That package is a **devDependency and is bundled**
+(tsup externalizes only `dependencies` and `peerDependencies`), so a constant
+added there reaches drop's dist inlined, at no runtime-dependency cost.
 
-The only I/O collaborator is `ship.getLimits()` — and `DropOptions.ship` is typed
-as `Pick<Ship, 'getLimits'>`, mirroring the SDK's own resource-factory doctrine
-("factories only depend on the callbacks they actually need"). A real `Ship`
-satisfies it, and no test needs a cast.
+The only I/O collaborator is `ship.getLimits()`, and `DropOptions.ship` is
+typed `Pick<Ship, 'getLimits'>`, after the SDK's own rule that a factory
+depends only on the callbacks it needs. A real `Ship` satisfies it, and no
+test needs a cast.
 
 `formatFileSize` is NOT re-exported: every consumer already imports it from
-`@shipstatic/ship` directly, so a pass-through would be surface for nothing.
+`@shipstatic/ship`, so a pass-through would be surface for nothing.
 
 ### The handoff contract
 
@@ -146,13 +156,14 @@ satisfies it, and no test needs a cast.
 { name: file.path, size: file.size }   // the DEPLOY PATH is the name
 ```
 
-**The deploy path is the name**, because server-side validation runs on full
-paths. `ProcessedFile` is deliberately *not* passed through even though it now
-structurally satisfies `ValidatableFile` — its `name` is the display basename, so
-passing it would validate a different string than the platform does. Pinned in
+**The deploy path is the name**, because the platform validates full paths.
+`ProcessedFile` structurally satisfies `ValidatableFile` but is deliberately
+not passed through: its `name` is the display basename, so it would validate
+a different string than the platform does. Pinned in
 `tests/process-contract.test.ts`.
 
-**Key detail:** Drop sets `webkitRelativePath` on each File object. Ship SDK reads that property to preserve folder structure during deployment.
+**Drop sets `webkitRelativePath` on each File**, and the SDK reads it to keep
+the folder structure.
 
 ## State Machine
 
@@ -161,22 +172,21 @@ idle → processing → ready (success)
                   → error (failed)
 ```
 
-**Dragging is not a phase.** It is a pointer state orthogonal to the lifecycle,
-carried as `isDragging`, so a ready set stays ready while a new folder is dragged
-over it. Putting it in the phase union costs two re-derivations — an allow-list of
-states a drag may leave, and a re-scan of file statuses to decide which phase to
-return to — which is a second source of truth for something the state already
-knows. Don't reintroduce it.
+**Dragging is not a phase.** It is a pointer state orthogonal to the
+lifecycle, carried as `isDragging`, so a ready set stays ready while a new
+folder is dragged over it. In the phase union it would need an allow-list of
+states a drag may leave and a re-scan of file statuses to find the way back: a
+second source of truth for something the state already knows. Don't
+reintroduce it.
 
-Convenience booleans: `isProcessing`, `isDragging`, `isInteractive`
-(`idle` or `ready`), `hasError`. Use `phase` for switch-case.
+Convenience booleans: `isProcessing`, `isDragging`, `isInteractive` (`idle` or
+`ready`), `hasError`. Use `phase` for switch-case.
 
-**State is the only observation channel.** There are no `onFilesReady` /
-`onValidationError` callbacks: a hook already re-renders on every transition, so
-callbacks would be a second way to learn the same thing — and the one that can
-disagree. Consumers run side effects from a `useEffect` on `phase`, which is what
-`web/www` did even when the callbacks existed. This is also why there is no
-`ClientError` type; it was a renaming of `DropStatus`.
+**State is the only observation channel.** No `onFilesReady` or
+`onValidationError` callbacks: the hook re-renders on every transition, so
+callbacks would be a second way to learn the same thing, and the one that can
+disagree. Consumers run side effects from a `useEffect` on `phase`. There is
+no `ClientError` type for the same reason (it renamed `DropStatus`).
 
 ## Processing Flow
 
@@ -184,118 +194,113 @@ disagree. Consumers run side effects from a `useEffect` on `phase`, which is wha
 1. Detect source name (ZIP name > folder name > filename)
 2. Extract ZIP if a SINGLE ZIP was dropped
 3. Detect unbuilt project (hasUnbuiltMarker) → needsBuild
-4. If needsBuild: keep the project's source (`projectSource`: no node_modules, .git or __MACOSX, nothing .gitignore lists)
+4. If needsBuild: keep the project's source (projectSource: no node_modules, .git or __MACOSX, nothing .gitignore lists)
 5. If a built site: filter junk
 6. Create ProcessedFile[] with paths
-7. Strip common directory prefix (always — see Design Decisions)
+7. Strip common directory prefix (always; see Design Decisions)
 8. If needsBuild: ready as it stands (the build decides the site and validates it)
-9. validateFiles against ship.getLimits() → ready/error: the platform's deploy rules, each file, then the site as a whole, a home page (index.html at its root) among them
+9. validateFiles against ship.getLimits() → ready/error: each file, then the site as a whole, its home page (index.html at its root) among them
 ```
 
-**ZIP behavior:** Single ZIP → extract contents. Multiple files including ZIPs → treat ZIPs as regular files.
-
-**ZIP inflation is asynchronous** (`fflate`'s `unzip`, not `unzipSync`). The
-synchronous variant blocks the tab for the duration of the inflate, which is
-unacceptable on this package's headline interaction where a large folder is the
-normal case.
+ZIPs among several files are regular files. **ZIP inflation is asynchronous** (`fflate`'s `unzip`, never `unzipSync`): the
+synchronous variant blocks the tab for the whole inflate, on the interaction
+where a large folder is the normal case.
 
 ### Build-on-Upload Detection
 
-Drop detects unbuilt projects (source code with `package.json`/`node_modules`) and surfaces a `needsBuild: boolean` signal. When true:
+Drop detects an unbuilt project (source with `package.json` or
+`node_modules`) and sets `needsBuild: boolean`. When true:
 
-- `traverseFileTree` skips `node_modules` directories entirely (performance — 50K+ files)
+- `traverseFileTree` skips `node_modules` directories entirely (speed: 50K+
+  files).
 - `projectSource` (`source.ts`) keeps the project as its repository holds it
-  (below)
-- `filterJunk` does not run: the source `projectSource` kept is what is sent,
-  dot files and empty files included
-- Neither the entry-point check nor deploy validation applies: a project's
-  source isn't the site
-- All files go straight to `ready` status
+  (below).
+- `filterJunk` does not run: what `projectSource` kept is sent, dot files and
+  empty files included.
+- Neither the entry-point check nor deploy validation applies, and all files
+  go straight to `ready`.
 
 **A project's source is never held to the entry-point rule.** Astro, Next.js,
 Nuxt, SvelteKit, Gatsby, Docusaurus and Eleventy have no `index.html` until
-they are built, so a check on the source refuses every clean copy of them, a
-GitHub "Download ZIP" included, and passes only a folder that still carries an
-old build. The platform's build decides what the site is and refuses a build
-that produced none, so its sentence is the refusal the person sees. Held in `tests/process.test.ts`
-from both sides: under "processFiles — unbuilt projects" an Astro-shaped
-project is ready, and under "processFiles — entry point" a built site with no
-`index.html` at its root is still refused.
+built, so a check on the source would refuse every clean copy (a GitHub
+"Download ZIP" included) and pass only a folder carrying an old build. The
+platform's build decides what the site is and refuses a build that produced
+none, so its sentence is the refusal the person sees. Held in
+`tests/process.test.ts` from both sides: under "processFiles — unbuilt
+projects" an Astro-shaped project is ready, and under "processFiles — entry
+point" a built site with no `index.html` at its root is refused.
 
-**A project sent for building is the project as its repository holds it,** with
-four things left out: `node_modules` (the build installs it), `.git` (git's own
-record, which no checkout lists), `__MACOSX` (a Mac ZIP's Finder metadata, whose
-`._` files trip a build that reads a whole folder), and whatever the project's
-`.gitignore` lists (the project marks it as generated). Everything else is sent:
-dot files a build reads (`.npmrc`, `.yarnrc.yml`, `.vitepress/`), empty files it
-imports, and a `.env` the `.gitignore` does not list. Nothing after `projectSource` filters the set again: the junk
-filter judges a built site's files and never a project's, the SDK carries a
-build's source as given, and the API keeps empty files on a build request.
-Every host that builds from git works this way, and `railway up` honours
-`.gitignore` on upload as this does.
+The web app reads `drop.needsBuild` and passes `build: true, prerender: true`
+to the SDK. Drop does not know about `build` or `prerender`; it only detects
+and signals.
 
-- **Why, first:** which site gets published. When a build's log names no
-  output folder, the platform's build takes the first known folder holding an
-  `index.html`, `dist` first, so an old `dist/` beside a project that builds
-  to `out/` was published in place of the new build, with no error. Then
-  size, and then files kept out of git (a key, a service account) that no
-  longer leave the person's machine.
-- **The cost, accepted:** an app that imports an ignored file fails its
-  build, and the build names the file. A clean CI checkout fails the same way.
+### A project sent for building is the repository as git holds it
+
+Four things are left out: `node_modules` (the build installs it), `.git`
+(git's own record, which no checkout lists), `__MACOSX` (a Mac ZIP's Finder
+metadata, whose `._` files trip a build that reads a whole folder), and
+whatever the project's `.gitignore` lists. Everything else is sent: dot files
+a build reads (`.npmrc`, `.yarnrc.yml`, `.vitepress/`), empty files it
+imports, and a `.env` the `.gitignore` does not list. Nothing after
+`projectSource` filters the set again: the junk filter judges only a built
+site, the SDK carries a build's source as given, and the API keeps empty files
+on a build request. Every host that builds from git works this way, and
+`railway up` honours `.gitignore` on upload the same way.
+
+- **Why, first:** which site gets published. A stale `dist/` beside a project
+  that builds to `out/` could be published in place of the new build, with no
+  error. Then size, and then files kept out of git (a key, a service account),
+  which no longer leave the person's machine.
+- **The cost, accepted:** an app that imports an ignored file fails its build,
+  and the build names the file, as a clean CI checkout would.
 - **Read as git reads it.** `ignore` does the matching. Each nested
-  `.gitignore` is rewritten to the root of the drop and added shallowest first,
-  so a deeper file wins as in git, and a folder git excludes keeps excluding
-  what its own `.gitignore` re-includes. A `.gitignore` in a folder whose name
-  holds a line break is refused: gitignore cannot escape one, so the folder
-  cannot be written into its rules. The folder's name is escaped before
-  it joins a pattern: git never sees it, while `ignore` would read `[slug]`,
-  `#1-app` or `!important` as glob syntax and switch every rule off. A line that
-  names nothing (`!`, `/`) is no pattern, as in git; rewritten it would name
-  the whole folder. Every git case runs twice, the second time inside a folder
-  named `![#] *?`, so a folder name that leaks into a pattern turns it red.
-- **The second matcher shape is refused:** one `ignore` per `.gitignore`,
-  asked with paths relative to its folder. `ignore` checks a path's parents
-  only inside one matcher, so across matchers a nested `!generated/` could not
-  re-include what a root `generated/` excludes, which git allows; doing it
-  right means git's precedence rewritten by hand or `ignore`'s private API. It runs on raw paths before the
-  common folder is stripped. `tests/source.test.ts` holds the result to git
-  itself: each case is a real repository, and `git ls-files --others
-  --exclude-standard` runs with every personal and system setting shut out
-  (`core.excludesFile`, `HOME` and `XDG_CONFIG_HOME` included) and
-  `core.ignorecase` pinned on.
-- **Only for a project sent for building.** A built site is served as it was
-  dropped; nothing starts from a clean copy of it.
+  `.gitignore` is rewritten to the root of the drop and added shallowest
+  first, so a deeper file wins as in git, and a folder git excludes keeps
+  excluding what its own `.gitignore` re-includes. A `.gitignore` in a folder
+  whose name holds a line break is refused: gitignore cannot escape one. The
+  folder's name is escaped before it joins a pattern, since `ignore` would
+  read `[slug]`, `#1-app` or `!important` as glob syntax and switch every rule
+  off. A line that names nothing (`!`, `/`) is no pattern, as in git: rewritten, it
+would name the whole folder. Matching
+  runs on raw paths, before the common folder is stripped.
+- **`tests/source.test.ts` holds the result to git itself**: each case is a
+  real repository, and `git ls-files --others --exclude-standard` runs with
+  every personal and system setting shut out (`core.excludesFile`, `HOME` and
+  `XDG_CONFIG_HOME` included) and `core.ignorecase` pinned on. Every case runs
+  twice, the second time inside a folder named `![#] *?`, so a folder name
+  that leaks into a pattern turns it red.
+- **Only for a project sent for building.** A built site is served as dropped.
 - **Silent**, like the `node_modules` rule: "N files ready. We'll build the
-  project." counts what is sent. Most people who drop a project never wrote its
-  `.gitignore`, so a line about it raises a question rather than answering one.
-- **`ignore` is pinned exactly** (`7.0.12`), unlike `fflate`: a caret range
-  hands every consumer's next install whatever was published that day.
+  project." counts what is sent. Most people who drop a project never wrote
+  its `.gitignore`, so a line about it raises a question rather than
+  answering one.
+- **`ignore` is pinned exactly** (`7.0.12`), unlike `fflate`'s caret: a caret
+  range hands every consumer's next install whatever was published that day.
 
-**Refused, and why:**
+**Refused:**
 
-- **Checking the request size when files are dropped.** It would be a second
-  copy of the SDK's request arithmetic, and the SDK's sentence already says
-  what to do.
-
-- **Leaving out output folders by name** (`dist/`, `build/`, `out/`). Vue CLI 2
+- **One `ignore` matcher per `.gitignore`**, asked with paths relative to its
+  folder. `ignore` checks a path's parents only inside one matcher, so a
+  nested `!generated/` could not re-include what a root `generated/` excludes,
+  which git allows; doing it right means git's precedence by hand or
+  `ignore`'s private API.
+- **Checking the request size at drop time**: a second copy of the SDK's
+  request arithmetic, whose sentence already says what to do.
+- **Leaving out output folders by name** (`dist/`, `build/`, `out/`): Vue CLI 2
   keeps webpack config in `build/`, and `public/` is source in Vite, Next and
-  CRA, so the builder's own search list cannot be a list of things to leave
-  out. The three names that ARE left out are never project content at all:
-  what the build installs, git's record, and an archive's metadata.
+  CRA. The three names that ARE left out are never project content.
 - **Skipping ignored folders during the traversal.** The traversal skips only
-  `node_modules`, and only for speed; the rule lives in `projectSource` once,
-  and "a picked file set deploys identically to a dropped one" holds it.
+  `node_modules`, for speed; the rule lives once in `projectSource`, and "a
+  picked file set deploys identically to a dropped one" holds it.
 - **Reading git's index, `.git/info/exclude` or a global excludes file.** A
   file committed despite `.gitignore` is left out, and the build names it; a
-  clean copy carries neither of the other two.
+  clean copy carries neither of the others.
 - **Matching with case**, as git does on Linux: these projects are made on Mac
-  and Windows machines, where git ignores case.
+  and Windows, where git ignores case.
 
-**It lives in drop because drop is the only client that sends a project**
-(the CLI refuses a project folder, `npm/ship/src/node/core/node-files.ts`). It
-moves to the SDK the day a second client sends one.
-
-The web app reads `drop.needsBuild` and passes `build: true, prerender: true` to the SDK. Drop doesn't know about `build`/`prerender` — it only detects and signals.
+**It lives in drop because drop is the only client that sends a project** (the
+CLI refuses a project folder, ship's `src/node/core/node-files.ts`). It moves
+to the SDK the day a second client sends one.
 
 ## Prop Getters API
 
@@ -313,136 +318,140 @@ The web app reads `drop.needsBuild` and passes `build: true, prerender: true` to
 </div>
 ```
 
-`getDropzoneProps()` handles `webkitGetAsEntry` internally for proper folder traversal. Manual `processFiles()` callers lose this.
+`getDropzoneProps()` handles `webkitGetAsEntry` internally for folder
+traversal; a manual `processFiles()` caller loses it.
 
 ### The picker has a mode, so the mode is an argument
 
-`PickerMode` is `'folder' | 'files'`, and **folder is the default** — a bare
-`getInputProps()` / `open()`, and the dropzone's own click, address the folder
-picker exactly as they always have. The addition is purely additive.
+`PickerMode` is `'folder' | 'files'`, and **folder is the default**: a bare
+`getInputProps()` or `open()`, and the dropzone's own click, address the
+folder picker.
 
-Each mode owns its own element and its own ref, so a UI offering both renders
-**two inputs**; `open(mode)` clicks whichever is mounted, and warns by name when
-it is not (a missing input is otherwise a silent no-op — the one footgun the
-two-element shape introduces).
+- **Each mode owns its own element and ref**, so a UI offering both renders
+  **two inputs**; `open(mode)` clicks whichever is mounted and warns by name
+  when it is not (a missing input is otherwise a silent no-op).
+- **Exactly one attribute distinguishes them**: `webkitdirectory` in folder
+  mode, `accept` in files mode, never both, since a folder picker ignores
+  `accept` and emitting it there would advertise a filter that does not apply.
+- **`getDropzoneProps`'s `onClick` wraps `open()`** rather than passing it by
+  reference: React hands a click handler a `MouseEvent`, which would become the
+  mode argument. That is why `open` treats `'files'` as the exception and
+  everything else as folder, and why the dropzone click has its own test.
 
-Exactly one attribute distinguishes them: `webkitdirectory` in folder mode,
-`accept` in files mode. Never both — a folder picker ignores `accept`, so
-emitting it there would advertise a filter that does not apply.
-
-`getDropzoneProps`'s `onClick` **wraps** `open()` rather than passing it by
-reference. React hands a click handler a `MouseEvent`, so by reference that
-event becomes the mode argument — which is why `open` treats `'files'` as the
-exception and everything else as folder, and why the dropzone click has its own
-test.
-
-Three shapes were considered and declined. **Four members**
-(`getFolderInputProps`/`openFolder` + `getFilesInputProps`/`openFiles`) spends
-two names on one axis and leaves the existing `open()` ambiguous forever.
-**Toggling `webkitdirectory`** on one live node before `.click()` writes an
-attribute behind React's back that a re-render then reverts. **Minting a
-detached `<input>` inside `open()`** would delete `getInputProps` entirely and
-reads as simpler, but it takes away the element consumers style, label and
-query in tests — and a headless hook that creates DOM has stopped being
-headless.
+**Refused shapes:** four members (`getFolderInputProps`/`openFolder` plus
+`getFilesInputProps`/`openFiles`) spend two names on one axis and leave
+`open()` ambiguous forever. Toggling `webkitdirectory` on one live node before
+`.click()` writes an attribute behind React's back that a re-render reverts. A
+detached `<input>` minted inside `open()` reads as simpler but takes away the
+element consumers style, label and query in tests, and a headless hook that
+creates DOM has stopped being headless.
 
 ### The picker filter is a hint, and the platform owns the rule
 
-Files mode carries `accept={WEB_FILE_ACCEPT}` from `@shipstatic/types` — the
-same list `web/my` and `web/www` would otherwise each invent. It biases what a
-file dialog shows first and **decides nothing**: every dialog offers an
-all-files escape, and drag-and-drop ignores `accept` outright.
+Files mode carries `accept={WEB_FILE_ACCEPT}` from `@shipstatic/types`, the
+one list every web surface would otherwise invent. It biases what a file
+dialog shows first and **decides nothing**: every dialog offers an all-files
+escape, and drag and drop ignores `accept` outright.
 
-The verdict on any file is `validateFiles`, downstream of both entry points, so
-a picked `.exe` and a dropped `.exe` fail identically with the platform's own
-message. That equivalence is not a convention — `tests/useDrop-events.test.ts`
-("a picked file set deploys identically to a dropped one") asserts phase, status,
-deploy paths, `webkitRelativePath`, and source name are equal across the two
-paths for loose files, a ZIP, a blocked extension, and a missing entry point.
+The verdict on any file is `validateFiles`, downstream of both entry points,
+so a picked `.exe` and a dropped `.exe` fail identically with the platform's
+message. `tests/useDrop-events.test.ts` ("a picked file set deploys
+identically to a dropped one") asserts phase, status, deploy paths,
+`webkitRelativePath` and source name are equal across both paths for loose
+files, a ZIP, a blocked extension and a missing entry point.
 
-Do not read `accept` as authority in either direction. It can express only an
-allowlist while the platform's rule is a blocklist, so it is necessarily
-*narrower* than what the platform hosts; treating it as the rule would reject
-files the platform serves. `cloudflare/api` fences the one invariant that
-matters — the picker never offers what the platform will refuse — because the
-blocklist is the API's, not this package's.
+**Never read `accept` as authority.** It is an allowlist while the platform's
+rule is a blocklist, so it is *narrower* than what the platform hosts. The
+API's suite fences the one invariant that matters, that the picker never
+offers what the platform refuses, because the blocklist is the API's.
 
-**Which is also why the blocklist reaches drop as DATA.** `validateFiles` reads
-`PlatformLimits.blockedExtensions` off the limits `processFiles` already
-receives, so drop refuses exactly what the platform named at that moment and
-nothing it merely used to name. `PLATFORM_LIMITS` in the builders carries a
-SAMPLE list for that reason — enough to prove the pipeline honours what it was
-given, deliberately not a copy of the platform's real policy.
+**So the blocklist reaches drop as DATA.** `validateFiles` reads
+`PlatformLimits.blockedExtensions` off the limits `processFiles` receives, so
+drop refuses exactly what the platform names at that moment. `PLATFORM_LIMITS`
+in the builders carries a SAMPLE list: enough to prove the pipeline honours
+what it was given, deliberately not a copy of the platform's policy.
 
 ## Status Values
 
-Drop uses `FileValidationStatus` from `@shipstatic/types` directly — imported by
-its real name, never aliased:
+Drop uses `FileValidationStatus` from `@shipstatic/types` by its real name,
+never aliased:
 
 | Status | Meaning |
 |--------|---------|
 | `pending` | Awaiting validation |
 | `processing_error` | Failed during processing (before validation) |
-| `excluded` | Excluded with a warning (e.g. empty files — not an error) |
+| `excluded` | Excluded with a warning (e.g. empty files; not an error) |
 | `validation_failed` | Failed validation (blocks deployment) |
 | `ready` | Passed validation, ready to deploy |
 
 **Drop adds no statuses of its own, and must not.** Any addition widens
-`FileStatus` past `FileValidationStatusType`, which is what makes `ProcessedFile`
-inexpressible as a `ValidatableFile` and forces a hand-projection at the boundary.
-An `uploading`/`complete` lifecycle in particular would describe states this
-package never enters. `ProcessedFile` carries no `md5` or `progress` for the same
-reason: the SDK computes checksums, and drop never uploads.
+`FileStatus` past `FileValidationStatusType`, which makes `ProcessedFile`
+inexpressible as a `ValidatableFile` and forces a hand projection at the
+boundary. An `uploading`/`complete` lifecycle would describe states this
+package never enters. `ProcessedFile` carries no `md5` or `progress` for the
+same reason: the SDK computes checksums, and drop never uploads.
 
-### Atomic Validation
-
-If ANY file fails validation, ALL non-excluded files are marked `validation_failed`. Empty files (0 bytes) are marked `excluded` with warnings (not errors) and don't block deployment. Use `drop.reset()` to clear and retry.
+**Atomic validation:** if ANY file fails, ALL non-excluded files are marked
+`validation_failed`. Empty files (0 bytes) are `excluded` with warnings and do
+not block deployment. `drop.reset()` clears for a retry.
 
 ### The words are Ship's
 
-The SDK is where a refusal is worded, and drop shows the sentence verbatim.
+The SDK words a refusal, and drop shows the sentence verbatim.
 `status.details` and `status.errors` carry `validateFiles`' messages as
-written, with no `path:` prefix: each sentence already names its file once, so
-a prefix named it twice (`big.txt: File "big.txt" too large`). One refusal is
-the `details` itself; several are listed in `errors` under their count ("2
-things to fix"), because `errors` is a breakdown and one item is not one, and
-because a refusal about the set (the count, the total, the home page) names no file for a
-count to be true of. Warnings are listed the same way. Drop authors only the
-two headings an error outcome can carry, in plain words rather than developer
-vocabulary: `Can't deploy this` when the drop was understood and the platform
-will not take it (a refused file, a missing entry point, an empty folder, an
-empty input), and `Couldn't prepare the files` when the
-drop could not be read or the platform could not be asked what it accepts
-(`process.ts`, `CANT_DEPLOY` / `COULDNT_PREPARE`; the hook reads both). The
-headings are sentence case, as every status title is. `tests/process.test.ts`
-holds an error list equal to Ship's own, the one-issue form, and the headings
-by their literal words.
+written, with no `path:` prefix: each sentence already names its file once. One
+refusal is the `details` itself (one item is not a list); several are listed in `errors` under their
+count ("2 things to fix"), because `errors` is a breakdown, and a refusal
+about the set (the count, the total, the home page) names no file. Warnings
+are listed the same way.
+
+Drop authors only the two headings an error outcome can carry, in plain
+words: `Can't deploy this` when the drop was understood and the platform will
+not take it (a refused file, a missing entry point, an empty folder, an empty
+input), and `Couldn't prepare the files` when the drop could not be read or
+the platform could not be asked what it accepts (`process.ts`, `CANT_DEPLOY` /
+`COULDNT_PREPARE`; the hook reads both). Sentence case, as every status title.
+`tests/process.test.ts` holds an error list equal to Ship's own, the one-issue
+form, and the headings by their literal words.
 
 ## Design Decisions
 
-- **No MD5 calculation** — Ship SDK calculates MD5 during deployment; duplicate calculation wastes cycles.
-- **No MIME database** — `ProcessedFile.type` is the browser's own report. Bundling `mime-db` to second-guess it cost ~200 KB of a 258 KB bundle to populate a field no consumer reads, while the platform derives Content-Type server-side from the path. Bundle is now ~31 KB.
-- **No individual file removal** — Atomic validation means removing one file requires re-validating all. Call `reset()` and re-drop.
-- **Prefix stripping is unconditional** — there was a `stripPrefix` option; its only reachable effect on a built site was to leave `index.html` nested and fail the entry-point check, and on input with no common prefix it was a no-op. An option whose every setting is either "correct" or "broken" is not an option.
-- **Why Drop exists** — Ship SDK handles deployment but lacks ZIP extraction (browser-specific), React state management, drag & drop with `webkitGetAsEntry` folder traversal, and UI-friendly file status tracking.
+- **No MD5 calculation**: the SDK calculates it during deployment.
+- **No MIME database**: `ProcessedFile.type` is the browser's own report.
+  Bundling `mime-db` to second-guess it would be most of the bundle for a
+  field no consumer reads, while the platform derives Content-Type server
+  side from the path.
+- **No individual file removal**: atomic validation means removing one file
+  re-validates all. Call `reset()` and re-drop.
+- **Prefix stripping is unconditional.** A `stripPrefix` option's only
+  reachable effect on a built site was to leave `index.html` nested and fail
+  the entry-point check. An option whose every setting is either correct or
+  broken is not an option.
 
 ## Key Gotchas
 
-- **DataTransfer synchronous access** — `dataTransfer.items` must be accessed synchronously in drop handlers; they're garbage collected after the first `await`. The hook collects every entry first, then traverses. Manual `processFiles()` callers lose folder structure.
-- **The hidden input has two modes** — `getInputProps()` defaults to a **folder** picker (`webkitdirectory`); `getInputProps('files')` is a plain multi-file picker. A UI offering both renders both inputs, and `open('files')` on an unmounted one warns rather than failing silently. Individual files also still arrive by drag-and-drop, and take the identical path (see "The picker has a mode").
-- **`stripCommonPrefix` mutates File objects** — Returns new `ProcessedFile` objects (immutable), but **mutates** `File.webkitRelativePath` directly. Intentional — Ship SDK reads `webkitRelativePath` from raw File objects.
-- **`webkitRelativePath`** — Don't mutate it between Drop and SDK; Ship SDK reads it for deployment paths.
-- **`readEntries` batches at 100** — Real Chromium returns at most 100 directory entries per call and signals the end with an empty batch, so the reader must loop. A single call silently truncates every folder over 100 files.
-- **A drop read only in part is refused, naming what failed when it can.** A folder entry that cannot be read: "We couldn't read my-app/.gitignore. Make sure it's on this computer, then try again." A dropped item that gives neither a folder nor a file, which leaves no name: "We couldn't read everything you dropped. ..." Both under "Couldn't prepare the files"; `getAsFile()` stays the fallback where it recovers the file. Skipping it would deploy a site without the file, or send a project without its `.gitignore` and so with the files it keeps private; the folder picker fails the same way, at upload. Held in `tests/entries.test.ts` and `tests/useDrop-events.test.ts`.
+- **`dataTransfer.items` must be read synchronously** in drop handlers; they
+  are gone after the first `await`. The hook collects every entry first, then
+  traverses. A manual `processFiles()` caller loses folder structure.
+- **`stripCommonPrefix` mutates File objects.** It returns new
+  `ProcessedFile`s but rewrites `File.webkitRelativePath` directly, on
+  purpose: the SDK reads it from the raw Files. Don't mutate it between drop
+  and the SDK.
+- **`readEntries` batches at 100.** Chromium returns at most 100 entries per
+  call and signals the end with an empty batch, so the reader loops; a single
+  call silently truncates every folder over 100 files.
+- **A drop read only in part is refused, naming what failed when it can.** An
+  unreadable folder entry: "We couldn't read my-app/.gitignore. Make sure it's
+  on this computer, then try again." A dropped item that gives neither a
+  folder nor a file, which leaves no name: "We couldn't read everything you
+  dropped. ..." Both under "Couldn't prepare the files"; `getAsFile()` stays
+  the fallback where it recovers the file. The folder picker fails the same
+  way, at upload. Skipping would deploy a site
+  without the file, or send a project without its `.gitignore` (and so with
+  the files it keeps private). Held in `tests/entries.test.ts` and
+  `tests/useDrop-events.test.ts`.
 
 ## Testing
-
-```bash
-pnpm test:ci        # 12 files, 325 tests, ~10s
-pnpm coverage       # + the ratchet (what CI runs)
-pnpm test:browser   # 19 tests, real Chromium
-pnpm typecheck      # src AND tests, 0 errors
-```
 
 | Project | Path | Environment |
 |---------|------|-------------|
@@ -453,141 +462,94 @@ pnpm typecheck      # src AND tests, 0 errors
 tests/
 ├── architecture/          # Fences: integrity, naming
 ├── fixtures/builders.ts   # The ONE fixture source
-├── <module>.test.ts       # Mirror axis — tests/<m>.test.ts ↔ src/<m>.ts
+├── <module>.test.ts       # Mirror axis: tests/<m>.test.ts ↔ src/<m>.ts
 ├── index.test.ts          # Public-surface fence
 └── setup.ts               # Hermeticity (no-network guard)
-tests-browser/             # Capability tier — real Chromium
+tests-browser/             # Capability tier: real Chromium
 ```
 
-**`tests/**` is typechecked.** `pnpm typecheck` runs `tsconfig.check.json` over
-`src` and `tests` together. This is the load-bearing gate: vitest transpiles
-through esbuild WITHOUT checking types, so until 2026-07-27 nothing checked the
-test tree — which is what let all of this sit there passing:
-
-- `const validatable: ValidatableFile = processed;` under a comment calling
-  itself a *"compile-time check"*, in a suite that was never compiled. It did not
-  hold.
-- A validation mock whose passing and failing factories returned mutually
-  incompatible shapes, neither checked against Ship's real return type.
-- A published `/testing` return type that **erased** the assertion helpers it
-  actually returns, so `spies.reset.toHaveBeenCalled()` was a type error for
-  every consumer — including `web/my`, whose tests call it.
+**`tests/**` is typechecked.** `pnpm typecheck` runs `tsconfig.check.json`
+over `src` and `tests` together. Vitest transpiles through esbuild WITHOUT
+checking types, so an unchecked test tree can hold a "compile-time check"
+that does not hold, mocks whose shapes disagree with Ship's real return type,
+and a published `/testing` return type that erases the helpers it returns.
 
 ### Testing canon
 
-The cohesion contract. A change that breaks one of these needs a recorded
-exception, not a workaround:
+The cohesion contract. A change that breaks one needs a recorded exception,
+not a workaround:
 
 1. **Files are real.** Real `File`/`Blob` objects with real bytes, and real
-   archives built with `fflate`'s `zipSync`. The suite once monkey-patched
-   `File.prototype.arrayBuffer`/`text` suite-wide against a `_testContent`
-   *string*, so no test read real bytes and binary content was inexpressible —
-   in a package whose subject is ZIP payloads.
+   archives built with `fflate`'s `zipSync`. Never patch `File.prototype`
+   with string content: binary payloads are this package's subject.
 2. **Pure SDK functions are never mocked.** `validateFiles`, `filterJunk`,
    `optimizeDeployPaths`, `pluralize` run for real everywhere. The ONLY
    stand-in is `shipStub()`, because `getLimits()` is an HTTP call.
-3. **Builders are the only fixture source** (`tests/fixtures/builders.ts`), and
-   they take explicit content — no `Date.now()` in an asserted value.
-4. **One entry-tree fake, behavioral and recorded.** See below.
+3. **Builders are the only fixture source** (`tests/fixtures/builders.ts`),
+   and they take explicit content: no `Date.now()` in an asserted value.
+4. **One entry-tree fake, behavioural and recorded** (below).
 5. **No outbound network.** `tests/setup.ts` throws on any `fetch`, naming the
-   URL — the SDK's default API base is production.
+   URL; the SDK's default API base is production.
 6. **Console policy is config, not per-file spies.** `silent: 'passed-only'`
-   keeps passing tests quiet and prints everything a FAILING test logged. Only
-   spies a test asserts on are created locally.
+   keeps passing tests quiet and prints everything a FAILING test logged.
+   Only spies a test asserts on are created locally.
 
 ### The one unavoidable fake
 
 A synthetic `DataTransfer` cannot produce real `webkitGetAsEntry()` directory
-entries in **any** browser, Chromium included — they come from a real user
-gesture over real OS paths. So `traverseFileTree` has no real-runtime tier
-available, and its collaborator is faked in `tests/fixtures/builders.ts`
-(`fileEntry` / `dirEntry` / `entryTree`).
+entries in **any** browser, so `traverseFileTree` has no real-runtime tier and
+its collaborator is faked in `tests/fixtures/builders.ts` (`fileEntry` /
+`dirEntry` / `entryTree`). The fake models the **spec**:
 
-That fake models the **spec**, not a convenient answer:
+- `readEntries` yields at most `READ_ENTRIES_BATCH_SIZE` (100) entries per
+  call and ends with an EMPTY batch (see "Key Gotchas").
+- `createReader()` returns a FRESH cursor, so a directory can be read twice.
 
-- `readEntries` yields at most `READ_ENTRIES_BATCH_SIZE` (100) entries per call
-  and ends with an EMPTY batch. A one-shot fake would let a single-call
-  implementation pass while truncating every large folder in production.
-- `createReader()` returns a FRESH cursor, so a directory can be read twice. The
-  previous fake latched on a per-entry boolean and yielded nothing on a re-read.
-
-Everything else drop does — `File` bytes, `webkitRelativePath`, ZIP inflation,
-the whole pipeline — needs no fake and is certified for real in `tests-browser/`.
+Everything else (`File` bytes, `webkitRelativePath`, ZIP inflation, the whole
+pipeline) needs no fake and is certified for real in `tests-browser/`.
 
 ### The three fences
 
 | Fence | Catches |
 |---|---|
-| `architecture/test-integrity.test.ts` | A test file that reaches NO production code — the tautology class. A tautology neither raises nor lowers coverage, so no ratchet can see it. Reach resolves transitively through local helpers. Its only exceptions are the two fences themselves, which read the tree as data. |
-| `architecture/test-naming.test.ts` | Layout drift: a filename describing the test instead of its subject (`-branches`), a mirror file with no `src/` counterpart, an aspect split not recorded in the fence, a recorded entry gone stale, or a `src/` module with no mirror test. |
-| `coverage.thresholds` | Coverage decay. A ratchet: it only goes up. Currently 99/93/99/99 against a measured 100 / 96.03 / 100 / 100. |
+| `architecture/test-integrity.test.ts` | A test file that reaches NO production code (a tautology, which no coverage ratchet can see). Reach resolves through local helpers; its only exceptions are the two fences, which read the tree as data |
+| `architecture/test-naming.test.ts` | Layout drift: a filename describing the test instead of its subject (`-branches`), a mirror file with no `src/` counterpart, an unrecorded or stale aspect split, a `src/` module with no mirror test |
+| `coverage.thresholds` | Coverage decay. A ratchet that only goes up: 99 / 93 / 99 / 99 (statements, branches, functions, lines) |
 
-**Recorded aspect splits** — one subject, more than one mirror file. Legal under
-the layout law (`<module>-<aspect>.test.ts`), and the naming fence fails the
-suite if a split is not named in it by full basename:
+**Recorded aspect splits**: one subject, more than one mirror file, legal as
+`<module>-<aspect>.test.ts`; the naming fence fails if a split is not named in
+it by full basename:
 
 | Module | Files | Why |
 |---|---|---|
-| `src/process.ts` | `process`, `process-contract` | The drop→SDK handoff, isolated from the pipeline that performs it — this is the file that must fail when the SDK moves. |
-| `src/useDrop.ts` | `useDrop`, `useDrop-events` | The hook's DOM surface (drag/drop, hidden input, prop getters), separate from its state machine and actions. |
+| `src/process.ts` | `process`, `process-contract` | The drop→SDK handoff, isolated from the pipeline that performs it: the file that must fail when the SDK moves |
+| `src/useDrop.ts` | `useDrop`, `useDrop-events` | The hook's DOM surface (drag and drop, hidden input, prop getters), separate from its state machine and actions |
 
-### Consumer Test Utilities
+### Consumer test utilities
 
-The `/testing` subpath exists for ONE reason: a `DropReturn` has twenty fields,
-and a component test that takes `drop` as a prop should not have to build them.
-
-```typescript
-import {
-  createMockDrop,
-  createMockProcessedFile,
-  createMockFileWithPath,
-} from '@shipstatic/drop/testing';
-```
-
-| Function | Purpose |
-|----------|---------|
-| `createMockDrop(overrides?)` | A complete `DropReturn`. Takes `Partial<DropReturn>` — there is no separate options vocabulary, because every option IS a field. Convenience booleans and `validFiles` derive from `phase`/`files` unless overridden. |
-| `createMockProcessedFile(name, options?)` | A `ProcessedFile` backed by a real `File` |
-| `createMockFileWithPath(name, path, content?, type?)` | A real `File` carrying a folder-relative path |
-| `mockUseDrop(overrides?)` | A `useDrop` replacement, for consumers that CALL the hook instead of receiving `drop` as a prop |
-
-**It ships no spy, matcher, or status helpers, deliberately.** Interactions are
-asserted with the consumer's own framework, passed straight through the overrides:
-
-```tsx
-const reset = vi.fn();
-const drop = createMockDrop({ phase: 'ready', reset });
-expect(reset).toHaveBeenCalled();   // real vitest matcher, real deep equality
-```
-
-Three rules hold this line, each of which was learned the hard way:
+The `/testing` subpath exists for one reason: a `DropReturn` has twenty
+fields, and a component test that takes `drop` as a prop should not have to
+build them. Its exports and how to use them are in the README, "Testing your
+components". Four rules hold its surface:
 
 1. **Never ship a spy API.** A hand-rolled `toHaveBeenCalledWith` compares by
-   identity where every real framework compares deeply — a footgun published as a
-   feature. `Partial<DropReturn>` makes the consumer's `vi.fn()` strictly better.
-2. **Never ship status factories.** They duplicate production copy and drift from
-   it; a `createMockReadyStatus` once emitted `"1 file ready."` where the pipeline
-   emits `"1 file ready"`. `DropStatus` is `{title, details}` — construct it
-   inline, or get it from a real pipeline run.
-3. **A consumer that receives `drop` as a prop needs no module mock at all.**
-   That is the pattern to steer consumers toward — `web/my`'s `DeployDropArea`
-   takes `drop: DropReturn` and has 22 clean `createMockDrop` call sites, while
-   every component that calls `useDrop` itself needs `vi.mock`. A
-   `<DropProvider>` + context hook was considered and **declined**: it is the
-   canonical React answer, but it doubles this package's consumption API to save
-   three lines in three files, and one headless hook is the whole identity.
-   `mockUseDrop` exists for the callers that remain.
-4. **Never wrap a one-line constructor.** `createMockFile` was
-   `new File([c], n, {type})`. `createMockFileWithPath` survives because
-   `webkitRelativePath` is read-only and needs `defineProperty`.
-
-### Testing Philosophy (for consumers)
-
-- **Mock at the boundary** — Mock `DropReturn`, not internal utilities
-- **Test states, not implementation** — Focus on phase transitions and UI states
-- **Use your own spies** — pass `vi.fn()` through `createMockDrop` overrides
-- **Dragging is a flag** — `createMockDrop({ isDragging: true })`, independent of `phase`
+   identity where every real framework compares deeply. `createMockDrop` takes
+   `Partial<DropReturn>`, so the consumer's own `vi.fn()` passes straight
+   through, and there is no separate options vocabulary (every option IS a
+   field).
+2. **Never ship status factories.** They duplicate production copy and drift
+   from it. `DropStatus` is `{title, details}`: construct it inline, or get it
+   from a real pipeline run.
+3. **A consumer that receives `drop` as a prop needs no module mock**, and
+   that is the pattern to steer consumers toward; `mockUseDrop` exists for
+   components that call the hook themselves. **Refused: a `<DropProvider>` and
+   context hook.** It is the canonical React answer, but it doubles the
+   consumption API to save three lines, and one headless hook is the whole
+   identity.
+4. **Never wrap a one-line constructor.** `createMockFileWithPath` exists only
+   because `webkitRelativePath` is read-only and needs `defineProperty`.
 
 ---
 
-*Drop is a companion to Ship SDK. For SDK patterns (auth, HTTP, CLI), see the `@shipstatic/ship` package.*
+*Drop is a companion to the Ship SDK. For SDK patterns (auth, HTTP, CLI), see
+the `@shipstatic/ship` package.*

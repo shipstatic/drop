@@ -271,6 +271,14 @@ import { mockUseDrop } from '@shipstatic/drop/testing';
 vi.mock('@shipstatic/drop', () => ({ useDrop: mockUseDrop({ phase: 'ready' }) }));
 ```
 
+A few habits keep these tests honest:
+
+- **Mock at the boundary.** Mock `DropReturn`, not drop's internals.
+- **Test states, not implementation.** Assert on phases and what the UI shows.
+- **Use your own spies.** Pass `vi.fn()` through `createMockDrop` overrides.
+- **Dragging is a flag.** `createMockDrop({ isDragging: true })` works with any `phase`.
+- **Build statuses inline.** A `DropStatus` is `{ title, details }`; there are no status factories to drift from the real copy.
+
 ## Gotchas
 
 - **`webkitRelativePath` is the handoff.** Drop writes each file's deploy path there, and the ShipStatic SDK reads it. Don't modify it in between.
