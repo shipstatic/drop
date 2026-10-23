@@ -584,12 +584,6 @@ Three rules hold this line, each of which was learned the hard way:
 - **Use your own spies** — pass `vi.fn()` through `createMockDrop` overrides
 - **Dragging is a flag** — `createMockDrop({ isDragging: true })`, independent of `phase`
 
-## Post-Launch
-
-- **TypeScript 7** — `typescript@7.0.2` exists (the native compiler). Drop stays
-  on `^5.9.3` with ship and the rest of the monorepo; adopting it is an org-wide
-  toolchain decision, not a per-package one.
-
 ---
 
 *Drop is a companion to Ship SDK. For SDK patterns (auth, HTTP, CLI), see the `@shipstatic/ship` package.*
