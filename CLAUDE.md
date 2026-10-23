@@ -214,11 +214,10 @@ Drop detects unbuilt projects (source code with `package.json`/`node_modules`) a
 
 **A project's source is never held to the entry-point rule.** Astro, Next.js,
 Nuxt, SvelteKit, Gatsby, Docusaurus and Eleventy have no `index.html` until
-they are built (see `builds/test-projects`), so a check on the source refuses
-every clean copy of them, a GitHub "Download ZIP" included, and passes only a
-folder that still carries an old build. The build service decides what the
-site is and refuses a build that produced none (`builds/build.sh`, exit 4), so
-its sentence is the refusal the person sees. Held in `tests/process.test.ts`
+they are built, so a check on the source refuses every clean copy of them, a
+GitHub "Download ZIP" included, and passes only a folder that still carries an
+old build. The platform's build decides what the site is and refuses a build
+that produced none, so its sentence is the refusal the person sees. Held in `tests/process.test.ts`
 from both sides: under "processFiles — unbuilt projects" an Astro-shaped
 project is ready, and under "processFiles — entry point" a built site with no
 `index.html` at its root is still refused.
@@ -229,15 +228,14 @@ record, which no checkout lists), `__MACOSX` (a Mac ZIP's Finder metadata, whose
 `._` files trip a build that reads a whole folder), and whatever the project's
 `.gitignore` lists (the project marks it as generated). Everything else is sent:
 dot files a build reads (`.npmrc`, `.yarnrc.yml`, `.vitepress/`), empty files it
-imports, and a `.env` the `.gitignore` does not list (operator decision,
-2026-10-21). Nothing after `projectSource` filters the set again: the junk
+imports, and a `.env` the `.gitignore` does not list. Nothing after `projectSource` filters the set again: the junk
 filter judges a built site's files and never a project's, the SDK carries a
 build's source as given, and the API keeps empty files on a build request.
 Every host that builds from git works this way, and `railway up` honours
 `.gitignore` on upload as this does.
 
 - **Why, first:** which site gets published. When a build's log names no
-  output folder, `builds/build.sh` takes the first known folder holding an
+  output folder, the platform's build takes the first known folder holding an
   `index.html`, `dist` first, so an old `dist/` beside a project that builds
   to `out/` was published in place of the new build, with no error. Then
   size, and then files kept out of git (a key, a service account) that no
@@ -419,7 +417,7 @@ by their literal words.
 ## Design Decisions
 
 - **No MD5 calculation** — Ship SDK calculates MD5 during deployment; duplicate calculation wastes cycles.
-- **No MIME database** — `ProcessedFile.type` is the browser's own report. Bundling `mime-db` to second-guess it cost ~200 KB of a 258 KB bundle to populate a field no consumer reads, while the platform derives Content-Type server-side from the path (`cloudflare/api/src/lib/storage.ts` → `deriveContentType`). Bundle is now ~31 KB.
+- **No MIME database** — `ProcessedFile.type` is the browser's own report. Bundling `mime-db` to second-guess it cost ~200 KB of a 258 KB bundle to populate a field no consumer reads, while the platform derives Content-Type server-side from the path. Bundle is now ~31 KB.
 - **No individual file removal** — Atomic validation means removing one file requires re-validating all. Call `reset()` and re-drop.
 - **Prefix stripping is unconditional** — there was a `stripPrefix` option; its only reachable effect on a built site was to leave `index.html` nested and fail the entry-point check, and on input with no common prefix it was a no-op. An option whose every setting is either "correct" or "broken" is not an option.
 - **Why Drop exists** — Ship SDK handles deployment but lacks ZIP extraction (browser-specific), React state management, drag & drop with `webkitGetAsEntry` folder traversal, and UI-friendly file status tracking.
