@@ -177,6 +177,39 @@ describe('processFiles — junk filtering', () => {
     expect(outcome.files.map((f) => f.path)).toEqual(['index.html']);
   });
 
+  it.each([
+    ['a .DS_Store', '.DS_Store'],
+    ["an unpacked archive's __MACOSX", '__MACOSX/site/._index.html'],
+  ])('takes a site that sits one folder down with %s beside it', async (_what, junk) => {
+    // The folder a terminal deploy takes too: Ship names both.
+    const outcome = await run([
+      fileAt('site/index.html', '<html>', 'text/html'),
+      fileAt('site/app.js', '1'),
+      fileAt(junk, 'junk'),
+    ]);
+
+    expect(outcome.phase).toBe('ready');
+    expect(outcome.files.map((f) => f.path)).toEqual(['index.html', 'app.js']);
+  });
+
+  it('takes a dropped folder whose own name starts with a dot', async () => {
+    const outcome = await run([
+      fileAt('.output/index.html', '<html>', 'text/html'),
+      fileAt('.output/app.js', '1'),
+    ]);
+
+    expect(outcome.phase).toBe('ready');
+    expect(outcome.files.map((f) => f.path)).toEqual(['index.html', 'app.js']);
+  });
+
+  it('refuses a file whose name is too long, in words: it is not junk', async () => {
+    const long = `${'a'.repeat(256)}.js`;
+    const outcome = await run([fileAt('index.html', '<html>', 'text/html'), fileAt(long, '1')]);
+
+    expect(outcome.phase).toBe('error');
+    expect(outcome.status.details).toContain("can't be published");
+  });
+
   it('keeps .well-known, which is a legitimate root path', async () => {
     const outcome = await run([
       fileAt('index.html', '<html>', 'text/html'),

@@ -47,7 +47,7 @@ module is tested against real platform objects" true. Don't merge it into
 
 `src/index.ts` names its exports one by one. The helpers behind it are
 deliberately NOT public (`filePath`, `setRelativePath`, `applyStatus`,
-`createProcessedFile`, `stripCommonPrefix`, `toValidatable`,
+`createProcessedFile`, `siteFiles`, `stripCommonPrefix`, `toValidatable`,
 `detectSourceName`, `traverseFileTree`, `extractZipToFiles`, `isZipFile`,
 `normalizePath`, `projectSource`, `rebase`): publishing them puts semver
 around implementation detail. `export *` from the leaf modules is refused;
@@ -131,8 +131,8 @@ are pure functions):
 | Function | Purpose |
 |----------|---------|
 | `validateFiles(files, limits)` | Validate against the platform's deploy rules and limits |
-| `filterJunk(paths)` | A built site's junk: .DS_Store, Thumbs.db, dot files (`.well-known` allowed); THROWS on unbuilt markers. Never run on a project's source |
-| `optimizeDeployPaths(paths)` | Common-prefix stripping: the one source of truth for deploy paths |
+| `sitePaths(paths)` | Where each file of a built site is published, and nothing for junk (.DS_Store, Thumbs.db, dot files, `__MACOSX`; `.well-known` kept): the one statement of the order between setting junk aside and stripping the common folder. Never run on a project's source |
+| `optimizeDeployPaths(paths)` | Common-folder stripping alone, for a project's source |
 | `pluralize`, `formatFileSize` | Message formatting |
 
 From `@shipstatic/types` it takes `FileValidationStatus`, `hasUnbuiltMarker`
@@ -194,12 +194,9 @@ no `ClientError` type for the same reason (it renamed `DropStatus`).
 1. Detect source name (ZIP name > folder name > filename)
 2. Extract ZIP if a SINGLE ZIP was dropped
 3. Detect unbuilt project (hasUnbuiltMarker) → needsBuild
-4. If needsBuild: keep the project's source (projectSource: no node_modules, .git or __MACOSX, nothing .gitignore lists)
-5. If a built site: filter junk
-6. Create ProcessedFile[] with paths
-7. Strip common directory prefix (always; see Design Decisions)
-8. If needsBuild: ready as it stands (the build decides the site and validates it)
-9. validateFiles against ship.getLimits() → ready/error: each file, then the site as a whole, its home page (index.html at its root) among them
+4. If needsBuild: keep the project's source (projectSource: no node_modules, .git or __MACOSX, nothing .gitignore lists), strip its common folder, and it is ready as it stands (the build decides the site and validates it)
+5. If a built site: set its junk aside and name its paths, common folder stripped (`siteFiles`, which is Ship's `sitePaths`)
+6. validateFiles against ship.getLimits() → ready/error: each file, then the site as a whole, its home page (index.html at its root) among them
 ```
 
 ZIPs among several files are regular files. **ZIP inflation is asynchronous** (`fflate`'s `unzip`, never `unzipSync`): the
@@ -215,7 +212,7 @@ Drop detects an unbuilt project (source with `package.json` or
   files).
 - `projectSource` (`source.ts`) keeps the project as its repository holds it
   (below).
-- `filterJunk` does not run: what `projectSource` kept is sent, dot files and
+- No junk is set aside: what `projectSource` kept is sent, dot files and
   empty files included.
 - Neither the entry-point check nor deploy validation applies, and all files
   go straight to `ready`.
@@ -433,16 +430,18 @@ form, and the headings by their literal words.
 - **`dataTransfer.items` must be read synchronously** in drop handlers; they
   are gone after the first `await`. The hook collects every entry first, then
   traverses. A manual `processFiles()` caller loses folder structure.
-- **`stripCommonPrefix` mutates File objects.** It returns new
-  `ProcessedFile`s but rewrites `File.webkitRelativePath` directly, on
-  purpose: the SDK reads it from the raw Files. Don't mutate it between drop
+- **Naming a file mutates its File object.** `siteFiles` and
+  `stripCommonPrefix` return new `ProcessedFile`s but rewrite
+  `File.webkitRelativePath` directly, on purpose: the SDK reads it from the raw Files. Don't mutate it between drop
   and the SDK.
 - **`readEntries` batches at 100.** Chromium returns at most 100 entries per
   call and signals the end with an empty batch, so the reader loops; a single
   call silently truncates every folder over 100 files.
 - **A drop read only in part is refused, naming what failed when it can.** An
-  unreadable folder entry: "We couldn't read my-app/.gitignore. Make sure it's
-  on this computer, then try again." A dropped item that gives neither a
+  unreadable folder entry: `We couldn't read "my-app/.gitignore". Make sure
+  it's on this computer, then try again.` The sentence is Ship's
+  (`unreadable`, imported), so a file that cannot be read is told the same way
+  dropped here as deployed from a terminal. A dropped item that gives neither a
   folder nor a file, which leaves no name: "We couldn't read everything you
   dropped. ..." Both under "Couldn't prepare the files"; `getAsFile()` stays
   the fallback where it recovers the file. The folder picker fails the same
@@ -482,7 +481,7 @@ not a workaround:
 1. **Files are real.** Real `File`/`Blob` objects with real bytes, and real
    archives built with `fflate`'s `zipSync`. Never patch `File.prototype`
    with string content: binary payloads are this package's subject.
-2. **Pure SDK functions are never mocked.** `validateFiles`, `filterJunk`,
+2. **Pure SDK functions are never mocked.** `validateFiles`, `sitePaths`,
    `optimizeDeployPaths`, `pluralize` run for real everywhere. The ONLY
    stand-in is `shipStub()`, because `getLimits()` is an HTTP call.
 3. **Builders are the only fixture source** (`tests/fixtures/builders.ts`),

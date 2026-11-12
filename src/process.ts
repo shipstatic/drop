@@ -8,14 +8,14 @@
  * entry-point and limit validation, all reachable by direct call. `useDrop` is a state machine over
  * this; a non-React consumer can call it directly.
  */
-import { filterJunk, pluralize, validateFiles } from '@shipstatic/ship';
+import { pluralize, validateFiles } from '@shipstatic/ship';
 import {
   FileValidationStatus,
   hasUnbuiltMarker,
   type PlatformLimits,
   type ValidatableFile,
 } from '@shipstatic/types';
-import { applyStatus, createProcessedFile, filePath, stripCommonPrefix } from './files';
+import { applyStatus, createProcessedFile, filePath, siteFiles, stripCommonPrefix } from './files';
 import { projectSource } from './source';
 import type { DropStatus, ProcessedFile } from './types';
 import { extractZipToFiles, isZipFile } from './zip';
@@ -131,21 +131,18 @@ export async function processFiles(
     // sent as its repository holds it: `projectSource` decides which files
     // that is, once.
     const needsBuild = files.some((f) => hasUnbuiltMarker(filePath(f)));
-    if (needsBuild) files = await projectSource(files);
 
-    // Step 3: junk filtering, for a built site only. A project's source is
-    // never filtered again: a build reads its dot files.
-    if (!needsBuild) {
-      const kept = new Set(filterJunk(files.map(filePath)));
-      files = files.filter((f) => kept.has(filePath(f)));
-    }
+    // Step 3: name the files. A project keeps every file `projectSource`
+    // kept, with the common folder stripped: a build reads its dot files, so
+    // nothing is set aside. A built site has its junk set aside and its paths
+    // named by Ship's one order. Empty files are kept either way: a site's
+    // are marked EXCLUDED with a warning by validation, and a project's are
+    // source the build may import.
+    const finalFiles = needsBuild
+      ? stripCommonPrefix((await projectSource(files)).map((f) => createProcessedFile(f)))
+      : siteFiles(files.map((f) => createProcessedFile(f)));
 
-    // Step 4: convert to ProcessedFile, then strip the common directory prefix.
-    // Empty files are kept: a built site's are marked EXCLUDED with a warning
-    // by validation, and a project's are source the build may import.
-    const finalFiles = stripCommonPrefix(files.map((f) => createProcessedFile(f)));
-
-    // Step 5: a project to be built is ready as it stands. The build decides
+    // Step 4: a project to be built is ready as it stands. The build decides
     // what the site is, so neither the entry point nor the deploy limits apply
     // to its source: many frameworks (Astro, Next.js, SvelteKit, Eleventy) have
     // no index.html until they are built, and the build service refuses a build
@@ -164,7 +161,7 @@ export async function processFiles(
       };
     }
 
-    // Step 6: the platform's deploy rules, through Ship: each file, then the
+    // Step 5: the platform's deploy rules, through Ship: each file, then the
     // site as a whole, a home page (index.html at its root) among them.
     const validation = validateFiles(finalFiles.map(toValidatable), limits);
 

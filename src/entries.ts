@@ -8,6 +8,7 @@
  * exercised against real platform objects; this is the single boundary where a
  * fake is unavoidable, and keeping it to one file keeps that statement true.
  */
+import { unreadable } from '@shipstatic/ship';
 import { setRelativePath } from './files';
 
 /**
@@ -16,11 +17,6 @@ import { setRelativePath } from './files';
  */
 export const UNREADABLE_DROP =
   "We couldn't read everything you dropped. Make sure the files are on this computer, then try again.";
-
-/** What a person is told when part of a dropped folder cannot be read. */
-export function unreadable(path: string): string {
-  return `We couldn't read ${path}. Make sure it's on this computer, then try again.`;
-}
 
 /** A read that either succeeds or fails naming what could not be read. */
 async function readOrRefuse<T>(path: string, read: () => Promise<T>): Promise<T> {

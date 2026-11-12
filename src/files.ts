@@ -1,7 +1,7 @@
 /**
  * The `File` ↔ `ProcessedFile` boundary, and the path rules that govern it.
  */
-import { optimizeDeployPaths } from '@shipstatic/ship';
+import { optimizeDeployPaths, sitePaths } from '@shipstatic/ship';
 import { FileValidationStatus, type FileValidationStatusType } from '@shipstatic/types';
 import type { ProcessedFile } from './types';
 
@@ -49,23 +49,38 @@ export function createProcessedFile(file: File, options?: { path?: string }): Pr
 }
 
 /**
- * Strip the common directory prefix from a set of deploy paths.
+ * A file under the path it will be published at. The path is written back
+ * onto the File too, because Ship reads `webkitRelativePath` from the raw
+ * Files it is handed.
+ */
+function published(file: ProcessedFile, path: string): ProcessedFile {
+  setRelativePath(file.file, path);
+  return { ...file, path, name: path.split('/').pop() || file.name };
+}
+
+/**
+ * A built site's files under the paths they are published at, its junk set
+ * aside.
  *
- * The path algorithm is Ship's `optimizeDeployPaths` — the single source of
- * truth for deploy-path normalization. The stripped path is written back onto
- * each underlying File, because Ship reads `webkitRelativePath` from the raw
- * File objects it is handed.
+ * Which files are junk, and in what order that is decided against stripping
+ * the common folder, is Ship's `sitePaths`: the one statement of it, so a
+ * folder is named the same way dropped here as deployed from a terminal.
+ */
+export function siteFiles(files: ProcessedFile[]): ProcessedFile[] {
+  const paths = sitePaths(files.map((f) => f.path));
+  return files.flatMap((file, i) => {
+    const path = paths[i];
+    return path == null ? [] : [published(file, path)];
+  });
+}
+
+/**
+ * A project's source with the common folder stripped and nothing set aside:
+ * what a build reads is decided by `projectSource`, once.
  */
 export function stripCommonPrefix(files: ProcessedFile[]): ProcessedFile[] {
-  if (files.length === 0) return files;
-
-  const deployFiles = optimizeDeployPaths(files.map((f) => f.path));
-
-  return files.map((f, i) => {
-    const newPath = deployFiles[i].path;
-    setRelativePath(f.file, newPath);
-    return { ...f, path: newPath, name: newPath.split('/').pop() || f.name };
-  });
+  const paths = optimizeDeployPaths(files.map((f) => f.path));
+  return files.map((file, i) => published(file, paths[i].path));
 }
 
 /**

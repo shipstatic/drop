@@ -1,5 +1,6 @@
+import { unreadable } from '@shipstatic/ship';
 import { describe, expect, it } from 'vitest';
-import { traverseFileTree, unreadable } from '../src/entries';
+import { traverseFileTree } from '../src/entries';
 import {
   dirEntry,
   entryTree,
@@ -90,7 +91,7 @@ describe('traverseFileTree', () => {
     ]);
 
     await expect(traverseFileTree(tree, [], 'dist')).rejects.toThrow(
-      "We couldn't read dist/locked.txt. Make sure it's on this computer, then try again.",
+      `We couldn't read "dist/locked.txt". Make sure it's on this computer, then try again.`,
     );
   });
 

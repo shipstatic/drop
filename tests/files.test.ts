@@ -5,6 +5,7 @@ import {
   createProcessedFile,
   filePath,
   setRelativePath,
+  siteFiles,
   stripCommonPrefix,
 } from '../src/files';
 import { file, fileAt } from './fixtures/builders';
@@ -92,9 +93,43 @@ describe('stripCommonPrefix', () => {
     expect(result.map((f) => f.path)).toEqual(['index.html', 'app.js']);
   });
 
-  it('returns the same array for an empty input', () => {
-    const empty: ReturnType<typeof createProcessedFile>[] = [];
-    expect(stripCommonPrefix(empty)).toBe(empty);
+  it('answers nothing for no files', () => {
+    expect(stripCommonPrefix([])).toEqual([]);
+  });
+});
+
+describe('siteFiles', () => {
+  const site = (...paths: string[]) => paths.map((path) => createProcessedFile(fileAt(path)));
+
+  it('sets junk aside and names what is left from the folder it shares', () => {
+    const result = siteFiles(site('dist/index.html', 'dist/.DS_Store', 'dist/css/app.css'));
+
+    expect(result.map((f) => f.path)).toEqual(['index.html', 'css/app.css']);
+    expect(result.map((f) => f.name)).toEqual(['index.html', 'app.css']);
+  });
+
+  it.each([
+    ['a .DS_Store', '.DS_Store'],
+    ["an unpacked archive's __MACOSX", '__MACOSX/site/._index.html'],
+  ])('names a site from its own folder when %s sits beside it', (_what, junk) => {
+    // Ship's order: the junk is what the site's files share no folder with,
+    // so it is set aside before the folder is stripped.
+    const result = siteFiles(site('site/index.html', 'site/app.js', junk));
+
+    expect(result.map((f) => f.path)).toEqual(['index.html', 'app.js']);
+  });
+
+  it('never judges the folder that was dropped, whatever its name', () => {
+    const result = siteFiles(site('.output/index.html', '.output/app.js'));
+
+    expect(result.map((f) => f.path)).toEqual(['index.html', 'app.js']);
+  });
+
+  it('writes each path onto its File, which is where the SDK reads it', () => {
+    const files = [fileAt('site/index.html'), fileAt('site/app.js'), fileAt('.DS_Store')];
+    siteFiles(files.map((f) => createProcessedFile(f)));
+
+    expect(files.slice(0, 2).map((f) => f.webkitRelativePath)).toEqual(['index.html', 'app.js']);
   });
 });
 

@@ -249,8 +249,7 @@ describe('onDrop', () => {
     expect(result.current.files).toEqual([]);
     expect(result.current.status).toEqual({
       title: "Couldn't prepare the files",
-      details:
-        "We couldn't read my-app/.gitignore. Make sure it's on this computer, then try again.",
+      details: `We couldn't read "my-app/.gitignore". Make sure it's on this computer, then try again.`,
     });
   });
 
