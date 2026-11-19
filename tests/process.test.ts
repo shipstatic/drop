@@ -15,7 +15,7 @@ import {
 
 /**
  * The pipeline runs against the REAL Ship functions throughout — `validateFiles`,
- * `filterJunk` and `optimizeDeployPaths` are pure, so there is nothing to fake.
+ * `sitePaths` and `optimizeDeployPaths` are pure, so there is nothing to fake.
  * Only `PlatformLimits` is injected, which is the whole point of the pipeline
  * taking limits rather than a client.
  */

@@ -131,7 +131,7 @@ export function heldZip(
  * because `getLimits()` is an HTTP call. `DropOptions.ship` is typed as
  * `Pick<Ship, 'getLimits'>`, so this needs no cast — the type says what drop
  * touches. Everything else drop uses from the SDK
- * — `validateFiles`, `filterJunk`, `optimizeDeployPaths`, `pluralize`,
+ * — `validateFiles`, `sitePaths`, `optimizeDeployPaths`, `pluralize`,
  * `formatFileSize` — is a pure function and runs FOR REAL throughout this suite.
  * Faking a pure function is how a suite ends up asserting against a hand-written
  * twin that has silently drifted from the real thing.

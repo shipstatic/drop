@@ -1,4 +1,4 @@
-import { filterJunk, getValidFiles, validateFiles } from '@shipstatic/ship';
+import { sitePaths, validateFiles } from '@shipstatic/ship';
 import { FileValidationStatus, type ValidatableFile } from '@shipstatic/types';
 import { describe, expect, it } from 'vitest';
 import { createProcessedFile } from '../src/files';
@@ -65,7 +65,7 @@ describe('toValidatable — the shape drop hands to Ship', () => {
     expect(result.errors[0].file).toBe('scripts/payload.exe');
   });
 
-  it('round-trips through getValidFiles', () => {
+  it('marks the files that are ready, and leaves an empty one out of them', () => {
     const files = [fileAt('index.html', '<html>'), fileAt('empty.txt', '')].map((f) =>
       createProcessedFile(f),
     );
@@ -73,7 +73,8 @@ describe('toValidatable — the shape drop hands to Ship', () => {
     const validated = validateFiles(files.map(toValidatable), PLATFORM_LIMITS);
 
     // Empty files are excluded by warning, not failed
-    expect(getValidFiles(validated.files).map((f) => f.name)).toEqual(['index.html']);
+    const ready = validated.files.filter((f) => f.status === FileValidationStatus.READY);
+    expect(ready.map((f) => f.name)).toEqual(['index.html']);
   });
 });
 
@@ -103,11 +104,13 @@ describe('ProcessedFile ↔ ValidatableFile', () => {
   });
 });
 
-describe('filterJunk — the contract drop relies on', () => {
-  it('strips junk while preserving real paths', () => {
-    expect(filterJunk(['index.html', 'src/app.js', '.DS_Store', '__MACOSX/._index.html'])).toEqual([
+describe('sitePaths: the contract drop relies on', () => {
+  it('answers no path for junk, and keeps real paths as they are', () => {
+    expect(sitePaths(['index.html', 'src/app.js', '.DS_Store', '__MACOSX/._index.html'])).toEqual([
       'index.html',
       'src/app.js',
+      null,
+      null,
     ]);
   });
 
@@ -116,7 +119,11 @@ describe('filterJunk — the contract drop relies on', () => {
     // itself judges nothing and keeps a project's files for the deploy rules
     // to refuse by name, `node_modules/.pnpm/` included.
     const pnpm = 'demo/node_modules/.pnpm/lodash@4/node_modules/lodash/index.js';
-    expect(filterJunk(['demo/index.html', pnpm])).toEqual(['demo/index.html', pnpm]);
-    expect(filterJunk(['index.html', 'package.json'])).toEqual(['index.html', 'package.json']);
+    // The folder both share is stripped, and neither is set aside.
+    expect(sitePaths(['demo/index.html', pnpm])).toEqual([
+      'index.html',
+      'node_modules/.pnpm/lodash@4/node_modules/lodash/index.js',
+    ]);
+    expect(sitePaths(['index.html', 'package.json'])).toEqual(['index.html', 'package.json']);
   });
 });
