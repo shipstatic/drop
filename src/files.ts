@@ -80,7 +80,7 @@ export function siteFiles(files: ProcessedFile[]): ProcessedFile[] {
  */
 export function stripCommonPrefix(files: ProcessedFile[]): ProcessedFile[] {
   const paths = optimizeDeployPaths(files.map((f) => f.path));
-  return files.map((file, i) => published(file, paths[i].path));
+  return files.map((file, i) => published(file, paths[i]));
 }
 
 /**
