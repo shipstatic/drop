@@ -1,6 +1,7 @@
 /**
  * ZIP extraction — archive bytes in, regular File objects out.
  */
+import { unreadable } from '@shipstatic/ship';
 import { type Unzipped, unzip } from 'fflate';
 import { setRelativePath } from './files';
 
@@ -12,16 +13,20 @@ export interface ZipExtractionResult {
 }
 
 /**
- * Extracts all files from a ZIP archive. An archive that cannot be opened
- * rejects with a sentence that names it; an entry that cannot be published is
- * left out and listed in `errors`.
+ * Extracts all files from a ZIP archive. An archive that cannot be read, or
+ * read and not opened, rejects with a sentence that names it; an entry that
+ * cannot be published is left out and listed in `errors`.
  *
  * Uses fflate's ASYNCHRONOUS `unzip`, which inflates off the main thread. The
  * synchronous variant would block the tab for the duration — unacceptable on
  * this package's headline interaction, where a large folder is the normal case.
  */
 export async function extractZipToFiles(zipFile: File): Promise<ZipExtractionResult> {
-  const bytes = new Uint8Array(await zipFile.arrayBuffer());
+  const bytes = new Uint8Array(
+    await zipFile.arrayBuffer().catch(() => {
+      throw new Error(unreadable(zipFile.name));
+    }),
+  );
   const entries = await new Promise<Unzipped>((resolve, reject) => {
     unzip(bytes, (err, data) =>
       err

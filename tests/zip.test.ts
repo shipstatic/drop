@@ -109,6 +109,16 @@ describe('extractZipToFiles', () => {
     );
   });
 
+  it('rejects an archive whose bytes cannot be read, in the words for any unread file', async () => {
+    // A file moved or changed on disk after it was chosen.
+    const moved = file('site.zip', '');
+    moved.arrayBuffer = () => Promise.reject(new DOMException('gone', 'NotReadableError'));
+
+    await expect(extractZipToFiles(moved)).rejects.toThrow(
+      'We couldn\'t read "site.zip". Make sure it\'s on this computer, then try again.',
+    );
+  });
+
   it('handles an empty archive', async () => {
     const { files, errors } = await extractZipToFiles(zipOf({}));
     expect(files).toEqual([]);

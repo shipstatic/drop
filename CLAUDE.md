@@ -210,8 +210,9 @@ no `ClientError` type for the same reason (it renamed `DropStatus`).
 
 ZIPs among several files are regular files. **A ZIP that cannot be opened
 is said to be that** ("We couldn't open site.zip. It may be damaged, or not a
-ZIP file."): `extractZipToFiles` rejects, and the pipeline answers it under
-"Couldn't prepare the files" and judges no site. An entry with no publishable
+ZIP file."), and one whose bytes cannot be read is told what any unread file
+is (Ship's `unreadable`): `extractZipToFiles` rejects, and the pipeline
+answers it under "Couldn't prepare the files" and judges no site. An entry with no publishable
 path is left out and listed in `errors`, which fails nothing. **ZIP inflation is asynchronous** (`fflate`'s `unzip`, never `unzipSync`): the
 synchronous variant blocks the tab for the whole inflate, on the interaction
 where a large folder is the normal case.
