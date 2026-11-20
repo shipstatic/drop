@@ -227,9 +227,12 @@ none, so its sentence is the refusal the person sees. Held in
 projects" an Astro-shaped project is ready, and under "processFiles — entry
 point" a built site with no `index.html` at its root is refused.
 
-The web app reads `drop.needsBuild` and passes `build: true, prerender: true`
-to the SDK. Drop does not know about `build` or `prerender`; it only detects
-and signals.
+The platform's own web apps read `drop.needsBuild` and pass `build: true,
+prerender: true` to the SDK, which their upload endpoint accepts. The public
+API builds nothing and refuses both options, so the README and the example
+teach an outside consumer the other use of the signal: tell the person to
+build the project and drop the folder the build makes. Drop does not know
+about `build` or `prerender`; it only detects and signals.
 
 ### A project sent for building is the repository as git holds it
 

@@ -19,9 +19,7 @@ function App() {
     setIsDeploying(true);
 
     try {
-      const result = await ship.deployments.upload(drop.getFilesForUpload(), {
-        build: drop.needsBuild ? true : undefined,
-      });
+      const result = await ship.deployments.upload(drop.getFilesForUpload());
       setDeploymentUrl(result.url);
     } catch (err: any) {
       setDeployError(err.message || 'Deployment failed');
@@ -38,7 +36,9 @@ function App() {
   };
 
   // Computed state for cleaner logic
-  const canDeploy = drop.phase === 'ready' && !isDeploying && !deploymentUrl;
+  // A project that isn't built yet is ready as far as drop goes, but the API
+  // publishes the files it is sent and builds nothing.
+  const canDeploy = drop.phase === 'ready' && !drop.needsBuild && !isDeploying && !deploymentUrl;
   const showActions = drop.files.length > 0;
 
   return (
@@ -107,8 +107,9 @@ function App() {
             {drop.sourceName}
           </div>
           <div style={{ color: '#16a34a', fontSize: '0.9rem' }}>
-            {drop.validFiles.length} {drop.validFiles.length === 1 ? 'file' : 'files'} ready to
-            deploy
+            {drop.needsBuild
+              ? "This project isn't built yet. Build it, then drop the folder the build makes, like dist."
+              : `${drop.validFiles.length} ${drop.validFiles.length === 1 ? 'file' : 'files'} ready to deploy`}
           </div>
         </div>
       )}

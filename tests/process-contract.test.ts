@@ -1,5 +1,9 @@
 import { sitePaths, validateFiles } from '@shipstatic/ship';
-import { FileValidationStatus, type ValidatableFile } from '@shipstatic/types';
+import {
+  FileValidationStatus,
+  type FileValidationStatusType,
+  type ValidatableFile,
+} from '@shipstatic/types';
 import { describe, expect, it } from 'vitest';
 import { createProcessedFile } from '../src/files';
 import { toValidatable } from '../src/process';
@@ -80,14 +84,13 @@ describe('toValidatable — the shape drop hands to Ship', () => {
 
 describe('ProcessedFile ↔ ValidatableFile', () => {
   it('shares Ship’s status vocabulary exactly', () => {
-    // Drop adds no statuses of its own. When it did (`processing`, `uploading`,
-    // `complete`, `error` — none of which anything ever set), the widening is
-    // what made this type relationship impossible to express.
-    expect(FileValidationStatus).toBe(FileValidationStatus);
+    // Drop adds no status of its own and leaves none out: the two unions are
+    // the same union, in both directions. A status only one side knows fails
+    // this line to compile, which `pnpm typecheck` runs.
+    type Same<A, B> = [A] extends [B] ? ([B] extends [A] ? true : false) : false;
+    const same: Same<ProcessedFile['status'], FileValidationStatusType> = true;
 
-    const status: ProcessedFile['status'] = FileValidationStatus.READY;
-    const asValidatable: ValidatableFile['status'] = status;
-    expect(asValidatable).toBe('ready');
+    expect(same).toBe(true);
   });
 
   it('is structurally a ValidatableFile — but is deliberately not passed as one', () => {

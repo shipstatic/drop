@@ -12,7 +12,8 @@ away.
 - The name of what was dropped, and the list of files with each one's status
 - A deploy button that is enabled only when the files are ready
 - The deployment's URL on success, and the reason when a deploy is refused
-- A project that needs building first (`drop.needsBuild`) sent to be built
+- A project that isn't built yet (`drop.needsBuild`) told apart from a site,
+  with what to do about it
 
 ## Running
 

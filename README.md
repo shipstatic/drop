@@ -186,18 +186,21 @@ import { FileValidationStatus } from '@shipstatic/ship';
 const ready = drop.files.filter(f => f.status === FileValidationStatus.READY);
 ```
 
-## Build on upload
+## A project that isn't built
 
 Drop recognises an unbuilt project (source files with `package.json` / `node_modules`) and sets `needsBuild`. `node_modules` stays behind (it is skipped during traversal and stripped from folder-picker selections), and so does whatever the project's `.gitignore` lists, read the way git reads it, so an old `dist/` the project ignores never rides along. A project's source isn't the site, so the deploy rules, the `index.html` at the top among them, don't apply to it: Astro, Next.js, SvelteKit and Eleventy have no `index.html` until they are built, and the rules judge what the build makes. Every file goes straight to `ready`, and the build gives the verdict.
 
-Pass the signal through to the SDK:
+ShipStatic's API publishes the files you send and doesn't build them, so check the signal before you deploy, and ask for the built folder instead:
 
 ```tsx
-await ship.deployments.upload(drop.getFilesForUpload(), {
-  build: drop.needsBuild,
-  prerender: drop.needsBuild,
-});
+if (drop.needsBuild) {
+  showMessage("This project isn't built yet. Build it, then drop the folder the build makes, like dist.");
+} else {
+  await ship.deployments.upload(drop.getFilesForUpload());
+}
 ```
+
+ShipStatic's own apps send a project to be built. That isn't part of the public API.
 
 ## ZIP handling
 
@@ -213,11 +216,13 @@ import { FileValidationStatus } from '@shipstatic/ship';
 
 const outcome = await processFiles(files, { limits: await ship.getLimits() });
 
-if (outcome.phase === 'ready') {
+if (outcome.phase === 'error') {
+  console.error(outcome.status.title, outcome.status.details);
+} else if (outcome.needsBuild) {
+  console.error("This project isn't built yet. Build it, then drop the folder the build makes.");
+} else {
   const ready = outcome.files.filter(f => f.status === FileValidationStatus.READY);
   await ship.deployments.upload(ready.map(f => f.file));
-} else {
-  console.error(outcome.status.title, outcome.status.details);
 }
 ```
 
