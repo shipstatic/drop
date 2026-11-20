@@ -204,7 +204,7 @@ ShipStatic's own apps send a project to be built. That isn't part of the public 
 
 ## ZIP handling
 
-A **single** dropped ZIP is extracted and its contents deployed. ZIPs among several files are treated as ordinary files. Archive paths are sanitized against directory traversal (`../../config.json` → `config.json`).
+A **single** dropped ZIP is extracted and its contents deployed. ZIPs among several files are treated as ordinary files. Archive paths are sanitized against directory traversal (`../../config.json` → `config.json`). A ZIP that can't be opened is an error that names it, and `extractZipToFiles()` rejects with the same sentence.
 
 ## Without React
 

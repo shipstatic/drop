@@ -33,10 +33,10 @@ describe('filePath', () => {
     expect(filePath(file('app.js'))).toBe('app.js');
   });
 
-  it('treats a whitespace-only relative path as absent', () => {
-    const f = file('app.js');
-    setRelativePath(f, '   ');
-    expect(filePath(f)).toBe('app.js');
+  it('reads the path as written, a space at its end included', () => {
+    // Ship reads the same property untouched, and the deploy rules refuse
+    // such a name: a path tidied here would pass a file a deploy refuses.
+    expect(filePath(fileAt('site/logo.svg '))).toBe('site/logo.svg ');
   });
 });
 

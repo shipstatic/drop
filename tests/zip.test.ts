@@ -103,12 +103,10 @@ describe('extractZipToFiles', () => {
     expect(files.map((f) => f.webkitRelativePath)).toEqual(['dist/index.html']);
   });
 
-  it('returns an error result for bytes that are not an archive', async () => {
-    const { files, errors } = await extractZipToFiles(file('broken.zip', 'definitely not a zip'));
-
-    expect(files).toEqual([]);
-    expect(errors).toHaveLength(1);
-    expect(errors[0]).toContain('Failed to load ZIP file');
+  it('rejects bytes that are not an archive, naming the file', async () => {
+    await expect(extractZipToFiles(file('broken.zip', 'definitely not a zip'))).rejects.toThrow(
+      "We couldn't open broken.zip. It may be damaged, or not a ZIP file.",
+    );
   });
 
   it('handles an empty archive', async () => {

@@ -20,10 +20,12 @@ export function setRelativePath(file: File, path: string): void {
 
 /**
  * The deploy path of a raw File: its folder-relative path when the browser gave
- * us one, otherwise its bare name. Every caller goes through here.
+ * us one, otherwise its bare name. It is read as Ship reads it and never
+ * changed, so the deploy rules judge here the path a deploy would send. Every
+ * caller goes through here.
  */
 export function filePath(file: File): string {
-  return file.webkitRelativePath?.trim() || file.name;
+  return file.webkitRelativePath || file.name;
 }
 
 /**

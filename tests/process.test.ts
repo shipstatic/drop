@@ -99,12 +99,15 @@ describe('processFiles — ZIP input', () => {
     expect(outcome.files.map((f) => f.path).sort()).toEqual(['bundle.zip', 'index.html']);
   });
 
-  it('reports extraction problems as an error outcome', async () => {
+  it('says an archive it could not open is that, and judges no site', async () => {
     const outcome = await run([file('broken.zip', 'not an archive', 'application/zip')]);
 
     expect(outcome.phase).toBe('error');
-    // No files survived extraction, so validation reports an empty set
-    expect(ready(outcome)).toEqual([]);
+    expect(outcome.status).toEqual({
+      title: "Couldn't prepare the files",
+      details: "We couldn't open broken.zip. It may be damaged, or not a ZIP file.",
+    });
+    expect(outcome.files).toEqual([]);
   });
 
   it('warns about per-entry extraction errors without failing the drop', async () => {

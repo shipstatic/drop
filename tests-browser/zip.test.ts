@@ -79,13 +79,12 @@ describe('extractZipToFiles in a real browser', () => {
     expect(files).toHaveLength(301);
   });
 
-  it('reports a corrupt archive as an error result', async () => {
-    const { files, errors } = await extractZipToFiles(
-      new File(['definitely not a zip'], 'broken.zip', { type: 'application/zip' }),
-    );
-
-    expect(files).toEqual([]);
-    expect(errors[0]).toContain('Failed to load ZIP file');
+  it('rejects a corrupt archive, naming the file', async () => {
+    await expect(
+      extractZipToFiles(
+        new File(['definitely not a zip'], 'broken.zip', { type: 'application/zip' }),
+      ),
+    ).rejects.toThrow("We couldn't open broken.zip. It may be damaged, or not a ZIP file.");
   });
 });
 

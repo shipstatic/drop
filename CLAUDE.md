@@ -78,6 +78,13 @@ selection arrives: guard → `setState(processing)` → collect the files and re
 the limits, together → `await processFiles(...)` → `setState(outcome)`.
 Nothing else.
 
+**The limits are read while the files are collected, for every selection.**
+A dropped folder takes time to read, and asking the platform meanwhile means
+a site waits for neither after the other. **Refused: reading them only once
+the files are known to be a site.** A project to be built does not use them,
+and the request it would save is one made while the folder is still being
+read. A platform that cannot state its limits cannot take the deploy either.
+
 **Keep new pipeline rules in `process.ts`.** A rule inside the hook can only be
 reached by rendering and faking a client; in the pipeline it is a pure
 function test (see "Testing canon").
@@ -163,7 +170,9 @@ a different string than the platform does. Pinned in
 `tests/process-contract.test.ts`.
 
 **Drop sets `webkitRelativePath` on each File**, and the SDK reads it to keep
-the folder structure.
+the folder structure. **A path is read as the browser wrote it** (`filePath`),
+never tidied: the deploy rules judge here the string a deploy would send, so
+a name ending in a space is refused here as it is everywhere.
 
 ## State Machine
 
@@ -199,7 +208,11 @@ no `ClientError` type for the same reason (it renamed `DropStatus`).
 6. validateFiles against ship.getLimits() → ready/error: each file, then the site as a whole, its home page (index.html at its root) among them
 ```
 
-ZIPs among several files are regular files. **ZIP inflation is asynchronous** (`fflate`'s `unzip`, never `unzipSync`): the
+ZIPs among several files are regular files. **A ZIP that cannot be opened
+is said to be that** ("We couldn't open site.zip. It may be damaged, or not a
+ZIP file."): `extractZipToFiles` rejects, and the pipeline answers it under
+"Couldn't prepare the files" and judges no site. An entry with no publishable
+path is left out and listed in `errors`, which fails nothing. **ZIP inflation is asynchronous** (`fflate`'s `unzip`, never `unzipSync`): the
 synchronous variant blocks the tab for the whole inflate, on the interaction
 where a large folder is the normal case.
 
