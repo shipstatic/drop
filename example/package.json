@@ -9,8 +9,8 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@shipstatic/drop": "^2.16.0",
-    "@shipstatic/ship": "^3.11.0",
+    "@shipstatic/drop": "^2.16.1",
+    "@shipstatic/ship": "^3.12.0",
     "react": "^19.2.3",
     "react-dom": "^19.2.3"
   },

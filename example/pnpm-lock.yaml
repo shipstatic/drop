@@ -9,11 +9,11 @@ importers:
   .:
     dependencies:
       '@shipstatic/drop':
-        specifier: ^2.16.0
-        version: 2.16.0(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
+        specifier: ^2.16.1
+        version: 2.16.1(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
       '@shipstatic/ship':
-        specifier: ^3.11.0
-        version: 3.11.0
+        specifier: ^3.12.0
+        version: 3.12.0
       react:
         specifier: ^19.2.3
         version: 19.2.3
@@ -407,15 +407,15 @@ packages:
     cpu: [x64]
     os: [win32]
 
-  '@shipstatic/drop@2.16.0':
-    resolution: {integrity: sha512-AIB/UFNFn2kiTpIVFvwCNQdWC5VTvouSEj0yRdixxJaUkkfWUx50ebDoUZD9EmPhN7wWx+Z8yPelyeMaiIztsA==}
+  '@shipstatic/drop@2.16.1':
+    resolution: {integrity: sha512-c/XrWHUc703uf7LI1CXvyzhnqa+LSY9DJdXDnsBk19w5lvX1oWs+o2IVl2XCExdM6+ZWguc+LjmJvQLdYhXhvw==}
     engines: {node: '>=20.19.0'}
     peerDependencies:
       react: ^18.0.0 || ^19.0.0
       react-dom: ^18.0.0 || ^19.0.0
 
-  '@shipstatic/ship@3.11.0':
-    resolution: {integrity: sha512-168Ulyg7Cf888DorvcE8K3nakEk9PrzOm9SYcDMs7e2+JsC6bHWp778fzj1eEvytEGuHD19c53mX5tGhvBfLYw==}
+  '@shipstatic/ship@3.12.0':
+    resolution: {integrity: sha512-7b1xD9CSaz3qENU+B7Z2Y7UIKSapJGA+yRdi3pljnc1D0kMTToEWnleJNUSr7OUl/dOZf3SNAHW0vgMhgQQWEg==}
     engines: {node: '>=20.19.0'}
     hasBin: true
 
@@ -926,15 +926,15 @@ snapshots:
   '@rollup/rollup-win32-x64-msvc@4.53.3':
     optional: true
 
-  '@shipstatic/drop@2.16.0(react-dom@19.2.3(react@19.2.3))(react@19.2.3)':
+  '@shipstatic/drop@2.16.1(react-dom@19.2.3(react@19.2.3))(react@19.2.3)':
     dependencies:
-      '@shipstatic/ship': 3.11.0
+      '@shipstatic/ship': 3.12.0
       fflate: 0.8.3
       ignore: 7.0.12
       react: 19.2.3
       react-dom: 19.2.3(react@19.2.3)
 
-  '@shipstatic/ship@3.11.0':
+  '@shipstatic/ship@3.12.0':
     dependencies:
       junk: 4.0.1
       spark-md5: 3.0.2
